@@ -1,64 +1,79 @@
 # Ember Street v0.6.0 — Day Shift & Long Night
 
-## Release scope
+## Release summary
 
-v0.6.0 replaces the player-facing seven-slot night loop with a day-management / event-driven survival loop.
+v0.6.0 is the core-play redesign of Ember Street. The former seven-slot / rack / order / combo night runtime has been removed from the player path and from `GameState`; legacy seven-slot fields exist only inside the v2→v3 migration boundary so old resources can be salvaged into the new inventory.
 
-### Campaign
+The new loop is: **day assignments → expedition / construction / food → dusk lock → 5–6 three-choice night events → emergencies / hordes → DAY29 final horde → DAY30 ending resolver**.
 
-- DAY 1–28: assignment, exploration, inventory, building upgrades, meal coverage, event-driven nights.
+## Campaign
+
+- DAY 1–28: management, expeditions, construction and event-driven nights.
 - DAY 10: guaranteed first horde.
 - DAY 20: guaranteed second horde.
 - DAY 29: final playable day and guaranteed final horde.
-- DAY 30: no player actions; ending resolver only.
+- DAY 30: no player actions; automatic ending resolution only.
 
-### Day management
+## Day management
 
-- One main assignment per available survivor: expedition / repair / medical / watch / radio / cook / rest.
-- Assignments lock at dusk.
-- Exploration supports 1–2 survivors and deterministic 2D6 outcomes.
-- DAY 1–5 blocks permanent death; DAY 6+ can produce missing survivors; DAY 11+ can produce permanent death under extreme stacked risk.
+Each available survivor receives at most one main assignment: expedition / repair / medical / watch / radio / cook / rest. Dusk locks jobs.
 
-### Food
+Expeditions use 1–2 survivors and deterministic 2D6. DAY1–5 blocks permanent death; DAY6+ can produce missing survivors; DAY11+ can produce permanent death only under stacked extreme risk. Retreat is always available.
 
-- Cooking capacity scales with survivor count.
-- Normal survivor: 2.5 base servings.
-- Ahe / cook specialist: 3.5 base servings.
-- Shelter levels modify cooking efficiency from 0.8× to 1.5×.
-- Meal quality affects energy, hope and well-fed state.
+Missing survivors can be searched for by committing two survivors or using radio + power. Confirmed deaths update campaign statistics and the memorial wall.
 
-### Street construction
+Rescued non-core residents are real population: they improve ending possibilities but also increase ration and cooking demand.
 
-Six buildings now support Lv0–3: search station, workshop, clinic, watch post, shelter / kitchen and radio.
+## Food and construction
 
-### Night
+Cooking capacity scales with current residents. Normal survivor base capacity is 2.5 servings; Ahe / cook specialist is 3.5. Shelter / kitchen levels scale efficiency. Final meal quality is capped by both ration availability and cooking coverage.
+
+Six facilities support Lv0–3: search station, workshop, clinic, watch post, shelter / kitchen and radio. Upgrades unlock rule effects rather than infinite stat growth.
+
+## Night
 
 - 5 main events on normal nights.
 - 6 main events on horde nights.
-- Emergency events are inserted separately and do not consume main slots.
-- Every decision event exposes exactly three player choices.
-- DAY 10 / 20 / 29 guarantee horde scheduling.
-- No real-time reading countdown in the v0.6 player path.
+- Emergency events are inserted separately and do not consume main-event slots.
+- Every player-facing decision event exposes exactly three choices.
+- DAY10 / 20 / 29 force horde scheduling.
+- No real-time reading countdown.
+- Seeded scheduling and dice make the same state reproducible.
 
-### Endings
+## Save integrity
 
-12 normal endings + 1 secret ending (`DAY 31`). Ending resolution uses survivor state, rescued count, hope, buildings, radio/contact flags, evacuation routes, main-light flags and the DAY 29 final-horde grade.
+Run schema: v3 (`ember-street-save-v3`).
 
-Ending unlocks are stored separately from the run save in `ember-street-meta-v1`.
+Legacy v2 saves salvage old slots / rack stock into ration, medicine and power, then enter the pure v0.6 runtime.
 
-## Save compatibility
+A v3 save preserves active phase, night event queue, `pendingCheck` and `rngState`; refreshing during a night cannot reroll a completed throw or regenerate a different night.
 
-- Run schema remains v3.
-- Legacy v2/v3 resources are promoted into the v0.6 inventory.
-- Existing saves are moved onto the v0.6 daytime path when first opened.
+Ending unlocks remain separate in `ember-street-meta-v1`.
 
-## Release gates
+## Endings
+
+12 standard endings plus secret `DAY 31` are defined and automatically reachable by test fixtures:
+
+黎明车队、灯火长街、第二个灯塔、带他们回家、我们留下、向南、最后一次广播、一条小街、灯灭了、空街、北门之后、最后的守灯人、DAY 31。
+
+Ending resolution uses survivor state, civilian population, rescued count, hope, construction, radio/contact flags, evacuation routes, main-light state and the DAY29 grade (`perfect / held / damaged / breached`).
+
+## Verification contract
+
+Before `main` release:
 
 - TypeScript typecheck
-- Vitest
+- Vitest suite
+- v2→v3 migration and v3 refresh-safe resume
+- day assignment / population-aware meal tests
+- expedition risk, missing/death and memorial tests
 - deterministic night scheduler tests
-- meal coverage tests
-- exploration risk/death tests
+- DAY10/20/29 horde and DAY30 ending-only tests
 - all 13 endings reachable by automated fixtures
-- Production build
+- production build
 - Cloudflare Wrangler dry-run
+- final docs aligned with v0.6
+
+After the clean release commit reaches `main`, the same CI must pass again before `dev` is synchronized.
+
+> Wrangler dry-run validates deployment configuration only. It is not evidence of a live Cloudflare deployment.
