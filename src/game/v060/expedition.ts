@@ -1,5 +1,6 @@
 import { nextRandom } from '../rng';
 import type { CheckOutcome, GameState, Survivor } from '../types';
+import { isLocationUnlocked } from './campaignEvents';
 import { markMissing, recordDeath } from './memorial';
 
 export type ExpeditionRisk = 'safe' | 'cautious' | 'dangerous' | 'extreme';
@@ -55,6 +56,10 @@ export function locationForId(id: string): ExpeditionLocation | undefined {
   return EXPEDITION_LOCATIONS.find((location) => location.id === id);
 }
 
+export function availableExpeditionLocations(state: GameState): ExpeditionLocation[] {
+  return EXPEDITION_LOCATIONS.filter((location) => isLocationUnlocked(state, location.id));
+}
+
 export function expeditionRiskScore(state: GameState, partyIds: string[], locationId: string): number {
   const location = locationForId(locationId);
   if (!location) return 99;
@@ -90,7 +95,7 @@ export function canStartExpedition(state: GameState, partyIds: string[], locatio
   const location = locationForId(locationId);
   if (!location) return { allowed: false, reason: '地点不存在' };
   if (state.day > 29) return { allowed: false, reason: '最终尸潮以后不再外出' };
-  if (state.day < location.unlockDay) return { allowed: false, reason: '这片区域还没有被发现' };
+  if (!isLocationUnlocked(state, locationId)) return { allowed: false, reason: '这片区域还没有被事件情报解锁' };
   if (partyIds.length < 1 || partyIds.length > 2) return { allowed: false, reason: '探索队必须是 1–2 人' };
   if (new Set(partyIds).size !== partyIds.length) return { allowed: false, reason: '同一个人不能重复派遣' };
   for (const id of partyIds) {

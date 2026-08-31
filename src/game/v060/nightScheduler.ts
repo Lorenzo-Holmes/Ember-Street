@@ -7,14 +7,6 @@ import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, ty
 
 const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = { search: 'expedition', repair: 'repair', medical: 'medical', watch: 'watch', cook: 'cook', radio: 'radio', rest: 'rest' };
 const ROLE_BUILDING: Partial<Record<Role, BuildingId>> = { search: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio', rest: 'shelter' };
-const EVENT_CHARACTER_REQUIREMENTS: Record<string, string[]> = {
-  'east-footsteps': ['aliang'],
-  'fever-resident': ['cheng'],
-  'horde-clinic': ['cheng'],
-  'military-burst': ['xiaoman'],
-  'quiet-tea': ['ahe'],
-  'emergency-main-light': ['zhou'],
-};
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const playable = (survivor: Survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing';
 
@@ -31,13 +23,20 @@ function pickWithoutReplacement<T>(pool: T[], count: number, rngState: number): 
   return [selected, nextState];
 }
 
-function eventAllowedForState(state: GameState, event: V060NightEvent): boolean {
+export function eligibleEvent(state: GameState, event: V060NightEvent): boolean {
   if (state.day < event.minDay || state.day > event.maxDay) return false;
-  const required = EVENT_CHARACTER_REQUIREMENTS[event.id] ?? [];
-  return required.every((id) => state.survivors.some((survivor) => survivor.id === id && playable(survivor)));
+  if ((event.requiredSurvivorIds ?? []).some((id) => !state.survivors.some((survivor) => survivor.id === id && playable(survivor)))) return false;
+  const requiredBuildings = event.requiredBuildings ?? {};
+  for (const id of Object.keys(requiredBuildings) as BuildingId[]) {
+    const minimumLevel = requiredBuildings[id];
+    if (minimumLevel !== undefined && state.buildings[id] < minimumLevel) return false;
+  }
+  if ((event.requiredFlags ?? []).some((flag) => !state.storyFlags.includes(flag))) return false;
+  if ((event.excludedFlags ?? []).some((flag) => state.storyFlags.includes(flag))) return false;
+  return true;
 }
 
-const eligible = (events: V060NightEvent[], state: GameState) => events.filter((event) => eventAllowedForState(state, event));
+const eligible = (events: V060NightEvent[], state: GameState) => events.filter((event) => eligibleEvent(state, event));
 
 function assignedCount(state: GameState, role: Role): number {
   const assignment = ROLE_ASSIGNMENT[role];
@@ -123,7 +122,7 @@ function availableScheduledIds(state: GameState, ids: string[]): string[] {
     const event = nightEventById(id);
     if (!event) return false;
     const dayState = state.day === 29 && event.category !== 'horde' && event.category !== 'emergency' ? { ...state, day: 28 } : state;
-    return eventAllowedForState(dayState, event);
+    return eligibleEvent(dayState, event);
   });
 }
 
@@ -141,7 +140,7 @@ export function currentNightEvent(state: GameState): V060NightEvent | null {
   const current = state.nightState.currentEventId ? nightEventById(state.nightState.currentEventId) : null;
   if (current) {
     const dayState = state.day === 29 && current.category !== 'horde' && current.category !== 'emergency' ? { ...state, day: 28 } : state;
-    if (eventAllowedForState(dayState, current)) return current;
+    if (eligibleEvent(dayState, current)) return current;
   }
   const id = nextNightEventId({ ...state, nightState: { ...state.nightState, currentEventId: null } });
   return id ? nightEventById(id) ?? null : null;
