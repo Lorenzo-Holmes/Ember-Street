@@ -3,59 +3,17 @@ export type OrderKind = 'survivor' | 'defense';
 export type Phase = 'night' | 'summary' | 'street';
 export type Role = 'search' | 'repair' | 'medical' | 'watch' | 'cook' | 'radio' | 'rest';
 export type BuildingId = 'searchStation' | 'workshop' | 'clinic' | 'watchPost' | 'shelter' | 'radio';
+export type DayStep = 'morning' | 'event' | 'dusk';
+export type InjuryState = 'healthy' | 'minor' | 'serious' | 'resting';
+export type LogTone = 'neutral' | 'hope' | 'danger' | 'resource';
 
-export interface SupplyItem {
-  id: string;
-  kind: SupplyKind;
-  tier: 1 | 2 | 3;
-}
-
-export interface Order {
-  id: string;
-  kind: OrderKind;
-  targetKind: SupplyKind;
-  targetTier: 2;
-  title: string;
-  line: string;
-  patienceMs: number;
-  maxPatienceMs: number;
-  rewardHope: number;
-  rewardParts: number;
-  pressureRelief: number;
-}
-
-export interface NightStats {
-  served: number;
-  missed: number;
-  merges: number;
-  peakPressure: number;
-  startedAt: number;
-}
-
-export interface Survivor {
-  id: string;
-  name: string;
-  specialty: Role;
-  energy: number;
-  mood: 'low' | 'steady' | 'bright';
-  perk: string;
-}
-
-export interface Buildings {
-  searchStation: number;
-  workshop: number;
-  clinic: number;
-  watchPost: number;
-  shelter: number;
-  radio: number;
-}
-
-export interface DayForecast {
-  title: string;
-  detail: string;
-  intensity: number;
-  bonusKind?: SupplyKind;
-}
+export interface SupplyItem { id: string; kind: SupplyKind; tier: 1 | 2 | 3; }
+export interface Order { id: string; kind: OrderKind; targetKind: SupplyKind; targetTier: 2; title: string; line: string; patienceMs: number; maxPatienceMs: number; rewardHope: number; rewardParts: number; pressureRelief: number; }
+export interface NightStats { served: number; missed: number; merges: number; peakPressure: number; startedAt: number; }
+export interface Survivor { id: string; name: string; specialty: Role; energy: number; mood: 'low' | 'steady' | 'bright'; perk: string; trait?: string; trust?: 0 | 1 | 2 | 3; injury?: InjuryState; }
+export interface Buildings { searchStation: number; workshop: number; clinic: number; watchPost: number; shelter: number; radio: number; }
+export interface DayForecast { title: string; detail: string; intensity: number; bonusKind?: SupplyKind; }
+export interface StreetLogEntry { id: string; day: number; time: string; title: string; body: string; tone: LogTone; }
 
 export interface GameState {
   version: 2;
@@ -70,11 +28,17 @@ export interface GameState {
   queue: SupplyKind[];
   currentOrder: Order;
   orderIndex: number;
+  orderActive?: boolean;
+  orderCooldownMs?: number;
+  nightOrderLimit?: number;
+  medicalGraceUsed?: boolean;
   hordePressure: number;
   hope: number;
   parts: number;
   supplies: number;
   medicine: number;
+  power?: number;
+  defense?: number;
   firstLightLevel: number;
   searchStationRepaired: boolean;
   survivorJoined: boolean;
@@ -83,6 +47,10 @@ export interface GameState {
   buildings: Buildings;
   forecast: DayForecast;
   chapterComplete: boolean;
+  dayStep?: DayStep;
+  logs?: StreetLogEntry[];
+  activeEventId?: string | null;
+  resolvedEventIds?: string[];
   catStage?: 0 | 1 | 2 | 3;
   catFedToday?: boolean;
   combo?: number;
