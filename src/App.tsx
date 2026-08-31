@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { beep, getFeedbackPreferences, saveFeedbackPreferences, vibrate } from './feedback';
 import { challengeScore, createDailyChallenge, encodeChallenge } from './game/challenge';
 import { SUPPLY_META } from './game/config';
 import { continueChapter } from './game/continue';
@@ -14,31 +15,29 @@ import { downloadCampaignShareCard, downloadChallengeShareCard } from './shareCa
 const ROLE_LABEL: Record<Role, string> = { search: '搜索', repair: '修理', medical: '诊疗', watch: '守夜', cook: '炊事', radio: '广播', rest: '休息' };
 const BUILDING_IDS = Object.keys(BUILDING_META) as BuildingId[];
 
-function vibrate(ms = 8) { navigator.vibrate?.(ms); }
-function beep(frequency = 480, duration = 0.045) {
-  try {
-    const Ctor = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctor) return;
-    const context = new Ctor();
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = 'sine'; oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.035, context.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
-    oscillator.connect(gain).connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + duration);
-    oscillator.addEventListener('ended', () => context.close());
-  } catch { /* progressive enhancement */ }
+function SupplyGlyph({ kind }: { kind: SupplyKind }) {
+  if (kind === 'ration') {
+    return <svg className="supply-glyph" viewBox="0 0 32 32" aria-hidden="true"><path d="M9 7h14l2 4-2 15H9L7 11l2-4Z"/><path d="M10 12h12M12 17h8M13 21h6"/></svg>;
+  }
+  if (kind === 'medical') {
+    return <svg className="supply-glyph" viewBox="0 0 32 32" aria-hidden="true"><rect x="6" y="8" width="20" height="17" rx="4"/><path d="M12 8V6h8v2M16 12v9M11.5 16.5h9"/></svg>;
+  }
+  return <svg className="supply-glyph" viewBox="0 0 32 32" aria-hidden="true"><rect x="7" y="8" width="17" height="17" rx="3"/><path d="M24 13h2v7h-2M17 10l-5 7h4l-2 6 6-8h-4l1-5Z"/></svg>;
 }
 
 function Token({ item }: { item: SupplyItem }) {
   const meta = SUPPLY_META[item.kind];
   const label = item.tier === 1 ? meta.label : item.tier === 2 ? meta.tier2 : meta.tier3;
-  return <div className={`token token--${item.kind} token--tier-${item.tier}`} title={label}><span>{meta.short}</span><small>{item.tier}</small></div>;
+  return <div className={`token token--${item.kind} token--tier-${item.tier}`} title={label} aria-label={`${label}，等级 ${item.tier}`}>
+    <SupplyGlyph kind={item.kind}/><small>T{item.tier}</small>
+  </div>;
 }
 
-function RackButton({ kind, onClick }: { kind: SupplyKind; onClick: () => void }) {
+function RackButton({ kind, onClick, guided = false }: { kind: SupplyKind; onClick: () => void; guided?: boolean }) {
   const meta = SUPPLY_META[kind];
-  return <button className={`rack rack--${kind}`} onClick={onClick} aria-label={`拿取${meta.label}`}><span className="rack__sigil">{meta.short}</span><span className="rack__name">{meta.label}</span><span className="rack__hint">点取</span></button>;
+  return <button className={`rack rack--${kind}${guided ? ' rack--guided' : ''}`} onClick={onClick} aria-label={`拿取${meta.label}`}>
+    <span className="rack__sigil"><SupplyGlyph kind={kind}/></span><span className="rack__name">{meta.label}</span><span className="rack__hint">点取</span>
+  </button>;
 }
 
 function NightScene({ state, setState }: { state: GameState; setState: (next: GameState) => void }) {
@@ -47,16 +46,17 @@ function NightScene({ state, setState }: { state: GameState; setState: (next: Ga
   const timeSeconds = Math.ceil(state.nightRemainingMs / 1000);
   const full = state.slots.every((slot) => slot !== null);
   const combo = state.combo ?? 0;
+  const firstOrderGuide = state.day === 1 && state.stats.served === 0 && state.stats.merges === 0;
   return <main className={`game-shell game-shell--night intensity-${state.forecast.intensity}`}>
     <div className="sky-noise" />
     <header className="hud"><div><span className="eyebrow">NIGHT</span><strong>{state.day}</strong></div><div className="hud__center">余烬长街 · EMBER STREET</div><div><span className="eyebrow">TIME</span><strong>{timeSeconds}s</strong></div></header>
-    <section className="forecast-banner"><strong>{state.forecast.title}</strong><span>{state.forecast.detail}</span></section>
+    <section className="forecast-banner forecast-banner--compact"><strong>{state.forecast.title}</strong><span>{state.forecast.detail}</span></section>
     <section className="street-backdrop" aria-hidden="true"><div className="ruin ruin--left"/><div className="tower" data-level={state.firstLightLevel}><i/></div><div className="ruin ruin--right"/><div className="fence"><span/><span/><span/><span/><span/></div><div className="horde" style={{ opacity: 0.12 + state.hordePressure / 135 }}><b/><b/><b/><b/><b/><b/></div></section>
     <section className="pressure-panel"><div className="pressure-panel__top"><span>尸潮压力</span><strong>{Math.round(state.hordePressure)}%</strong></div><div className="meter"><i style={{ width: `${state.hordePressure}%` }}/></div></section>
-    <section className={`request request--${state.currentOrder.kind}`}><div className="request__tag">{state.currentOrder.title}</div><p>{state.currentOrder.line}</p><div className="request__target"><span>需要</span><strong>{orderMeta.tier2}</strong><span className={`mini-sigil mini-sigil--${state.currentOrder.targetKind}`}>{orderMeta.short}</span></div><div className="patience"><i style={{ width: `${patience}%` }}/></div></section>
-    <div className="status-strip"><span>希望 {state.hope}{combo >= 2 ? ` · COMBO ×${combo}` : ''}</span><span>零件 {state.parts}</span><span>{state.lastMessage}</span></div>
-    <section className="tray-wrap"><div className="tray-label"><span>七格配给台</span><div className="tray-meta">{combo >= 2 && <strong>🔥 ×{combo}</strong>}{full ? <button className="clear-tray" onClick={() => { const next = emergencyClear(state); vibrate(20); beep(230, .08); setState(next); }}>紧急清台 {(state.clearances ?? 0) + 1}/3</button> : <small>3 个同类物资自动升级</small>}</div></div><div className="tray">{state.slots.map((slot, index) => <div className="slot" key={index}>{slot ? <Token item={slot}/> : <span>{index + 1}</span>}</div>)}</div></section>
-    <section className="racks">{state.racks.map((kind, index) => <RackButton key={`${index}-${kind}`} kind={kind} onClick={() => { const beforeServed = state.stats.served; const beforeMerges = state.stats.merges; const next = takeRackWithFeel(state, index); if (next !== state) { vibrate(next.stats.served > beforeServed ? 14 : 6); beep(next.extremeServes !== state.extremeServes ? 860 : next.stats.served > beforeServed ? 720 : next.stats.merges > beforeMerges ? 620 : 390); setState(next); } }}/>)}</section>
+    <section className={`request request--${state.currentOrder.kind}`}><div className="request__tag">{state.currentOrder.title}</div><p>{state.currentOrder.line}</p><div className="request__target"><span>需要</span><strong>{orderMeta.tier2}</strong><span className={`mini-sigil mini-sigil--${state.currentOrder.targetKind}`}><SupplyGlyph kind={state.currentOrder.targetKind}/></span></div><div className="patience"><i style={{ width: `${patience}%` }}/></section>
+    <div className="status-strip"><span>希望 {state.hope}{combo >= 2 ? ` · COMBO ×${combo}` : ''}</span><span>零件 {state.parts}</span><span>{firstOrderGuide ? '点亮的物资正在等你' : state.lastMessage}</span></div>
+    <section className="tray-wrap"><div className="tray-label"><span>七格配给台</span><div className="tray-meta">{combo >= 2 && <strong>🔥 ×{combo}</strong>}{full ? <button className="clear-tray" onClick={() => { const next = emergencyClear(state); vibrate(20); beep(230, .08); setState(next); }}>紧急清台 {(state.clearances ?? 0) + 1}/3</button> : <small>3 个同类物资自动升级</small>}</div></div><div className="tray">{state.slots.map((slot, index) => <div className="slot" key={index}>{slot ? <Token item={slot}/> : <span>{index + 1}</span>}</div>)}</section>
+    <section className="racks">{state.racks.map((kind, index) => <RackButton key={`${index}-${kind}`} kind={kind} guided={firstOrderGuide && kind === 'ration'} onClick={() => { const beforeServed = state.stats.served; const beforeMerges = state.stats.merges; const next = takeRackWithFeel(state, index); if (next !== state) { vibrate(next.stats.served > beforeServed ? 14 : 6); beep(next.extremeServes !== state.extremeServes ? 860 : next.stats.served > beforeServed ? 720 : next.stats.merges > beforeMerges ? 620 : 390); setState(next); } }}/>)}</section>
   </main>;
 }
 
@@ -107,8 +107,11 @@ export default function App() {
   const stateRef = useRef(state);
   const [challenge, setChallengeRaw] = useState<GameState | null>(null);
   const challengeRef = useRef<GameState | null>(challenge);
+  const [feedback, setFeedback] = useState(() => getFeedbackPreferences());
   const setState = (next: GameState) => { stateRef.current = next; setStateRaw(next); };
   const setChallenge = (next: GameState | null) => { challengeRef.current = next; setChallengeRaw(next); };
+  const updateFeedback = (next: typeof feedback) => { saveFeedbackPreferences(next); setFeedback(next); };
+
   useEffect(() => { stateRef.current = state; saveGame(state); }, [state]);
   useEffect(() => {
     const persist = () => saveGame(stateRef.current, true);
@@ -136,11 +139,18 @@ export default function App() {
       ? <StreetScene state={state} setState={setState} onDaily={() => setChallenge(createDailyChallenge())} onShare={() => downloadCampaignShareCard(state)}/>
       : <NightScene state={state} setState={setState}/>;
 
-  if (challenge) {
-    return challenge.phase === 'night'
-      ? <div className="app-root"><NightScene state={challenge} setState={setChallenge}/></div>
-      : <div className="app-root"><ChallengeSummary state={challenge} onRetry={() => setChallenge(createDailyChallenge())} onBack={() => setChallenge(null)}/></div>;
-  }
+  const activeScreen = challenge
+    ? challenge.phase === 'night'
+      ? <NightScene state={challenge} setState={setChallenge}/>
+      : <ChallengeSummary state={challenge} onRetry={() => setChallenge(createDailyChallenge())} onBack={() => setChallenge(null)}/>
+    : campaignScreen;
 
-  return <div className="app-root">{campaignScreen}<button className="reset" onClick={() => { if (window.confirm('重新开始余烬长街？当前本地进度会清除。')) { clearSave(); setState(createInitialState(20260831)); } }}>重置</button></div>;
+  return <div className="app-root">
+    {activeScreen}
+    <div className="feedback-dock" aria-label="反馈设置">
+      <button aria-pressed={feedback.sound} onClick={() => updateFeedback({ ...feedback, sound: !feedback.sound })}>{feedback.sound ? '音效 ON' : '音效 OFF'}</button>
+      <button aria-pressed={feedback.haptics} onClick={() => updateFeedback({ ...feedback, haptics: !feedback.haptics })}>{feedback.haptics ? '震动 ON' : '震动 OFF'}</button>
+    </div>
+    {!challenge && <button className="reset" onClick={() => { if (window.confirm('重新开始余烬长街？当前本地进度会清除。')) { clearSave(); setState(createInitialState(20260831)); } }}>重置</button>}
+  </div>;
 }
