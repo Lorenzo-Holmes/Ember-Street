@@ -6,6 +6,7 @@ import type { Buildings, DayAssignment, GameState, Survivor } from '../types';
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {};
 const num = (value: unknown, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
+const PHASES: GameState['phase'][] = ['dawn', 'street', 'assignment', 'expedition', 'dusk', 'night', 'night-summary', 'summary', 'ending'];
 
 function legacySurvivors(value: unknown): Survivor[] {
   if (!Array.isArray(value)) return [];
@@ -86,11 +87,14 @@ export function promoteV2ToV3(input: unknown): GameState | null {
     emergencyEventsResolved: Math.max(0, Math.floor(num(campaignInput.emergencyEventsResolved, 0))),
   };
   const storyFlags = Array.isArray(legacy.storyFlags) ? legacy.storyFlags.map(String) : [];
+  const rawPhase = String(legacy.phase ?? 'street') as GameState['phase'];
+  const phase: GameState['phase'] = version === 3 && PHASES.includes(rawPhase) ? rawPhase : day >= 30 ? 'ending' : 'street';
+  const rawPending = version === 3 && legacy.pendingCheck && typeof legacy.pendingCheck === 'object' ? legacy.pendingCheck as GameState['pendingCheck'] : null;
   return {
     version: 3,
     seed,
     rngState: normalizeSeed(num(legacy.rngState, seed)),
-    phase: day >= 30 ? 'ending' : 'street',
+    phase,
     day,
     inventory,
     storyItems: Array.isArray(legacy.storyItems) ? legacy.storyItems.map(String) : [],
@@ -112,7 +116,7 @@ export function promoteV2ToV3(input: unknown): GameState | null {
     buildings: legacyBuildings(legacy.buildings, legacy.searchStationRepaired),
     forecast: forecastFor(day),
     chapterComplete: Boolean(legacy.chapterComplete) || day >= 30,
-    pendingCheck: null,
+    pendingCheck: rawPending,
     lastMessage: version === 2 ? '旧存档已迁移到 v0.6 · 七格物资已经回收到物资箱。' : String(legacy.lastMessage ?? `DAY ${day}`),
   };
 }
