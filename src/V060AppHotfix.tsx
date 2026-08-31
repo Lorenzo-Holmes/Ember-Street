@@ -20,6 +20,7 @@ import {
   clearDayJob,
   hasCommittedDayAction,
   lockDayAssignments,
+  previewDispatchConfirmation,
   previewNightPreparation,
   reopenDayAssignments,
 } from './game/v060/dayManagement';
@@ -231,11 +232,13 @@ function ExpeditionStatus({ state, setState }: { state: GameState; setState: (st
 }
 
 function DayScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+  const [reviewingDispatch, setReviewingDispatch] = useState(false);
   const fixedEvent = !state.expeditionState.departed ? pendingCampaignEvent(state) : null;
   if (fixedEvent) return <CampaignEventScreen state={state} setState={setState}/>;
 
   const meal = previewMeal(state);
   const prep = previewNightPreparation(state);
+  const dispatch = previewDispatchConfirmation(state);
   const assigned = Object.keys(state.dayAssignments).length;
   const available = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing' && s.condition !== 'critical' && !state.dayState.committedSurvivorIds.includes(s.id)).length;
   const lock = () => {
@@ -250,12 +253,22 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <StreetVisual state={state}/><InventoryBar state={state}/>
       <ExpeditionStatus state={state} setState={setState}/>
       <CommunityPanel state={state} setState={setState}/>
-      {!state.dayState.assignmentsLocked && <><MissingPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
+      {!state.dayState.assignmentsLocked && reviewingDispatch && <section className="v6-section">
+        <div className="v6-section__head"><div><span>最后确认</span><h2>确认后，今天的派遣不能再修改</h2></div><small>{dispatch.manuallyAssigned} 人手动安排 · {dispatch.autoResting} 人自动休息</small></div>
+        <div className="v6-survivors">{dispatch.entries.map((entry) => <article className={`v6-survivor ${entry.unavailable || entry.committed ? 'is-unavailable' : ''}`} key={entry.survivorId}>
+          <div className="v6-survivor__top"><div><h3>{entry.name}</h3><span>{entry.automatic ? '你没有为他/她指定岗位' : entry.committed ? '今天已经执行过行动' : '今日最终派遣'}</span></div><div><b>{entry.label}</b><small>{entry.unavailable ? '不可派遣' : entry.automatic ? '自动' : '已确认'}</small></div></div>
+        </article>)}</div>
+        <section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>探索 {dispatch.expeditionCount} 人 · 医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section>
+        <p className="v6-message">未手动安排的人会自动休息。点击下面的按钮后，探索队将进入地点选择；没有探索任务则直接进入黄昏。</p>
+        <button className="v6-cta" onClick={lock}>确认并锁定今日派遣</button>
+        <button className="v6-link" onClick={() => setReviewingDispatch(false)}>← 返回调整派遣</button>
+      </section>}
       <MemorialPanel state={state}/>
-      <section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section>
-      {!state.expeditionState.departed && (state.dayState.assignmentsLocked
+      {!reviewingDispatch && <section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section>}
+      {!state.expeditionState.departed && !reviewingDispatch && (state.dayState.assignmentsLocked
         ? <button className="v6-cta" onClick={() => commit({ ...state, phase: 'dusk' }, setState)}>进入黄昏准备</button>
-        : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={lock}>确认今日派遣 <small>{assigned} 已手动安排 · 未安排者自动休息</small></button>)}
+        : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={() => setReviewingDispatch(true)}>确认今日派遣 <small>{assigned} 已手动安排 · 未安排者自动休息</small></button>)}
       <p className="v6-message">{state.lastMessage}</p>
     </main>
   );

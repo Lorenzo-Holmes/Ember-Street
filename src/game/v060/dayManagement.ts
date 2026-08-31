@@ -4,6 +4,16 @@ const JOB_BUILDING: Partial<Record<DayAssignment, keyof GameState['buildings']>>
   expedition: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio',
 };
 
+export const DAY_ASSIGNMENT_LABEL: Record<DayAssignment, string> = {
+  expedition: '探索',
+  repair: '维修',
+  medical: '医疗',
+  watch: '守备',
+  radio: '广播',
+  cook: '炊事',
+  rest: '休息',
+};
+
 function pendingAssignments(state: GameState, committedIds = state.dayState.committedSurvivorIds): Record<string, DayAssignment> {
   const committed = new Set(committedIds);
   return Object.fromEntries(Object.entries(state.dayAssignments).filter(([survivorId]) => !committed.has(survivorId)));
@@ -32,7 +42,7 @@ export function assignDayJob(state: GameState, survivorId: string, job: DayAssig
   return {
     ...state,
     dayAssignments: { ...state.dayAssignments, [survivorId]: job },
-    lastMessage: `${state.survivors.find((item) => item.id === survivorId)?.name ?? '幸存者'} · ${job === 'expedition' ? '探索' : job}`,
+    lastMessage: `${state.survivors.find((item) => item.id === survivorId)?.name ?? '幸存者'} · ${DAY_ASSIGNMENT_LABEL[job]}`,
   };
 }
 
@@ -41,6 +51,74 @@ export function clearDayJob(state: GameState, survivorId: string): GameState {
   const dayAssignments = { ...state.dayAssignments };
   delete dayAssignments[survivorId];
   return { ...state, dayAssignments };
+}
+
+export interface DispatchConfirmationEntry {
+  survivorId: string;
+  name: string;
+  assignment: DayAssignment | null;
+  label: string;
+  automatic: boolean;
+  committed: boolean;
+  unavailable: boolean;
+}
+
+export interface DispatchConfirmationPreview {
+  entries: DispatchConfirmationEntry[];
+  manuallyAssigned: number;
+  autoResting: number;
+  committed: number;
+  expeditionCount: number;
+}
+
+export function previewDispatchConfirmation(state: GameState): DispatchConfirmationPreview {
+  const entries = state.survivors
+    .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing')
+    .map((survivor): DispatchConfirmationEntry => {
+      const committed = state.dayState.committedSurvivorIds.includes(survivor.id);
+      const unavailable = !survivorAvailableForDay(survivor);
+      const explicit = state.dayAssignments[survivor.id];
+      if (committed) {
+        return {
+          survivorId: survivor.id,
+          name: survivor.name,
+          assignment: explicit ?? null,
+          label: explicit ? `${DAY_ASSIGNMENT_LABEL[explicit]} · 已执行` : '已执行今日行动',
+          automatic: false,
+          committed: true,
+          unavailable: false,
+        };
+      }
+      if (unavailable) {
+        return {
+          survivorId: survivor.id,
+          name: survivor.name,
+          assignment: null,
+          label: '危重 · 不可派遣',
+          automatic: false,
+          committed: false,
+          unavailable: true,
+        };
+      }
+      const assignment: DayAssignment = explicit ?? 'rest';
+      return {
+        survivorId: survivor.id,
+        name: survivor.name,
+        assignment,
+        label: explicit ? DAY_ASSIGNMENT_LABEL[assignment] : '休息 · 自动安排',
+        automatic: !explicit,
+        committed: false,
+        unavailable: false,
+      };
+    });
+
+  return {
+    entries,
+    manuallyAssigned: entries.filter((entry) => !entry.automatic && !entry.committed && !entry.unavailable).length,
+    autoResting: entries.filter((entry) => entry.automatic).length,
+    committed: entries.filter((entry) => entry.committed).length,
+    expeditionCount: entries.filter((entry) => entry.assignment === 'expedition' && !entry.committed).length,
+  };
 }
 
 export function hasPendingExpeditionAssignment(state: GameState): boolean {
