@@ -2,6 +2,7 @@ import { createDefaultCampaignStats, createDefaultDayState, createDefaultExpedit
 import { forecastFor } from '../progression';
 import { normalizeSeed } from '../rng';
 import type { Buildings, DayAssignment, GameState, Survivor } from '../types';
+import { normalizeCommunityState } from '../v060/community';
 
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {};
 const num = (value: unknown, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -90,6 +91,7 @@ export function promoteV2ToV3(input: unknown): GameState | null {
   const rawPhase = String(legacy.phase ?? 'street') as GameState['phase'];
   const phase: GameState['phase'] = version === 3 && PHASES.includes(rawPhase) ? rawPhase : day >= 30 ? 'ending' : 'street';
   const rawPending = version === 3 && legacy.pendingCheck && typeof legacy.pendingCheck === 'object' ? legacy.pendingCheck as GameState['pendingCheck'] : null;
+  const civilianResidents = Math.max(0, Math.floor(num(legacy.civilianResidents, campaignStats.rescued)));
   return {
     version: 3,
     seed,
@@ -100,7 +102,8 @@ export function promoteV2ToV3(input: unknown): GameState | null {
     storyItems: Array.isArray(legacy.storyItems) ? legacy.storyItems.map(String) : [],
     storyFlags,
     mainLightStage: clamp(num(legacy.mainLightStage, Math.ceil(num(legacy.firstLightLevel, 1) / 2)), 1, 5) as 1 | 2 | 3 | 4 | 5,
-    civilianResidents: Math.max(0, Math.floor(num(legacy.civilianResidents, campaignStats.rescued))),
+    civilianResidents,
+    communityState: normalizeCommunityState(legacy.communityState, civilianResidents),
     dayAssignments: version === 3 ? legacyAssignments(legacy.dayAssignments) : legacyAssignments(legacy.assignments),
     dayState: { ...createDefaultDayState(), ...asRecord(legacy.dayState), committedSurvivorIds: Array.isArray(asRecord(legacy.dayState).committedSurvivorIds) ? (asRecord(legacy.dayState).committedSurvivorIds as unknown[]).map(String) : [] },
     expeditionState: { ...createDefaultExpeditionState(), ...asRecord(legacy.expeditionState) } as GameState['expeditionState'],

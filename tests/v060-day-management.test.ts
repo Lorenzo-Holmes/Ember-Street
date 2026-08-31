@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createV060InitialState } from '../src/game/v060/campaign';
-import { assignDayJob, canTakeDayAssignment, lockDayAssignments } from '../src/game/v060/dayManagement';
+import { assignDayJob, canTakeDayAssignment, lockDayAssignments, reopenDayAssignments } from '../src/game/v060/dayManagement';
 import { previewMeal } from '../src/game/v060/food';
 import type { GameState, Survivor } from '../src/game/types';
 
@@ -47,5 +47,26 @@ describe('v0.6 daytime management', () => {
     expect(canTakeDayAssignment(serious, 'lin-xia', 'expedition').allowed).toBe(false);
     const committed = { ...fivePersonState(), dayState: { ...fivePersonState().dayState, committedSurvivorIds: ['lin-xia'] } };
     expect(canTakeDayAssignment(committed, 'lin-xia', 'rest').allowed).toBe(false);
+  });
+  it('allows returning from dusk to adjust jobs before night', () => {
+    let state = assignDayJob(fivePersonState(), 'zhou', 'watch');
+    state = { ...lockDayAssignments(state), phase: 'dusk' };
+    const reopened = reopenDayAssignments(state);
+    expect(reopened.phase).toBe('street');
+    expect(reopened.dayState.assignmentsLocked).toBe(false);
+    expect(canTakeDayAssignment(reopened, 'zhou', 'repair').allowed).toBe(true);
+  });
+  it('keeps completed explorers committed when returning from dusk', () => {
+    const base = fivePersonState();
+    const state: GameState = {
+      ...base,
+      phase: 'dusk',
+      dayAssignments: { 'lin-xia': 'expedition', zhou: 'watch', ahe: 'cook', cheng: 'rest', aliang: 'rest' },
+      dayState: { ...base.dayState, assignmentsLocked: true, returnedExpeditions: 1 },
+    };
+    const reopened = reopenDayAssignments(state);
+    expect(reopened.dayState.committedSurvivorIds).toContain('lin-xia');
+    expect(canTakeDayAssignment(reopened, 'lin-xia', 'rest').allowed).toBe(false);
+    expect(canTakeDayAssignment(reopened, 'zhou', 'repair').allowed).toBe(true);
   });
 });

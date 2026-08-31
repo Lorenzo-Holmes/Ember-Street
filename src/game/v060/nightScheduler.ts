@@ -2,6 +2,7 @@ import { HORDE_MILESTONE_DAYS } from '../config';
 import { createPendingCheck } from '../dice';
 import { nextRandom } from '../rng';
 import type { BuildingId, CheckModifier, GameState, Role, Survivor, SurvivorCondition } from '../types';
+import { communityDefenseSupport } from './community';
 import { markMissing, recordDeath } from './memorial';
 import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
 
@@ -23,7 +24,20 @@ function pickWithoutReplacement<T>(pool: T[], count: number, rngState: number): 
   return [selected, nextState];
 }
 
-const eligible = (events: V060NightEvent[], day: number) => events.filter((event) => day >= event.minDay && day <= event.maxDay);
+export function eligibleEvent(state: GameState, event: V060NightEvent): boolean {
+  if (state.day < event.minDay || state.day > event.maxDay) return false;
+  if ((event.requiredSurvivorIds ?? []).some((id) => !state.survivors.some((survivor) => survivor.id === id && playable(survivor)))) return false;
+  const requiredBuildings = event.requiredBuildings ?? {};
+  for (const id of Object.keys(requiredBuildings) as BuildingId[]) {
+    const minimumLevel = requiredBuildings[id];
+    if (minimumLevel !== undefined && state.buildings[id] < minimumLevel) return false;
+  }
+  if ((event.requiredFlags ?? []).some((flag) => !state.storyFlags.includes(flag))) return false;
+  if ((event.excludedFlags ?? []).some((flag) => state.storyFlags.includes(flag))) return false;
+  return true;
+}
+
+const eligible = (events: V060NightEvent[], state: GameState) => events.filter((event) => eligibleEvent(state, event));
 
 function assignedCount(state: GameState, role: Role): number {
   const assignment = ROLE_ASSIGNMENT[role];
@@ -39,7 +53,8 @@ function hordeChance(state: GameState): number {
   const watchReduction = Math.min(0.12, assignedCount(state, 'watch') * 0.04 + state.buildings.watchPost * 0.02);
   const intelReduction = state.storyFlags.includes('horde_route_known') || state.storyFlags.includes('east_route_known') ? 0.06 : 0;
   const radioReduction = state.buildings.radio >= 3 && assignedCount(state, 'radio') ? 0.04 : 0;
-  return clamp(dayPressure + defensePenalty + lightPressure - watchReduction - intelReduction - radioReduction, 0.02, 0.55);
+  const communityReduction = communityDefenseSupport(state);
+  return clamp(dayPressure + defensePenalty + lightPressure - watchReduction - intelReduction - radioReduction - communityReduction, 0.02, 0.55);
 }
 
 export function emergencyRisk(state: GameState): number {
@@ -52,7 +67,8 @@ export function emergencyRisk(state: GameState): number {
   const watchReduction = Math.min(0.18, assignedCount(state, 'watch') * 0.05 + state.buildings.watchPost * 0.025);
   const workshopReduction = state.buildings.workshop >= 2 ? 0.04 : 0;
   const radioReduction = state.buildings.radio >= 2 ? 0.03 : 0;
-  return clamp(0.08 + defensePenalty + powerPenalty + injuryPenalty + phasePenalty + hordePenalty - watchReduction - workshopReduction - radioReduction, 0.02, 0.8);
+  const communityReduction = communityDefenseSupport(state);
+  return clamp(0.08 + defensePenalty + powerPenalty + injuryPenalty + phasePenalty + hordePenalty - watchReduction - workshopReduction - radioReduction - communityReduction, 0.02, 0.8);
 }
 
 function emergencyCountFor(state: GameState, roll: number): number {
@@ -63,7 +79,8 @@ function emergencyCountFor(state: GameState, roll: number): number {
 }
 
 function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
-  const pool = eligible(NORMAL_NIGHT_EVENTS, Math.min(state.day, 28));
+  const poolState = state.day === 29 ? { ...state, day: 28 } : state;
+  const pool = eligible(NORMAL_NIGHT_EVENTS, poolState);
   const selected: V060NightEvent[] = []; let nextState = rngState;
   for (const category of ['threat', 'infrastructure', 'survivor'] as const) {
     const candidates = pool.filter((event) => event.category === category && !selected.some((item) => item.id === event.id));
@@ -83,28 +100,39 @@ export function scheduleNight(state: GameState): GameState {
   const eventTotal = hordeActive ? 6 : 5;
   const hordeSlots = hordeActive ? (state.day === 29 ? 3 : 2) : 0;
   const [normalEvents, afterNormal] = normalComposition(state, eventTotal - hordeSlots, rngState); rngState = afterNormal;
-  const [hordeEvents, afterHorde] = pickWithoutReplacement(eligible(HORDE_EVENTS, state.day), hordeSlots, rngState); rngState = afterHorde;
+  const [hordeEvents, afterHorde] = pickWithoutReplacement(eligible(HORDE_EVENTS, state), hordeSlots, rngState); rngState = afterHorde;
   const scheduled = [...normalEvents];
   if (hordeEvents[0]) scheduled.splice(Math.min(2, scheduled.length), 0, hordeEvents[0]);
   if (hordeEvents[1]) scheduled.splice(Math.min(4, scheduled.length), 0, hordeEvents[1]);
   if (hordeEvents[2]) scheduled.splice(Math.min(5, scheduled.length), 0, hordeEvents[2]);
   const [emergencyRoll, afterEmergencyRoll] = nextRandom(rngState); rngState = afterEmergencyRoll;
-  const [emergencies, afterEmergency] = pickWithoutReplacement(eligible(EMERGENCY_EVENTS, state.day), emergencyCountFor(state, emergencyRoll), rngState); rngState = afterEmergency;
+  const [emergencies, afterEmergency] = pickWithoutReplacement(eligible(EMERGENCY_EVENTS, state), emergencyCountFor(state, emergencyRoll), rngState); rngState = afterEmergency;
   const scheduledEventIds = scheduled.slice(0, eventTotal).map((event) => event.id);
   const emergencyEventIds = emergencies.map((event) => event.id);
   return {
     ...state,
     rngState,
     phase: 'night',
-    nightState: { eventIndex: 0, eventTotal, scheduledEventIds, emergencyEventIds, currentEventId: scheduledEventIds[0] ?? emergencyEventIds[0] ?? null, hordeActive, hordeStage: hordeActive ? 'approach' : null, resolutions: [] },
+    nightState: { eventIndex: 0, eventTotal: scheduledEventIds.length, scheduledEventIds, emergencyEventIds, currentEventId: scheduledEventIds[0] ?? emergencyEventIds[0] ?? null, hordeActive, hordeStage: hordeActive ? 'approach' : null, resolutions: [] },
     lastMessage: hordeActive ? `NIGHT ${state.day} · 尸群迹象正在靠近` : `NIGHT ${state.day} · 今晚先听清每一个声音`,
   };
 }
 
 function emergencyThresholds(count: number): number[] { return count >= 3 ? [1, 3, 5] : count === 2 ? [2, 4] : count === 1 ? [2] : []; }
 
+function availableScheduledIds(state: GameState, ids: string[]): string[] {
+  return ids.filter((id) => {
+    const event = nightEventById(id);
+    if (!event) return false;
+    const dayState = state.day === 29 && event.category !== 'horde' && event.category !== 'emergency' ? { ...state, day: 28 } : state;
+    return eligibleEvent(dayState, event);
+  });
+}
+
 export function nextNightEventId(state: GameState): string | null {
-  const mainIds = state.nightState.scheduledEventIds; const emergencyIds = state.nightState.emergencyEventIds; const resolved = new Set(state.nightState.resolutions);
+  const mainIds = availableScheduledIds(state, state.nightState.scheduledEventIds);
+  const emergencyIds = availableScheduledIds(state, state.nightState.emergencyEventIds);
+  const resolved = new Set(state.nightState.resolutions);
   const mainResolved = mainIds.filter((id) => resolved.has(id)).length; const emergencyResolved = emergencyIds.filter((id) => resolved.has(id)).length;
   const thresholds = emergencyThresholds(emergencyIds.length);
   if (emergencyResolved < emergencyIds.length && mainResolved >= (thresholds[emergencyResolved] ?? Number.POSITIVE_INFINITY)) return emergencyIds[emergencyResolved];
@@ -112,7 +140,12 @@ export function nextNightEventId(state: GameState): string | null {
 }
 
 export function currentNightEvent(state: GameState): V060NightEvent | null {
-  const id = state.nightState.currentEventId ?? nextNightEventId(state);
+  const current = state.nightState.currentEventId ? nightEventById(state.nightState.currentEventId) : null;
+  if (current) {
+    const dayState = state.day === 29 && current.category !== 'horde' && current.category !== 'emergency' ? { ...state, day: 28 } : state;
+    if (eligibleEvent(dayState, current)) return current;
+  }
+  const id = nextNightEventId({ ...state, nightState: { ...state.nightState, currentEventId: null } });
   return id ? nightEventById(id) ?? null : null;
 }
 
@@ -177,13 +210,14 @@ function completeCurrentEvent(state: GameState, eventId: string): GameState {
   const resolutions = already ? state.nightState.resolutions : [...state.nightState.resolutions, eventId];
   const temporary = { ...state, nightState: { ...state.nightState, resolutions, currentEventId: null } };
   const nextId = nextNightEventId(temporary);
-  const mainResolved = temporary.nightState.scheduledEventIds.filter((id) => resolutions.includes(id)).length;
+  const validMainIds = availableScheduledIds(temporary, temporary.nightState.scheduledEventIds);
+  const mainResolved = validMainIds.filter((id) => resolutions.includes(id)).length;
   const complete = !nextId;
-  const hordeStage = !temporary.nightState.hordeActive ? null : complete ? 'retreat' : mainResolved >= Math.ceil(temporary.nightState.eventTotal * 0.65) ? 'impact' : 'approach';
+  const hordeStage = !temporary.nightState.hordeActive ? null : complete ? 'retreat' : mainResolved >= Math.ceil(Math.max(1, validMainIds.length) * 0.65) ? 'impact' : 'approach';
   return {
     ...temporary,
     phase: complete ? 'night-summary' : 'night',
-    nightState: { ...temporary.nightState, eventIndex: mainResolved, currentEventId: nextId, hordeStage },
+    nightState: { ...temporary.nightState, eventIndex: mainResolved, eventTotal: validMainIds.length, currentEventId: nextId, hordeStage },
     campaignStats: already ? temporary.campaignStats : {
       ...temporary.campaignStats,
       nightEventsResolved: temporary.campaignStats.nightEventsResolved + 1,

@@ -1,4 +1,5 @@
 import type { GameState, MealQuality, MealState, Survivor } from '../types';
+import { communityCookingSupport } from './community';
 
 const KITCHEN_MODIFIER = [0.8, 1, 1.25, 1.5] as const;
 
@@ -51,7 +52,8 @@ export function previewMeal(state: GameState): MealPreview {
   }
 
   const cooks = coreResidents.filter((survivor) => state.dayAssignments[survivor.id] === 'cook');
-  const cookingCapacity = cooks.reduce((sum, survivor) => sum + effectiveCookingCapacity(state, survivor), 0);
+  const coreCookingCapacity = cooks.reduce((sum, survivor) => sum + effectiveCookingCapacity(state, survivor), 0);
+  const cookingCapacity = coreCookingCapacity + communityCookingSupport(state);
   const cookingCoverage = cookingCapacity / residentCount;
   const rationNeeded = residentCount;
   const availableRations = Math.max(0, state.inventory.ration);
