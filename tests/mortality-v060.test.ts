@@ -14,18 +14,19 @@ function withCondition(state: GameState, survivorId: string, condition: 'serious
 
 describe('v0.6 mortality and population pressure', () => {
   it('queues a medical crisis after serious injuries remain untreated for two days', () => {
-    let state = { ...createV060InitialState(6001), day: 8 };
+    let state: GameState = { ...createV060InitialState(6001), day: 8 };
     state = withCondition(state, 'lin-xia', 'serious');
     state = advanceUntreatedRisk(state);
     expect(state.survivors.find((s) => s.id === 'lin-xia')?.untreatedDays).toBe(1);
     expect(state.storyFlags).not.toContain(medicalCrisisFlag('lin-xia'));
+    state = { ...state, day: 9 };
     state = advanceUntreatedRisk(state);
     expect(state.survivors.find((s) => s.id === 'lin-xia')?.untreatedDays).toBe(2);
     expect(state.storyFlags).toContain(medicalCrisisFlag('lin-xia'));
   });
 
   it('puts a critical untreated survivor into an urgent night event', () => {
-    let state = { ...createV060InitialState(6002), day: 8, phase: 'night' as const };
+    let state: GameState = { ...createV060InitialState(6002), day: 8, phase: 'night' };
     state = withCondition(state, 'lin-xia', 'critical');
     state = advanceUntreatedRisk(state);
     state = scheduleNight(state);
@@ -34,7 +35,7 @@ describe('v0.6 mortality and population pressure', () => {
   });
 
   it('allows an untreated critical survivor to turn and die if the player keeps waiting', () => {
-    let state = { ...createV060InitialState(6003), day: 8, phase: 'night' as const };
+    let state: GameState = { ...createV060InitialState(6003), day: 8, phase: 'night' };
     state = withCondition(state, 'lin-xia', 'critical', 1);
     state = { ...state, storyFlags: [...state.storyFlags, medicalCrisisFlag('lin-xia')] };
     state = scheduleNight(state);
@@ -45,7 +46,8 @@ describe('v0.6 mortality and population pressure', () => {
   });
 
   it('lets emergency medicine stabilize a critical survivor instead of killing them', () => {
-    let state = { ...createV060InitialState(6004), day: 8, phase: 'night' as const, inventory: { ...createV060InitialState(6004).inventory, medicine: 5 } };
+    const initial = createV060InitialState(6004);
+    let state: GameState = { ...initial, day: 8, phase: 'night', inventory: { ...initial.inventory, medicine: 5 } };
     state = withCondition(state, 'lin-xia', 'critical', 1);
     state = { ...state, storyFlags: [...state.storyFlags, medicalCrisisFlag('lin-xia')] };
     state = scheduleNight(state);
@@ -64,7 +66,7 @@ describe('v0.6 mortality and population pressure', () => {
     }
     expect(queued).not.toBeNull();
     const targetId = pendingLowHopeDepartureId(queued!);
-    let state = scheduleNight({ ...queued!, phase: 'night' });
+    let state: GameState = scheduleNight({ ...queued!, phase: 'night' });
     expect(state.nightState.emergencyEventIds).toContain(`mortality-hope:${targetId}`);
     state = {
       ...state,
