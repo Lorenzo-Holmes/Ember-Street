@@ -1,4 +1,5 @@
 import type { DayAssignment, GameState, Survivor } from '../types';
+import { communityMedicalSupport, communityRepairSupport, communitySupportSummary } from './community';
 
 const JOB_BUILDING: Partial<Record<DayAssignment, keyof GameState['buildings']>> = {
   expedition: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio',
@@ -181,10 +182,13 @@ export function unlockNextDayAssignments(state: GameState): GameState {
   };
 }
 
+export type PreparationCoverage = '无人' | '居民协助' | '有人值守';
+
 export interface NightPreparationPreview {
   defense: '薄弱' | '一般' | '良好';
-  medical: '无人' | '有人值守';
-  repair: '无人' | '有人值守';
+  defenseSource: '无人' | '居民轮值' | '核心值守';
+  medical: PreparationCoverage;
+  repair: PreparationCoverage;
   radio: '无人' | '有人值守';
   cooks: number;
   expeditions: number;
@@ -193,10 +197,20 @@ export interface NightPreparationPreview {
 export function previewNightPreparation(state: GameState): NightPreparationPreview {
   const jobs = Object.values(pendingAssignments(state));
   const watch = jobs.filter((job) => job === 'watch').length;
+  const community = communitySupportSummary(state);
+  const communityDefense = community.supportMode === 'defense' && community.nightRiskReduction > 0;
+  const communityRepair = community.supportMode === 'repair' && communityRepairSupport(state) > 0;
+  const communityMedical = communityMedicalSupport(state) > 0;
+  const defense = watch >= 2 || (watch >= 1 && state.buildings.watchPost >= 2)
+    ? '良好'
+    : watch >= 1 || communityDefense
+      ? '一般'
+      : '薄弱';
   return {
-    defense: watch >= 2 || (watch >= 1 && state.buildings.watchPost >= 2) ? '良好' : watch >= 1 ? '一般' : '薄弱',
-    medical: jobs.includes('medical') ? '有人值守' : '无人',
-    repair: jobs.includes('repair') ? '有人值守' : '无人',
+    defense,
+    defenseSource: watch >= 1 ? '核心值守' : communityDefense ? '居民轮值' : '无人',
+    medical: jobs.includes('medical') ? '有人值守' : communityMedical ? '居民协助' : '无人',
+    repair: jobs.includes('repair') ? '有人值守' : communityRepair ? '居民协助' : '无人',
     radio: jobs.includes('radio') ? '有人值守' : '无人',
     cooks: jobs.filter((job) => job === 'cook').length,
     expeditions: jobs.filter((job) => job === 'expedition').length,
