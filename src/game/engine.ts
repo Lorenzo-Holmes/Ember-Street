@@ -74,6 +74,13 @@ export function createInitialState(seed = Date.now()): GameState {
     buildings: emptyBuildings(),
     forecast: forecastFor(1),
     chapterComplete: false,
+    catStage: 0,
+    catFedToday: false,
+    combo: 0,
+    bestCombo: 0,
+    comboRemainingMs: 0,
+    clearances: 0,
+    extremeServes: 0,
     stats: { served: 0, missed: 0, merges: 0, peakPressure: 12, startedAt: Date.now() },
     lastMessage: 'NIGHT 1 · 最后一盏灯还亮着',
   };
@@ -143,7 +150,7 @@ function serveOrderIfPossible(input: GameState): GameState {
 export function takeRack(state: GameState, rackIndex: number): GameState {
   if (state.phase !== 'night' || rackIndex < 0 || rackIndex >= state.racks.length) return state;
   const emptyIndex = state.slots.findIndex((slot) => slot === null);
-  if (emptyIndex < 0) return { ...state, lastMessage: '七格满了 · 先合成再拿' };
+  if (emptyIndex < 0) return { ...state, lastMessage: '七格满了 · 先合成或紧急清台' };
   const kind = state.racks[rackIndex];
   const [replacement, queuedState] = pullFromQueue(state);
   const racks = [...queuedState.racks];
@@ -200,7 +207,7 @@ function addSurvivor(state: GameState, survivor: Survivor | null): GameState {
 
 export function revealStreet(state: GameState): GameState {
   if (state.phase !== 'summary') return state;
-  let next = { ...state, phase: 'street' as const, lastMessage: state.chapterComplete ? '第一街段守住了。晨光正在穿过废墟。' : '白天只有几十秒，但每个安排都会改变今晚。' };
+  let next: GameState = { ...state, phase: 'street', lastMessage: state.chapterComplete ? '第一街段守住了。晨光正在穿过废墟。' : '白天只有几十秒，但每个安排都会改变今晚。' };
   if (state.day >= 2) next = addSurvivor(next, survivorUnlockFor(state.day));
   if (state.chapterComplete) next = { ...next, firstLightLevel: Math.max(next.firstLightLevel, 7), hope: next.hope + 12 };
   return next;
@@ -228,8 +235,7 @@ export function repairSearchStation(state: GameState): GameState {
 }
 
 function roleAvailable(state: GameState, role: Role): boolean {
-  if (role === 'cook') return true;
-  if (role === 'rest') return state.buildings.shelter > 0 || state.day <= 2;
+  if (role === 'cook' || role === 'rest') return true;
   const building = ROLE_BUILDING[role];
   return building ? state.buildings[building] > 0 : false;
 }
@@ -269,6 +275,15 @@ export function startNextNight(state: GameState): GameState {
     const energy = role === 'rest' ? Math.min(100, survivor.energy + 12) : Math.max(35, survivor.energy - 5);
     return { ...survivor, energy };
   });
+  const forecast = forecastFor(nextDay);
+  const orderContext: GameState = {
+    ...refreshed,
+    day: nextDay,
+    survivors,
+    assignments: state.assignments,
+    buildings: state.buildings,
+    forecast,
+  };
   const next: GameState = {
     ...refreshed,
     day: nextDay,
@@ -283,11 +298,11 @@ export function startNextNight(state: GameState): GameState {
     survivors,
     assignments: state.assignments,
     buildings: state.buildings,
-    forecast: forecastFor(nextDay),
+    forecast,
     hordePressure: startingPressure,
     stats: { ...refreshed.stats, peakPressure: startingPressure },
-    currentOrder: prepareOrder({ ...refreshed, day: nextDay, survivors, assignments: state.assignments, buildings: state.buildings, forecast: forecastFor(nextDay) }, 0, forecastFor(nextDay).bonusKind ?? 'ration', 'survivor'),
-    lastMessage: `NIGHT ${nextDay} · ${forecastFor(nextDay).title}`,
+    currentOrder: prepareOrder(orderContext, 0, forecast.bonusKind ?? 'ration', 'survivor'),
+    lastMessage: `NIGHT ${nextDay} · ${forecast.title}`,
   };
   return next;
 }
