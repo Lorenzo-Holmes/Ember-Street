@@ -48,7 +48,7 @@ describe('v0.6 daytime management', () => {
     const committed = { ...fivePersonState(), dayState: { ...fivePersonState().dayState, committedSurvivorIds: ['lin-xia'] } };
     expect(canTakeDayAssignment(committed, 'lin-xia', 'rest').allowed).toBe(false);
   });
-  it('allows returning from dusk to adjust jobs before night', () => {
+  it('allows returning from dusk to adjust jobs before anybody executes an action', () => {
     let state = assignDayJob(fivePersonState(), 'zhou', 'watch');
     state = { ...lockDayAssignments(state), phase: 'dusk' };
     const reopened = reopenDayAssignments(state);
@@ -56,17 +56,18 @@ describe('v0.6 daytime management', () => {
     expect(reopened.dayState.assignmentsLocked).toBe(false);
     expect(canTakeDayAssignment(reopened, 'zhou', 'repair').allowed).toBe(true);
   });
-  it('keeps completed explorers committed when returning from dusk', () => {
+  it('refuses to reopen dispatch after an expedition has completed', () => {
     const base = fivePersonState();
     const state: GameState = {
       ...base,
       phase: 'dusk',
       dayAssignments: { 'lin-xia': 'expedition', zhou: 'watch', ahe: 'cook', cheng: 'rest', aliang: 'rest' },
-      dayState: { ...base.dayState, assignmentsLocked: true, returnedExpeditions: 1 },
+      dayState: { ...base.dayState, assignmentsLocked: true, returnedExpeditions: 1, committedSurvivorIds: ['lin-xia'] },
     };
-    const reopened = reopenDayAssignments(state);
-    expect(reopened.dayState.committedSurvivorIds).toContain('lin-xia');
-    expect(canTakeDayAssignment(reopened, 'lin-xia', 'rest').allowed).toBe(false);
-    expect(canTakeDayAssignment(reopened, 'zhou', 'repair').allowed).toBe(true);
+    const attemptedReopen = reopenDayAssignments(state);
+    expect(attemptedReopen.phase).toBe('dusk');
+    expect(attemptedReopen.dayState.assignmentsLocked).toBe(true);
+    expect(canTakeDayAssignment(attemptedReopen, 'lin-xia', 'rest').allowed).toBe(false);
+    expect(canTakeDayAssignment(attemptedReopen, 'zhou', 'repair').allowed).toBe(false);
   });
 });

@@ -97,7 +97,7 @@ export function canStartExpedition(state: GameState, partyIds: string[], locatio
   const location = locationForId(locationId);
   if (!location) return { allowed: false, reason: '地点不存在' };
   if (state.day > 29) return { allowed: false, reason: '最终尸潮以后不再外出' };
-  if (!state.dayState.assignmentsLocked) return { allowed: false, reason: '请先锁定今日调遣' };
+  if (!state.dayState.assignmentsLocked) return { allowed: false, reason: '请先锁定今日派遣' };
   if (state.expeditionState.departed) return { allowed: false, reason: '搜索队已经在外面' };
   if (state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天的搜索队已经执行过一次' };
   if (!isLocationUnlocked(state, locationId)) return { allowed: false, reason: '这片区域还没有被事件情报解锁' };
@@ -121,7 +121,7 @@ export function startExpedition(state: GameState, partyIds: string[], locationId
     expeditionState: { activePartyIds: [...partyIds], locationId, eventId: null, departed: true },
     dayState: {
       ...state.dayState,
-      assignmentsLocked: false,
+      assignmentsLocked: true,
       committedSurvivorIds: [...new Set([...state.dayState.committedSurvivorIds, ...partyIds])],
     },
     campaignStats: { ...state.campaignStats, expeditions: state.campaignStats.expeditions + 1 },
@@ -171,11 +171,11 @@ export function retreatExpedition(state: GameState): GameState {
   const committedSurvivorIds = [...new Set([...state.dayState.committedSurvivorIds, ...partyIds])];
   return {
     ...state,
-    phase: 'street',
+    phase: 'dusk',
     survivors: state.survivors.map((survivor) => party.has(survivor.id) ? { ...survivor, energy: Math.max(0, survivor.energy - 6) } : survivor),
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
-    dayState: { ...state.dayState, assignmentsLocked: false, returnedExpeditions: state.dayState.returnedExpeditions + 1, committedSurvivorIds },
-    lastMessage: '搜索队选择撤回 · 没有物资，但人回来了',
+    dayState: { ...state.dayState, assignmentsLocked: true, returnedExpeditions: state.dayState.returnedExpeditions + 1, committedSurvivorIds },
+    lastMessage: '搜索队选择撤回 · 没有物资，但人回来了 · 进入黄昏',
   };
 }
 
@@ -218,11 +218,11 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
   const committedSurvivorIds = [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])];
   return {
     ...next,
-    phase: 'street',
+    phase: 'dusk',
     storyFlags: firstVisit ? [...next.storyFlags, locationFlag] : next.storyFlags,
     campaignStats: { ...next.campaignStats, locationsDiscovered: next.campaignStats.locationsDiscovered + (firstVisit ? 1 : 0) },
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
-    dayState: { ...next.dayState, assignmentsLocked: false, returnedExpeditions: next.dayState.returnedExpeditions + 1, committedSurvivorIds },
-    lastMessage: message,
+    dayState: { ...next.dayState, assignmentsLocked: true, returnedExpeditions: next.dayState.returnedExpeditions + 1, committedSurvivorIds },
+    lastMessage: `${message} · 进入黄昏`,
   };
 }

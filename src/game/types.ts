@@ -27,6 +27,7 @@ export interface Survivor {
   trait?: string;
   trust?: 0 | 1 | 2 | 3;
   condition?: SurvivorCondition;
+  untreatedDays?: number;
 }
 
 export interface Buildings {

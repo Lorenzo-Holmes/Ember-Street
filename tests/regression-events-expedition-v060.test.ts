@@ -111,38 +111,41 @@ describe('v0.6 event gating regression', () => {
 });
 
 describe('v0.6 expedition flow regression', () => {
-  it('runs lock -> start -> street -> re-enter -> retreat and commits the explorer for the rest of the day', () => {
+  it('runs lock -> start -> street -> re-enter -> retreat -> dusk and keeps dispatch locked', () => {
     const locked = expeditionReady(606605);
     let state = startExpedition(locked, ['lin-xia'], 'convenience-store');
     expect(state.expeditionState.departed).toBe(true);
+    expect(state.dayState.assignmentsLocked).toBe(true);
     state = drawExpeditionEvent(state);
     state = { ...state, phase: 'street' };
     expect(state.expeditionState.departed).toBe(true);
 
     state = { ...state, phase: 'expedition' };
     state = retreatExpedition(state);
+    expect(state.phase).toBe('dusk');
     expect(state.expeditionState.departed).toBe(false);
     expect(state.dayState.returnedExpeditions).toBe(1);
     expect(state.dayState.committedSurvivorIds).toContain('lin-xia');
 
-    const reopened = reopenDayAssignments({ ...state, phase: 'dusk' });
-    expect(reopened.phase).toBe('street');
-    expect(canTakeDayAssignment(reopened, 'lin-xia', 'repair').allowed).toBe(false);
-    expect(canTakeDayAssignment(reopened, 'zhou', 'repair').allowed).toBe(true);
-
-    const relocked = lockDayAssignments(reopened);
-    expect(canStartExpedition(relocked, ['lin-xia'], 'convenience-store').allowed).toBe(false);
-    expect(startExpedition(relocked, ['lin-xia'], 'convenience-store').campaignStats.expeditions).toBe(1);
+    const attemptedReopen = reopenDayAssignments(state);
+    expect(attemptedReopen.phase).toBe('dusk');
+    expect(attemptedReopen.dayState.assignmentsLocked).toBe(true);
+    expect(canTakeDayAssignment(attemptedReopen, 'lin-xia', 'repair').allowed).toBe(false);
+    expect(canTakeDayAssignment(attemptedReopen, 'zhou', 'repair').allowed).toBe(false);
+    expect(canStartExpedition(attemptedReopen, ['lin-xia'], 'convenience-store').allowed).toBe(false);
   });
 
-  it('commits explorers after a resolved expedition, not only after retreat', () => {
+  it('routes a resolved expedition directly to dusk and keeps explorers committed', () => {
     const locked = expeditionReady(606606);
     const started = startExpedition(locked, ['lin-xia'], 'convenience-store');
     const resolved = resolveExpeditionOutcome(started, 'success');
+    expect(resolved.phase).toBe('dusk');
+    expect(resolved.dayState.assignmentsLocked).toBe(true);
     expect(resolved.dayState.returnedExpeditions).toBe(1);
     expect(resolved.dayState.committedSurvivorIds).toContain('lin-xia');
-    const reopened = reopenDayAssignments({ ...resolved, phase: 'dusk' });
-    expect(canTakeDayAssignment(reopened, 'lin-xia', 'repair').allowed).toBe(false);
+    const attemptedReopen = reopenDayAssignments(resolved);
+    expect(attemptedReopen.phase).toBe('dusk');
+    expect(canTakeDayAssignment(attemptedReopen, 'lin-xia', 'repair').allowed).toBe(false);
   });
 
   it('refuses to overwrite an expedition that is already in progress', () => {
@@ -154,7 +157,7 @@ describe('v0.6 expedition flow regression', () => {
     expect(secondStart.expeditionState).toEqual(started.expeditionState);
   });
 
-  it('keeps missing-person search helpers committed after returning from dusk', () => {
+  it('keeps missing-person search helpers locked for the rest of that day', () => {
     const base = createV060InitialState(606608);
     const missing: GameState = {
       ...base,
@@ -162,9 +165,10 @@ describe('v0.6 expedition flow regression', () => {
     };
     const searched = searchForMissing(missing, 'ahe', 'team');
     expect(searched.dayState.committedSurvivorIds).toHaveLength(2);
-    const reopened = reopenDayAssignments({ ...searched, phase: 'dusk', dayState: { ...searched.dayState, assignmentsLocked: true } });
+    const attemptedReopen = reopenDayAssignments({ ...searched, phase: 'dusk', dayState: { ...searched.dayState, assignmentsLocked: true } });
+    expect(attemptedReopen.phase).toBe('dusk');
     for (const id of searched.dayState.committedSurvivorIds) {
-      expect(canTakeDayAssignment(reopened, id, 'rest').allowed).toBe(false);
+      expect(canTakeDayAssignment(attemptedReopen, id, 'rest').allowed).toBe(false);
     }
   });
 });

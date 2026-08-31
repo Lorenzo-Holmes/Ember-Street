@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createV060InitialState, searchForMissing } from '../src/game/v060/campaign';
+import { advanceCampaignDay, createV060InitialState, searchForMissing } from '../src/game/v060/campaign';
 import { pendingCampaignEvent, resolveCampaignEvent } from '../src/game/v060/campaignEvents';
 import { assignDayJob, canTakeDayAssignment, lockDayAssignments, lockDayAssignmentsAndRoute, openExpeditionEvent, reopenDayAssignments } from '../src/game/v060/dayManagement';
 import { canStartExpedition, currentExpeditionEvent, drawExpeditionEvent, isLocationUnlocked, retreatExpedition, startExpedition } from '../src/game/v060/expedition';
@@ -11,7 +11,7 @@ function expeditionReady() {
 }
 
 describe('v0.6 UI flow hotfix logic', () => {
-  it('reopens dusk to street and lets only uncommitted survivors change jobs', () => {
+  it('reopens dusk only before anybody has actually executed an action', () => {
     const base = createV060InitialState(606061);
     const dusk = {
       ...base,
@@ -24,28 +24,30 @@ describe('v0.6 UI flow hotfix logic', () => {
     expect(reopened.phase).toBe('street');
     expect(reopened.dayState.assignmentsLocked).toBe(false);
     expect(canTakeDayAssignment(reopened, 'zhou', 'rest').allowed).toBe(true);
-    expect(assignDayJob(reopened, 'zhou', 'rest').dayAssignments.zhou).toBe('rest');
   });
 
-  it('keeps completed expedition participants committed after dusk is reopened', () => {
+  it('does not reopen dispatch after an expedition or rescue has committed people', () => {
     let state = expeditionReady();
     state = drawExpeditionEvent(startExpedition(state, ['lin-xia'], 'convenience-store'));
     state = retreatExpedition(state);
-    state = lockDayAssignmentsAndRoute(state);
     expect(state.phase).toBe('dusk');
-
-    state = reopenDayAssignments(state);
+    expect(state.dayState.assignmentsLocked).toBe(true);
     expect(state.dayState.committedSurvivorIds).toContain('lin-xia');
-    expect(state.dayAssignments['lin-xia']).toBeUndefined();
-    expect(canTakeDayAssignment(state, 'lin-xia', 'rest').allowed).toBe(false);
+
+    const attemptedReopen = reopenDayAssignments(state);
+    expect(attemptedReopen.phase).toBe('dusk');
+    expect(attemptedReopen.dayState.assignmentsLocked).toBe(true);
+    expect(canTakeDayAssignment(attemptedReopen, 'zhou', 'rest').allowed).toBe(false);
   });
 
-  it('returns to street immediately after starting an expedition while keeping it departed', () => {
+  it('returns to street immediately after starting an expedition while keeping all dispatch locked', () => {
     const state = startExpedition(expeditionReady(), ['lin-xia'], 'convenience-store');
     expect(state.phase).toBe('street');
     expect(state.expeditionState.departed).toBe(true);
     expect(state.expeditionState.activePartyIds).toEqual(['lin-xia']);
+    expect(state.dayState.assignmentsLocked).toBe(true);
     expect(state.dayState.committedSurvivorIds).toContain('lin-xia');
+    expect(canTakeDayAssignment(state, 'zhou', 'rest').allowed).toBe(false);
   });
 
   it('can re-enter a departed expedition event from street without losing the event', () => {
@@ -60,13 +62,40 @@ describe('v0.6 UI flow hotfix logic', () => {
     expect(currentExpeditionEvent(state)?.id).toBe(eventId);
   });
 
-  it('increments returned expeditions and prevents the same survivor from exploring twice that day', () => {
+  it('routes a completed or retreated expedition directly to dusk', () => {
     let state = startExpedition(expeditionReady(), ['lin-xia'], 'convenience-store');
     state = retreatExpedition(state);
-    expect(state.phase).toBe('street');
+    expect(state.phase).toBe('dusk');
+    expect(state.dayState.assignmentsLocked).toBe(true);
     expect(state.dayState.returnedExpeditions).toBe(1);
     expect(state.dayState.committedSurvivorIds).toContain('lin-xia');
     expect(canStartExpedition(state, ['lin-xia'], 'convenience-store').allowed).toBe(false);
+  });
+
+  it('clears yesterday committed people when a new morning starts', () => {
+    const base = createV060InitialState(606064);
+    const yesterday = {
+      ...base,
+      day: 5,
+      phase: 'dawn' as const,
+      dayAssignments: { 'lin-xia': 'expedition' as const, zhou: 'medical' as const },
+      dayState: {
+        ...base.dayState,
+        assignmentsLocked: true,
+        returnedExpeditions: 1,
+        committedSurvivorIds: ['lin-xia', 'zhou'],
+      },
+    };
+
+    const morning = advanceCampaignDay(yesterday);
+    expect(morning.day).toBe(6);
+    expect(morning.phase).toBe('street');
+    expect(morning.dayAssignments).toEqual({});
+    expect(morning.dayState.assignmentsLocked).toBe(false);
+    expect(morning.dayState.returnedExpeditions).toBe(0);
+    expect(morning.dayState.committedSurvivorIds).toEqual([]);
+    expect(canTakeDayAssignment(morning, 'lin-xia', 'rest').allowed).toBe(true);
+    expect(canTakeDayAssignment(morning, 'zhou', 'rest').allowed).toBe(true);
   });
 
   it('scrubs old jobs for missing-person search helpers before the day is finalized', () => {
