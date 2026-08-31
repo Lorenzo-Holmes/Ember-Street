@@ -110,8 +110,11 @@ describe('Ember Street first chapter', () => {
     expect(blocked.buildings.clinic).toBe(0);
   });
 
-  it('ramps forecasts into a day-seven horde climax', () => {
-    expect(forecastFor(2).intensity).toBeLessThan(forecastFor(7).intensity);
-    expect(forecastFor(7).title).toBe('尸潮之夜');
+  it('ramps forecasts through milestone hordes into the day-thirty climax', () => {
+    expect(forecastFor(2).intensity).toBeLessThan(forecastFor(10).intensity);
+    expect(forecastFor(10).title).toContain('尸潮');
+    expect(forecastFor(20).intensity).toBeGreaterThanOrEqual(forecastFor(10).intensity);
+    expect(forecastFor(30).title).toBe('最后的尸潮');
+    expect(forecastFor(30).intensity).toBe(5);
   });
 });
