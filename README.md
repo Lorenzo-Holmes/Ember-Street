@@ -5,7 +5,18 @@
 
 **Ember Street / 余烬长街** 是一款面向移动 Web 与小红书小工具场景的末日避难街轻量模拟经营游戏：白天修复街区、安排幸存者、准备物资；夜晚进入永久只有 **7 格** 的配给台，在幸存者请求与尸潮压力之间快速取舍。
 
-当前比赛候选版本：**v0.3.0**。
+当前比赛候选版本：**v0.3.1 — Mobile Polish**。
+
+## v0.3.1 优化
+
+- 物资从文字占位升级为轻量 SVG 图形，不增加额外图片请求
+- 首局正确货架自动脉冲高亮，第一单更容易无教程完成
+- Web Audio 改为单个 `AudioContext` 复用，避免高频点击重复创建/关闭音频上下文
+- 新增本地持久化音效 / 震动开关
+- 移动端正文、岗位、建筑和工具按钮统一提高可读性与触控面积
+- 白天设施区由规整双列卡片改为横向废墟街段：建筑高低错落，已修设施窗口发光，主灯塔成为视觉中心
+- DAY 7 尸潮夜加强围栏震动与警戒脉冲，但不增加僵尸实体模拟
+- `prefers-reduced-motion` 下自动关闭新增循环动画
 
 ## 核心循环
 
@@ -62,7 +73,8 @@
 - TypeScript
 - Vite
 - Vitest
-- CSS / Web Audio / Canvas / localStorage
+- Cloudflare Workers Static Assets
+- CSS / SVG / Web Audio / Canvas / localStorage
 
 游戏核心位于 `src/game/`，React 主要承担表现层。尸潮采用「压力状态 + 少量视觉剪影」而不是大量独立僵尸实体，优先保证手机 WebView 的响应速度。
 
@@ -79,9 +91,18 @@ npm run dev
 npm run typecheck
 npm test
 npm run build
+npm run cf:dry-run
 ```
 
-GitHub Actions 会在 `main`、`dev`、`feat/**` push 与面向 `main` 的 PR 上自动执行以上验证。
+GitHub Actions 会在 `main`、`dev`、`feat/**` push 与面向 `main` 的 PR 上自动执行 typecheck、单测、production build 和 Cloudflare deployment dry-run。
+
+## Cloudflare
+
+项目已配置 `wrangler.jsonc`，静态构建目录为 `./dist`，SPA fallback 已启用。
+
+```bash
+npm run deploy:cf
+```
 
 ## 设计原则
 
@@ -94,7 +115,8 @@ GitHub Actions 会在 `main`、`dev`、`feat/**` push 与面向 `main` 的 PR �
 
 ## 目录
 
-- `src/game/`：规则、经营、挑战、存档、反馈系统
+- `src/game/`：规则、经营、挑战、存档与核心手感
+- `src/feedback.ts`：音频 / 震动渐进增强与本地偏好
 - `src/App.tsx`：主界面与场景编排
 - `src/shareCard.ts`：本地分享卡
 - `tests/`：核心规则、挑战、留存与手感测试
@@ -109,4 +131,4 @@ GitHub Actions 会在 `main`、`dev`、`feat/**` push 与面向 `main` 的 PR �
 
 ## 状态
 
-当前目标是将 **v0.3.0** 冻结为小红书 Vibecoding 比赛候选版：不再增加大系统，只处理验证、移动端性能、视觉与提交链路问题。
+**v0.3.1** 已进入移动端与视觉打磨阶段。比赛版继续冻结大系统，下一轮重点是人物识别度、小灰正式视觉、街区细节和分享图，而不是增加第二章或更多货币。
