@@ -1,24 +1,7 @@
 import { SURVIVOR_ROSTER } from '../progression';
 import type { BuildingId, GameState } from '../types';
-import { markMissing, recordDeath } from './memorial';
-import {
-  clearLowHopeDeparture,
-  clearUntreatedRisk,
-  deferMedicalCrisis,
-  lowHopeDepartureFlag,
-  medicalCrisisFlag,
-  pendingLowHopeDepartureId,
-} from './mortality';
 
-export type CampaignEventKind = 'crisis' | 'character' | 'building' | 'location';
-
-export interface CampaignEventChoice {
-  id: string;
-  label: string;
-  detail: string;
-  disabled?: boolean;
-  disabledReason?: string;
-}
+export type CampaignEventKind = 'character' | 'building' | 'location';
 
 export interface CampaignFixedEvent {
   id: string;
@@ -30,7 +13,6 @@ export interface CampaignFixedEvent {
   survivorId?: string;
   buildingId?: BuildingId;
   locationId?: string;
-  choices?: CampaignEventChoice[];
 }
 
 const BUILDING_EVENTS: CampaignFixedEvent[] = [
@@ -74,48 +56,6 @@ export function collectedSurvivorIsPresent(state: GameState, survivorId: string)
   return state.survivors.some((survivor) => survivor.id === survivorId && survivor.condition !== 'dead' && survivor.condition !== 'missing');
 }
 
-function medicalCrisisEvent(state: GameState): CampaignFixedEvent | null {
-  const pending = state.storyFlags.find((flag) => flag.startsWith('medical_crisis_pending:'));
-  if (!pending) return null;
-  const survivorId = pending.slice('medical_crisis_pending:'.length);
-  const survivor = state.survivors.find((item) => item.id === survivorId);
-  if (!survivor || survivor.condition === 'dead' || survivor.condition === 'missing' || (survivor.condition !== 'serious' && survivor.condition !== 'critical')) return null;
-  const days = Math.max(1, survivor.untreatedDays ?? 1);
-  return {
-    id: `medical-crisis:${survivorId}`,
-    kind: 'crisis',
-    survivorId,
-    title: `${survivor.name}的伤口开始发黑`,
-    body: `${survivor.name}已经有 ${days} 天没有得到足够治疗。高烧、意识混乱和伤口恶化正在同时出现；继续拖下去，最坏的结果不再只是重伤。`,
-    actionLabel: '处理医疗危机',
-    choices: [
-      { id: 'treat', label: '立刻用药', detail: '消耗 1 份药品，立即控制恶化并重置未治疗计时。', disabled: state.inventory.medicine < 1, disabledReason: '药品不足' },
-      { id: 'isolate', label: '先隔离一晚', detail: '不消耗药品，争取一天时间；希望 -1，危机之后仍可能再次出现。' },
-      { id: 'delay', label: '继续拖延', detail: survivor.condition === 'critical' ? '危重状态继续拖延会直接触发尸变死亡。' : '重伤会恶化为危重，下一个治疗窗口会更短。' },
-    ],
-  };
-}
-
-function lowHopeEvent(state: GameState): CampaignFixedEvent | null {
-  const survivorId = pendingLowHopeDepartureId(state);
-  if (!survivorId) return null;
-  const survivor = state.survivors.find((item) => item.id === survivorId);
-  if (!survivor || survivor.condition === 'dead' || survivor.condition === 'missing') return null;
-  return {
-    id: `low-hope-departure:${survivorId}`,
-    kind: 'crisis',
-    survivorId,
-    title: `${survivor.name}把自己的东西收进了包里`,
-    body: `希望已经低到让人开始怀疑“留在这里”是否还有意义。${survivor.name}没有争吵，只说想趁天亮以前离开。`,
-    actionLabel: '处理离开危机',
-    choices: [
-      { id: 'ration', label: '拿出一份口粮挽留', detail: '口粮 -1，希望 +2；至少让对方知道街区还愿意承担这份成本。', disabled: state.inventory.ration < 1, disabledReason: '口粮不足' },
-      { id: 'talk', label: '让熟悉的人去谈', detail: `信任 ${survivor.trust ?? 0}/3。信任达到 2 时会留下，否则仍会离开并进入失踪状态。` },
-      { id: 'leave', label: '不再阻拦', detail: '对方离开街区并进入失踪状态，之后仍可以组织搜救。' },
-    ],
-  };
-}
-
 function eventEligible(state: GameState, event: CampaignFixedEvent): boolean {
   if (state.storyFlags.includes(seenFlag(event.id))) return false;
   if ((event.minDay ?? 1) > state.day) return false;
@@ -130,8 +70,6 @@ function eventEligible(state: GameState, event: CampaignFixedEvent): boolean {
 
 export function pendingCampaignEvent(state: GameState): CampaignFixedEvent | null {
   if (!['street', 'assignment'].includes(state.phase) || state.expeditionState.departed) return null;
-  const crisis = medicalCrisisEvent(state) ?? lowHopeEvent(state);
-  if (crisis) return crisis;
   const priority: CampaignEventKind[] = ['character', 'building', 'location'];
   for (const kind of priority) {
     const event = CAMPAIGN_FIXED_EVENTS.find((candidate) => candidate.kind === kind && eventEligible(state, candidate));
@@ -140,63 +78,7 @@ export function pendingCampaignEvent(state: GameState): CampaignFixedEvent | nul
   return null;
 }
 
-function resolveMedicalCrisis(state: GameState, survivorId: string, choiceId: string | undefined): GameState {
-  const survivor = state.survivors.find((item) => item.id === survivorId);
-  if (!survivor || !state.storyFlags.includes(medicalCrisisFlag(survivorId))) return state;
-  if (choiceId === 'treat') {
-    if (state.inventory.medicine < 1) return { ...state, lastMessage: '药品不足，无法进行紧急治疗。' };
-    const nextCondition = survivor.condition === 'critical' ? 'serious' : survivor.condition === 'serious' ? 'minor' : survivor.condition;
-    const treated = {
-      ...state,
-      inventory: { ...state.inventory, medicine: state.inventory.medicine - 1 },
-      survivors: state.survivors.map((item) => item.id === survivorId ? { ...item, condition: nextCondition, untreatedDays: 0 } : item),
-      hope: Math.min(100, state.hope + 1),
-    };
-    return { ...clearUntreatedRisk(treated, [survivorId]), lastMessage: `${survivor.name}接受了紧急治疗，恶化暂时被压住。` };
-  }
-  if (choiceId === 'isolate') return { ...deferMedicalCrisis(state, survivorId), lastMessage: `${survivor.name}被暂时隔离。所有人都知道这只是争取时间。` };
-  if (choiceId === 'delay') {
-    const cleared = { ...state, storyFlags: state.storyFlags.filter((flag) => flag !== medicalCrisisFlag(survivorId)) };
-    if (survivor.condition === 'critical') return recordDeath(cleared, survivorId, '尸变 · 长时间未接受医疗');
-    return {
-      ...cleared,
-      survivors: cleared.survivors.map((item) => item.id === survivorId ? { ...item, condition: 'critical' as const, untreatedDays: 0 } : item),
-      hope: Math.max(0, cleared.hope - 2),
-      lastMessage: `${survivor.name}的伤势恶化为危重。下一次再拖延，可能不会再有治疗机会。`,
-    };
-  }
-  return state;
-}
-
-function resolveLowHopeDeparture(state: GameState, survivorId: string, choiceId: string | undefined): GameState {
-  const survivor = state.survivors.find((item) => item.id === survivorId);
-  if (!survivor || !state.storyFlags.includes(lowHopeDepartureFlag(survivorId))) return state;
-  if (choiceId === 'ration') {
-    if (state.inventory.ration < 1) return { ...state, lastMessage: '口粮不足，无法用物资稳定人心。' };
-    const cleared = clearLowHopeDeparture(state, survivorId);
-    return {
-      ...cleared,
-      inventory: { ...cleared.inventory, ration: cleared.inventory.ration - 1 },
-      hope: Math.min(100, cleared.hope + 2),
-      lastMessage: `${survivor.name}把包重新放下了。至少今天，他/她还愿意留下。`,
-    };
-  }
-  if (choiceId === 'talk') {
-    const cleared = clearLowHopeDeparture(state, survivorId);
-    if ((survivor.trust ?? 0) >= 2) return { ...cleared, hope: Math.min(100, cleared.hope + 1), lastMessage: `${survivor.name}沉默了很久，最后还是回到了灯下。` };
-    return { ...markMissing(cleared, survivorId, '希望过低 · 主动离开街区'), lastMessage: `${survivor.name}没有被劝回来。天亮以后，床位空了。` };
-  }
-  if (choiceId === 'leave') {
-    const cleared = clearLowHopeDeparture(state, survivorId);
-    return { ...markMissing(cleared, survivorId, '希望过低 · 主动离开街区'), lastMessage: `${survivor.name}离开了街区。之后还能不能找到，没人知道。` };
-  }
-  return state;
-}
-
-export function resolveCampaignEvent(state: GameState, eventId: string, choiceId?: string): GameState {
-  if (eventId.startsWith('medical-crisis:')) return resolveMedicalCrisis(state, eventId.slice('medical-crisis:'.length), choiceId);
-  if (eventId.startsWith('low-hope-departure:')) return resolveLowHopeDeparture(state, eventId.slice('low-hope-departure:'.length), choiceId);
-
+export function resolveCampaignEvent(state: GameState, eventId: string): GameState {
   const event = CAMPAIGN_FIXED_EVENTS.find((candidate) => candidate.id === eventId);
   if (!event || !eventEligible(state, event)) return state;
   let storyFlags = [...new Set([...state.storyFlags, seenFlag(event.id)])];
