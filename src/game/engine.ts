@@ -1,4 +1,4 @@
-import { makeOrder, NIGHT_DURATION_MS, RACK_COUNT, SLOT_COUNT } from './config';
+import { makeOrder, NIGHT_DURATION_MS, RACK_BATCH_SIZE, RACK_COUNT, SLOT_COUNT } from './config';
 import { BUILDING_META, forecastFor, survivorUnlockFor } from './progression';
 import { nextRandom, normalizeSeed } from './rng';
 import type { BuildingId, GameState, Order, Role, SupplyItem, SupplyKind, Survivor } from './types';
@@ -37,8 +37,9 @@ function countRole(state: GameState, role: Role): number {
 function prepareOrder(state: GameState, index: number, kind: SupplyKind, orderKind?: 'survivor' | 'defense'): Order {
   const base = makeOrder(index, kind, orderKind);
   const cookBonus = countRole(state, 'cook') * 1_500;
+  const dayGrace = state.day === 1 ? 6_000 : state.day === 2 ? 2_000 : 0;
   const dayPenalty = Math.max(0, state.forecast.intensity - 1) * 700;
-  const patience = Math.max(9_000, base.patienceMs + cookBonus - dayPenalty);
+  const patience = Math.max(14_000, base.patienceMs + cookBonus + dayGrace - dayPenalty);
   return { ...base, patienceMs: patience, maxPatienceMs: patience };
 }
 
@@ -58,6 +59,7 @@ export function createInitialState(seed = Date.now()): GameState {
     nightRemainingMs: NIGHT_DURATION_MS,
     slots: Array.from({ length: SLOT_COUNT }, () => null),
     racks: ['ration', 'ration', 'ration', 'battery'].slice(0, RACK_COUNT) as SupplyKind[],
+    rackStock: Array.from({ length: RACK_COUNT }, () => RACK_BATCH_SIZE),
     queue,
     currentOrder: makeOrder(0, 'ration', 'survivor'),
     orderIndex: 0,
@@ -151,13 +153,29 @@ export function takeRack(state: GameState, rackIndex: number): GameState {
   if (state.phase !== 'night' || rackIndex < 0 || rackIndex >= state.racks.length) return state;
   const emptyIndex = state.slots.findIndex((slot) => slot === null);
   if (emptyIndex < 0) return { ...state, lastMessage: '七格满了 · 先合成或紧急清台' };
+
   const kind = state.racks[rackIndex];
-  const [replacement, queuedState] = pullFromQueue(state);
-  const racks = [...queuedState.racks];
-  racks[rackIndex] = replacement;
-  const slots = [...queuedState.slots];
-  slots[emptyIndex] = newItem(kind, 1, `${queuedState.orderIndex}-${emptyIndex}-${queuedState.nightRemainingMs}`);
-  return serveOrderIfPossible(mergeSlots({ ...queuedState, racks, slots, lastMessage: `拿取：${kind}` }));
+  const rackStock = state.rackStock?.length === state.racks.length
+    ? [...state.rackStock]
+    : Array.from({ length: state.racks.length }, () => RACK_BATCH_SIZE);
+  const remainingStock = rackStock[rackIndex] ?? RACK_BATCH_SIZE;
+
+  let workingState = state;
+  let racks = [...state.racks];
+  if (remainingStock <= 1) {
+    const [replacement, queuedState] = pullFromQueue(state);
+    workingState = queuedState;
+    racks = [...queuedState.racks];
+    racks[rackIndex] = replacement;
+    rackStock[rackIndex] = RACK_BATCH_SIZE;
+  } else {
+    rackStock[rackIndex] = remainingStock - 1;
+  }
+
+  const slots = [...workingState.slots];
+  slots[emptyIndex] = newItem(kind, 1, `${workingState.orderIndex}-${emptyIndex}-${workingState.nightRemainingMs}`);
+  const restockMessage = remainingStock <= 1 ? ' · 该货架已补新货' : ` · 该货架还剩 ${remainingStock - 1}`;
+  return serveOrderIfPossible(mergeSlots({ ...workingState, racks, rackStock, slots, lastMessage: `拿取：${kind}${restockMessage}` }));
 }
 
 export function tick(state: GameState, elapsedMs: number): GameState {
