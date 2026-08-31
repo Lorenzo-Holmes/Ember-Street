@@ -73,7 +73,10 @@ function eventEligible(state: GameState, event: CampaignFixedEvent): boolean {
     return buildingId ? state.storyFlags.includes(buildingPendingFlag(buildingId)) : false;
   }
   if (event.kind === 'character') return Boolean(event.survivorId && collectedSurvivorIsPresent(state, event.survivorId));
-  if (event.kind === 'community') return Boolean(event.communityCount && state.storyFlags.includes(communityEventPendingFlag(event.communityCount)));
+  if (event.kind === 'community') {
+    const communityCount = event.communityCount;
+    return communityCount !== undefined && state.storyFlags.includes(communityEventPendingFlag(communityCount));
+  }
   if (event.kind === 'location') return Boolean(event.locationId && !isLocationUnlocked(state, event.locationId));
   return false;
 }
@@ -94,9 +97,10 @@ export function resolveCampaignEvent(state: GameState, eventId: string): GameSta
   let storyFlags = [...new Set([...state.storyFlags, seenFlag(event.id)])];
   const resolvedBuildingId = event.buildingId;
   if (resolvedBuildingId) storyFlags = storyFlags.filter((flag) => flag !== buildingPendingFlag(resolvedBuildingId));
-  if (event.kind === 'community' && event.communityCount) {
-    storyFlags = storyFlags.filter((flag) => flag !== communityEventPendingFlag(event.communityCount));
-    if (event.communityCount === 5) storyFlags = [...new Set([...storyFlags, 'community_rotation_unlocked'])];
+  const resolvedCommunityCount = event.communityCount;
+  if (event.kind === 'community' && resolvedCommunityCount !== undefined) {
+    storyFlags = storyFlags.filter((flag) => flag !== communityEventPendingFlag(resolvedCommunityCount));
+    if (resolvedCommunityCount === 5) storyFlags = [...new Set([...storyFlags, 'community_rotation_unlocked'])];
   }
   let next: GameState = { ...state, storyFlags };
 
