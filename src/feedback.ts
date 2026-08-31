@@ -5,8 +5,9 @@ export interface FeedbackPreferences {
 
 const STORAGE_KEY = 'ember-street-feedback-v1';
 let audioContext: AudioContext | null = null;
+let cachedPreferences: FeedbackPreferences | null = null;
 
-export function getFeedbackPreferences(): FeedbackPreferences {
+function readPreferences(): FeedbackPreferences {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -17,7 +18,13 @@ export function getFeedbackPreferences(): FeedbackPreferences {
   return { sound: true, haptics: true };
 }
 
+export function getFeedbackPreferences(): FeedbackPreferences {
+  cachedPreferences ??= readPreferences();
+  return { ...cachedPreferences };
+}
+
 export function saveFeedbackPreferences(preferences: FeedbackPreferences): void {
+  cachedPreferences = { ...preferences };
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences)); } catch { /* ignore */ }
 }
 
