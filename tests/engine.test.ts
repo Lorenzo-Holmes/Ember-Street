@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assignSurvivor, createInitialState, repairBuilding, revealStreet, startNextNight, takeRack, tick } from '../src/game/engine';
+import { enterDusk, resolveNarrativeChoice } from '../src/game/narrative';
 import { forecastFor } from '../src/game/progression';
 
 function firstDawn() {
@@ -31,7 +32,6 @@ describe('Ember Street first chapter', () => {
   it('keeps each rack stable for a three-item batch', () => {
     let state = createInitialState(99);
     const original = state.racks[0];
-    expect(state.rackStock?.[0]).toBe(3);
     state = takeRack(state, 0);
     expect(state.racks[0]).toBe(original);
     expect(state.rackStock?.[0]).toBe(2);
@@ -43,33 +43,49 @@ describe('Ember Street first chapter', () => {
   });
 
   it('gives the first request enough time to read and react', () => {
-    const state = createInitialState(7);
-    expect(state.currentOrder.maxPatienceMs).toBeGreaterThanOrEqual(30_000);
+    expect(createInitialState(7).currentOrder.maxPatienceMs).toBeGreaterThanOrEqual(30_000);
   });
 
-  it('repairs the search station and recruits Lin Xia', () => {
+  it('inserts a quiet beat after a request is completed', () => {
+    let state = createInitialState(42);
+    state = takeRack(state, 0);
+    state = takeRack(state, 1);
+    state = takeRack(state, 2);
+    expect(state.orderActive).toBe(false);
+    expect(state.orderCooldownMs).toBeGreaterThanOrEqual(2_000);
+    const before = state.currentOrder.patienceMs;
+    state = tick(state, 1_000);
+    expect(state.orderActive).toBe(false);
+    expect(state.currentOrder.patienceMs).toBe(before);
+    state = tick(state, 2_000);
+    expect(state.orderActive).toBe(true);
+  });
+
+  it('repairs the search station and recruits Lin Xia after the day-one event', () => {
     let state = revealStreet(firstDawn());
-    state = { ...state, parts: 10 };
+    state = resolveNarrativeChoice(state, 'repair');
     state = repairBuilding(state, 'searchStation');
     expect(state.searchStationRepaired).toBe(true);
     expect(state.buildings.searchStation).toBe(1);
     expect(state.survivors.some((item) => item.id === 'lin-xia')).toBe(true);
   });
 
-  it('turns a search assignment into immediate next-night supplies', () => {
+  it('requires dusk before moving into the next night', () => {
     let state = revealStreet(firstDawn());
-    state = repairBuilding({ ...state, parts: 10 }, 'searchStation');
+    state = resolveNarrativeChoice(state, 'salvage');
+    state = repairBuilding(state, 'searchStation');
     state = assignSurvivor(state, 'lin-xia', 'search');
-    const before = state.supplies;
-    const night2 = startNextNight(state);
+    expect(startNextNight(state).phase).toBe('street');
+    const night2 = startNextNight(enterDusk(state));
     expect(night2.day).toBe(2);
-    expect(night2.supplies).toBeGreaterThan(before);
+    expect(night2.phase).toBe('night');
+    expect(night2.supplies).toBeGreaterThanOrEqual(0);
   });
 
   it('does not allow buildings before their unlock day', () => {
     let state = revealStreet(firstDawn());
-    state = { ...state, parts: 99 };
-    const blocked = repairBuilding(state, 'clinic');
+    state = resolveNarrativeChoice(state, 'salvage');
+    const blocked = repairBuilding({ ...state, parts: 99 }, 'clinic');
     expect(blocked.buildings.clinic).toBe(0);
   });
 

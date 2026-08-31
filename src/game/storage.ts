@@ -1,5 +1,6 @@
+import { eventForDay } from './narrative';
 import { forecastFor } from './progression';
-import type { GameState, Role } from './types';
+import type { GameState, Role, Survivor } from './types';
 
 const KEY_V2 = 'ember-street-save-v2';
 const KEY_V1 = 'ember-street-save-v1';
@@ -12,15 +13,32 @@ function countRole(state: GameState, role: Role): number {
   return Object.values(state.assignments ?? {}).filter((item) => item === role).length;
 }
 
+function normalizeSurvivor(survivor: Survivor): Survivor {
+  return { ...survivor, trust: survivor.trust ?? 0, injury: survivor.injury ?? 'healthy', trait: survivor.trait ?? survivor.perk };
+}
+
 function normalizeV2(parsed: GameState): GameState {
+  const resolved = parsed.resolvedEventIds ?? [];
+  const event = eventForDay(parsed.day ?? 1);
+  const shouldSurfaceEvent = parsed.phase === 'street' && !parsed.chapterComplete && event && !resolved.includes(event.id) && parsed.dayStep !== 'dusk';
   return {
     ...parsed,
+    rackStock: parsed.rackStock ?? Array.from({ length: parsed.racks?.length ?? 4 }, () => 3),
+    orderActive: parsed.orderActive ?? true,
+    orderCooldownMs: parsed.orderCooldownMs ?? 0,
+    nightOrderLimit: parsed.nightOrderLimit ?? (parsed.day >= 7 ? 7 : parsed.day <= 1 ? 3 : 5),
     medicine: parsed.medicine ?? 0,
-    survivors: parsed.survivors ?? [],
+    power: parsed.power ?? 62,
+    defense: parsed.defense ?? 50,
+    survivors: (parsed.survivors ?? []).map(normalizeSurvivor),
     assignments: parsed.assignments ?? {},
     buildings: parsed.buildings ?? { searchStation: parsed.searchStationRepaired ? 1 : 0, workshop: 0, clinic: 0, watchPost: 0, shelter: 0, radio: 0 },
     forecast: parsed.forecast ?? forecastFor(parsed.day ?? 1),
     chapterComplete: parsed.chapterComplete ?? false,
+    dayStep: shouldSurfaceEvent ? 'event' : parsed.dayStep ?? 'morning',
+    activeEventId: shouldSurfaceEvent ? event.id : parsed.activeEventId ?? null,
+    resolvedEventIds: resolved,
+    logs: parsed.logs ?? [],
   };
 }
 
@@ -38,23 +56,23 @@ function migrateV1(old: Record<string, unknown>): GameState | null {
   try {
     if (old.version !== 1) return null;
     const day = Number(old.day ?? 1);
-    return {
+    const migrated = {
       ...(old as unknown as Omit<GameState, 'version' | 'medicine' | 'survivors' | 'assignments' | 'buildings' | 'forecast' | 'chapterComplete'>),
-      version: 2,
+      version: 2 as const,
       medicine: 0,
+      power: 62,
+      defense: 50,
       survivors: [],
       assignments: {},
-      buildings: {
-        searchStation: old.searchStationRepaired ? 1 : 0,
-        workshop: 0,
-        clinic: 0,
-        watchPost: 0,
-        shelter: 0,
-        radio: 0,
-      },
+      buildings: { searchStation: old.searchStationRepaired ? 1 : 0, workshop: 0, clinic: 0, watchPost: 0, shelter: 0, radio: 0 },
       forecast: forecastFor(day),
       chapterComplete: false,
+      dayStep: 'morning' as const,
+      activeEventId: null,
+      resolvedEventIds: [],
+      logs: [],
     };
+    return normalizeV2(migrated);
   } catch { return null; }
 }
 
@@ -76,7 +94,7 @@ export function applyOfflineProgress(state: GameState, elapsedMs: number): GameS
     parts: state.parts + gainedParts,
     medicine: state.medicine + gainedMedicine,
     survivors: rested,
-    lastMessage: `你不在时，街坊备好了：补给 +${gainedSupplies} · 零件 +${gainedParts} · 药品 +${gainedMedicine}`,
+    lastMessage: `你不在时，街坊备好了：口粮 +${gainedSupplies} · 零件 +${gainedParts} · 药品 +${gainedMedicine}`,
   };
 }
 

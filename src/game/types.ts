@@ -3,6 +3,9 @@ export type OrderKind = 'survivor' | 'defense';
 export type Phase = 'night' | 'summary' | 'street';
 export type Role = 'search' | 'repair' | 'medical' | 'watch' | 'cook' | 'radio' | 'rest';
 export type BuildingId = 'searchStation' | 'workshop' | 'clinic' | 'watchPost' | 'shelter' | 'radio';
+export type DayStep = 'morning' | 'event' | 'dusk';
+export type InjuryState = 'healthy' | 'minor' | 'serious' | 'resting';
+export type LogTone = 'neutral' | 'hope' | 'danger' | 'resource';
 
 export interface SupplyItem {
   id: string;
@@ -39,6 +42,9 @@ export interface Survivor {
   energy: number;
   mood: 'low' | 'steady' | 'bright';
   perk: string;
+  trait?: string;
+  trust?: 0 | 1 | 2 | 3;
+  injury?: InjuryState;
 }
 
 export interface Buildings {
@@ -57,6 +63,15 @@ export interface DayForecast {
   bonusKind?: SupplyKind;
 }
 
+export interface StreetLogEntry {
+  id: string;
+  day: number;
+  time: string;
+  title: string;
+  body: string;
+  tone: LogTone;
+}
+
 export interface GameState {
   version: 2;
   seed: number;
@@ -70,11 +85,16 @@ export interface GameState {
   queue: SupplyKind[];
   currentOrder: Order;
   orderIndex: number;
+  orderActive?: boolean;
+  orderCooldownMs?: number;
+  nightOrderLimit?: number;
   hordePressure: number;
   hope: number;
   parts: number;
   supplies: number;
   medicine: number;
+  power?: number;
+  defense?: number;
   firstLightLevel: number;
   searchStationRepaired: boolean;
   survivorJoined: boolean;
@@ -83,6 +103,10 @@ export interface GameState {
   buildings: Buildings;
   forecast: DayForecast;
   chapterComplete: boolean;
+  dayStep?: DayStep;
+  logs?: StreetLogEntry[];
+  activeEventId?: string | null;
+  resolvedEventIds?: string[];
   catStage?: 0 | 1 | 2 | 3;
   catFedToday?: boolean;
   combo?: number;
