@@ -1,9 +1,17 @@
+import { nextRandom } from '../rng';
 import type { GameState } from '../types';
 import { normalizeCommunityState } from './community';
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
 export const medicalCrisisFlag = (survivorId: string) => `medical_crisis_pending:${survivorId}`;
+export const lowHopeDepartureFlag = (survivorId: string) => `low_hope_departure_pending:${survivorId}`;
+const LOW_HOPE_PREFIX = 'low_hope_departure_pending:';
+
+export function pendingLowHopeDepartureId(state: GameState): string | null {
+  const flag = state.storyFlags.find((value) => value.startsWith(LOW_HOPE_PREFIX));
+  return flag ? flag.slice(LOW_HOPE_PREFIX.length) : null;
+}
 
 export function advanceUntreatedRisk(state: GameState): GameState {
   const flags = new Set(state.storyFlags);
@@ -31,6 +39,54 @@ export function clearUntreatedRisk(state: GameState, survivorIds: Iterable<strin
     storyFlags: [...flags],
     survivors: state.survivors.map((survivor) => ids.has(survivor.id) ? { ...survivor, untreatedDays: 0 } : survivor),
   };
+}
+
+export function deferMedicalCrisis(state: GameState, survivorId: string): GameState {
+  const flags = new Set(state.storyFlags);
+  flags.delete(medicalCrisisFlag(survivorId));
+  flags.add(`medical_isolated:${survivorId}:${state.day}`);
+  return {
+    ...state,
+    storyFlags: [...flags],
+    survivors: state.survivors.map((survivor) => survivor.id === survivorId
+      ? { ...survivor, untreatedDays: Math.max(0, (survivor.untreatedDays ?? 1) - 1) }
+      : survivor),
+    hope: clamp(state.hope - 1),
+  };
+}
+
+export function queueLowHopeDeparture(state: GameState): GameState {
+  if (state.day < 6 || state.hope > 12 || pendingLowHopeDepartureId(state)) return state;
+  const checkedFlag = `low_hope_departure_checked:${state.day}`;
+  if (state.storyFlags.includes(checkedFlag)) return state;
+
+  const candidates = state.survivors
+    .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing' && survivor.condition !== 'critical' && survivor.condition !== 'serious')
+    .sort((a, b) => (a.trust ?? 0) - (b.trust ?? 0));
+  let rngState = state.rngState;
+  const [triggerRoll, afterTrigger] = nextRandom(rngState); rngState = afterTrigger;
+  const flags = new Set(state.storyFlags);
+  flags.add(checkedFlag);
+  if (!candidates.length) return { ...state, rngState, storyFlags: [...flags] };
+
+  const chance = clamp(0.12 + Math.max(0, 12 - state.hope) * 0.05, 0.12, 0.72);
+  if (triggerRoll >= chance) return { ...state, rngState, storyFlags: [...flags] };
+
+  const lowestTrust = candidates[0].trust ?? 0;
+  const vulnerable = candidates.filter((survivor) => (survivor.trust ?? 0) <= lowestTrust + 1);
+  const [pickRoll, afterPick] = nextRandom(rngState); rngState = afterPick;
+  const target = vulnerable[Math.min(vulnerable.length - 1, Math.floor(pickRoll * vulnerable.length))];
+  flags.add(lowHopeDepartureFlag(target.id));
+  return {
+    ...state,
+    rngState,
+    storyFlags: [...flags],
+    lastMessage: `${target.name}整晚没有说话。天快亮时，他/她开始收拾自己的东西。`,
+  };
+}
+
+export function clearLowHopeDeparture(state: GameState, survivorId: string): GameState {
+  return { ...state, storyFlags: state.storyFlags.filter((flag) => flag !== lowHopeDepartureFlag(survivorId)) };
 }
 
 export function loseCommunityResidents(state: GameState, requestedLoss: number, cause: string): GameState {
