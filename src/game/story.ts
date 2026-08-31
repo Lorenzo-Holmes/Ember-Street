@@ -70,12 +70,13 @@ const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min,
 const hasFlag = (state: GameState, flag: string) => (state.storyFlags ?? []).includes(flag);
 const hasAll = (state: GameState, flags: string[] = []) => flags.every((flag) => hasFlag(state, flag));
 const hasAny = (state: GameState, flags: string[] = []) => flags.length === 0 || flags.some((flag) => hasFlag(state, flag));
+const campaignCopy = (value: string) => value.replace(/DAY 7/g, 'DAY 30').replace(/第七天/g, '第三十天');
 
 function addLog(state: GameState, title: string, body: string, tone: LogTone = 'neutral', time = '12:30'): GameState {
   const logs = state.logs ?? [];
   return {
     ...state,
-    logs: [...logs.slice(-59), { id: `story-${state.day}-${logs.length}-${title}`, day: state.day, time, title, body, tone }],
+    logs: [...logs.slice(-59), { id: `story-${state.day}-${logs.length}-${campaignCopy(title)}`, day: state.day, time, title: campaignCopy(title), body: campaignCopy(body), tone }],
   };
 }
 
@@ -524,7 +525,8 @@ function hash(input: string): number {
 }
 
 function eligible(state: GameState, event: StoryEventDefinition): boolean {
-  if (state.day < event.minDay || state.day > event.maxDay) return false;
+  const effectiveMaxDay = event.maxDay <= 6 ? 30 : event.maxDay;
+  if (state.day < event.minDay || state.day > effectiveMaxDay) return false;
   if ((state.resolvedStoryEventIds ?? []).includes(event.id)) return false;
   if (!hasAll(state, event.requiresFlags)) return false;
   if (!hasAny(state, event.requiresAnyFlags)) return false;
@@ -538,7 +540,7 @@ export function ensureStoryDay(state: GameState): GameState {
   if (state.phase !== 'street' || state.chapterComplete || state.storyPreparedDay === state.day) return state;
   const candidates = EVENTS.filter((event) => eligible(state, event))
     .sort((a, b) => hash(`${state.seed}:${state.day}:${a.id}`) - hash(`${state.seed}:${state.day}:${b.id}`));
-  const count = state.day <= 2 ? 2 : 3;
+  const count = 1;
   const storyDailyIds = candidates.slice(0, count).map((event) => event.id);
   const ambient = AMBIENT[hash(`${state.seed}:${state.day}:ambient`) % AMBIENT.length];
   let next: GameState = {
@@ -559,7 +561,19 @@ export function storyEventsForState(state: GameState): StoryEventView[] {
     .filter((id) => !(state.resolvedStoryEventIds ?? []).includes(id))
     .map((id) => EVENTS.find((event) => event.id === id))
     .filter((event): event is StoryEventDefinition => Boolean(event))
-    .map(({ minDay: _min, maxDay: _max, requiresFlags: _rf, requiresAnyFlags: _raf, excludesFlags: _ef, requiresSurvivor: _rs, requiresBuilding: _rb, choices, ...view }) => ({ ...view, choices: choices.map(({ cost: _cost, effect: _effect, check: _check, ...choice }) => choice) }));
+    .map(({ minDay: _min, maxDay: _max, requiresFlags: _rf, requiresAnyFlags: _raf, excludesFlags: _ef, requiresSurvivor: _rs, requiresBuilding: _rb, choices, ...view }) => ({
+      ...view,
+      kicker: campaignCopy(view.kicker).replace(/^DAY\s+\d+/, `DAY ${state.day}`),
+      title: campaignCopy(view.title),
+      body: campaignCopy(view.body),
+      quote: view.quote ? campaignCopy(view.quote) : undefined,
+      choices: choices.map(({ cost: _cost, effect: _effect, check: _check, ...choice }) => ({
+        ...choice,
+        label: campaignCopy(choice.label),
+        detail: campaignCopy(choice.detail),
+        checkLabel: choice.checkLabel ? campaignCopy(choice.checkLabel) : undefined,
+      })),
+    }));
 }
 
 function getDefinition(eventId: string): StoryEventDefinition | undefined {
