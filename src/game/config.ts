@@ -3,6 +3,7 @@ import type { Order, OrderKind, SupplyKind } from './types';
 export const NIGHT_DURATION_MS = 75_000;
 export const SLOT_COUNT = 7;
 export const RACK_COUNT = 4;
+export const RACK_BATCH_SIZE = 3;
 
 export const SUPPLY_META: Record<SupplyKind, { label: string; short: string; tier2: string; tier3: string }> = {
   ration: { label: '罐头', short: '粮', tier2: '热食包', tier3: '战地餐' },
@@ -26,8 +27,8 @@ export function makeOrder(index: number, kind: SupplyKind, orderKind?: OrderKind
     targetTier: 2,
     title: resolvedKind === 'defense' ? '防线急需' : '幸存者求助',
     line: lines[index % lines.length],
-    patienceMs: resolvedKind === 'defense' ? 14_000 : 18_000,
-    maxPatienceMs: resolvedKind === 'defense' ? 14_000 : 18_000,
+    patienceMs: resolvedKind === 'defense' ? 20_000 : 24_000,
+    maxPatienceMs: resolvedKind === 'defense' ? 20_000 : 24_000,
     rewardHope: resolvedKind === 'defense' ? 2 : 3,
     rewardParts: resolvedKind === 'defense' ? 3 : 2,
     pressureRelief: resolvedKind === 'defense' ? 22 : 12,
