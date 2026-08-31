@@ -1,16 +1,8 @@
-import type { DayAssignment, GameState, Role, Survivor } from '../types';
+import type { DayAssignment, GameState, Survivor } from '../types';
 
 const JOB_BUILDING: Partial<Record<DayAssignment, keyof GameState['buildings']>> = {
-  expedition: 'searchStation',
-  repair: 'workshop',
-  medical: 'clinic',
-  watch: 'watchPost',
-  radio: 'radio',
+  expedition: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio',
 };
-
-function assignmentToLegacyRole(job: DayAssignment): Role {
-  return job === 'expedition' ? 'search' : job;
-}
 
 export function survivorAvailableForDay(survivor: Survivor): boolean {
   return survivor.condition !== 'dead' && survivor.condition !== 'missing' && survivor.condition !== 'critical';
@@ -18,6 +10,7 @@ export function survivorAvailableForDay(survivor: Survivor): boolean {
 
 export function canTakeDayAssignment(state: GameState, survivorId: string, job: DayAssignment): { allowed: boolean; reason?: string } {
   if (state.dayState.assignmentsLocked) return { allowed: false, reason: '今日调遣已经锁定' };
+  if (state.dayState.committedSurvivorIds.includes(survivorId)) return { allowed: false, reason: '今天已经参加过搜救行动' };
   const survivor = state.survivors.find((item) => item.id === survivorId);
   if (!survivor) return { allowed: false, reason: '人物不在街区' };
   if (!survivorAvailableForDay(survivor)) return { allowed: false, reason: survivor.condition === 'missing' ? '人物仍然失踪' : survivor.condition === 'dead' ? '人物已经死亡' : '人物情况危重' };
@@ -33,34 +26,25 @@ export function assignDayJob(state: GameState, survivorId: string, job: DayAssig
   return {
     ...state,
     dayAssignments: { ...state.dayAssignments, [survivorId]: job },
-    assignments: { ...state.assignments, [survivorId]: assignmentToLegacyRole(job) },
     lastMessage: `${state.survivors.find((item) => item.id === survivorId)?.name ?? '幸存者'} · ${job === 'expedition' ? '探索' : job}`,
   };
 }
 
 export function clearDayJob(state: GameState, survivorId: string): GameState {
-  if (state.dayState.assignmentsLocked) return state;
+  if (state.dayState.assignmentsLocked || state.dayState.committedSurvivorIds.includes(survivorId)) return state;
   const dayAssignments = { ...state.dayAssignments };
-  const assignments = { ...state.assignments };
   delete dayAssignments[survivorId];
-  delete assignments[survivorId];
-  return { ...state, dayAssignments, assignments };
+  return { ...state, dayAssignments };
 }
 
 export function lockDayAssignments(state: GameState): GameState {
   if (state.dayState.assignmentsLocked) return state;
-  const available = state.survivors.filter(survivorAvailableForDay);
-  const unassigned = available.filter((survivor) => !state.dayAssignments[survivor.id]);
+  const available = state.survivors.filter(survivorAvailableForDay).filter((s) => !state.dayState.committedSurvivorIds.includes(s.id));
   const nextAssignments = { ...state.dayAssignments };
-  const nextLegacy = { ...state.assignments };
-  for (const survivor of unassigned) {
-    nextAssignments[survivor.id] = 'rest';
-    nextLegacy[survivor.id] = 'rest';
-  }
+  for (const survivor of available) if (!nextAssignments[survivor.id]) nextAssignments[survivor.id] = 'rest';
   return {
     ...state,
     dayAssignments: nextAssignments,
-    assignments: nextLegacy,
     dayState: { ...state.dayState, assignmentsLocked: true },
     lastMessage: '今日调遣已锁定 · 天黑以后不能临时换岗',
   };
@@ -70,8 +54,7 @@ export function unlockNextDayAssignments(state: GameState): GameState {
   return {
     ...state,
     dayAssignments: {},
-    assignments: {},
-    dayState: { assignmentsLocked: false, returnedExpeditions: 0, unresolvedExpeditions: [] },
+    dayState: { assignmentsLocked: false, returnedExpeditions: 0, unresolvedExpeditions: [], committedSurvivorIds: [] },
   };
 }
 
