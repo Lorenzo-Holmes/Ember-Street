@@ -4,7 +4,8 @@ import { dailySituationContentCount, dailySituationForState } from '../src/game/
 import { createPendingCheck, rollPendingCheck } from '../src/game/dice';
 import { createInitialState } from '../src/game/engine';
 import { nightStoryContentCount } from '../src/game/nightStory';
-import { livingStreetContentCount } from '../src/game/story';
+import { SURVIVOR_ROSTER } from '../src/game/progression';
+import { ensureStoryDay, livingStreetContentCount, storyEventsForState } from '../src/game/story';
 import type { GameState, RollMode } from '../src/game/types';
 
 function pendingState(seed: number, mode: RollMode = 'normal'): GameState {
@@ -33,6 +34,30 @@ describe('Living Street v0.5.0 guarantees', () => {
       const situation = dailySituationForState(state);
       expect(situation, `DAY ${day} should have a street situation`).not.toBeNull();
       expect(situation?.id).toContain(`:day:${day}`);
+    }
+  });
+
+  it('keeps a focused Story Pool event available deep into the thirty-day campaign', () => {
+    const base = createInitialState(20260831);
+    for (const day of [7, 15, 23, 29]) {
+      const state: GameState = {
+        ...base,
+        phase: 'street',
+        day,
+        chapterComplete: false,
+        survivors: SURVIVOR_ROSTER.map((survivor) => ({ ...survivor, trust: 2, injury: 'healthy' })),
+        buildings: { searchStation: 1, workshop: 1, clinic: 1, watchPost: 1, shelter: 1, radio: 1 },
+        storyFlags: [],
+        resolvedStoryEventIds: [],
+        storyPreparedDay: 0,
+        storyDailyIds: [],
+      };
+      const prepared = ensureStoryDay(state);
+      const events = storyEventsForState(prepared);
+      expect(events.length, `DAY ${day} should still surface Story Pool content`).toBeGreaterThan(0);
+      expect(events.length).toBeLessThanOrEqual(1);
+      const visibleCopy = events.map((event) => `${event.kicker} ${event.title} ${event.body} ${event.quote ?? ''} ${event.choices.map((choice) => `${choice.label} ${choice.detail}`).join(' ')}`).join(' ');
+      expect(visibleCopy).not.toContain('DAY 7');
     }
   });
 
