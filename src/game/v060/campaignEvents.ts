@@ -46,6 +46,7 @@ const LOCATION_EVENTS: CampaignFixedEvent[] = [
 export const CAMPAIGN_FIXED_EVENTS: CampaignFixedEvent[] = [...BUILDING_EVENTS, ...CHARACTER_EVENTS, ...LOCATION_EVENTS];
 
 const seenFlag = (eventId: string) => `fixed_event_seen:${eventId}`;
+const buildingPendingFlag = (buildingId: BuildingId) => `building_event_pending:${buildingId}`;
 export const locationUnlockFlag = (locationId: string) => `location_unlocked:${locationId}`;
 
 export function isLocationUnlocked(state: GameState, locationId: string): boolean {
@@ -60,8 +61,8 @@ function characterFor(id: string): Survivor | null {
 function eventEligible(state: GameState, event: CampaignFixedEvent): boolean {
   if (state.storyFlags.includes(seenFlag(event.id))) return false;
   if ((event.minDay ?? 1) > state.day) return false;
-  if (event.kind === 'building') return Boolean(event.buildingId && state.buildings[event.buildingId] >= 1);
-  if (event.kind === 'character') return Boolean(event.survivorId);
+  if (event.kind === 'building') return Boolean(event.buildingId && state.storyFlags.includes(buildingPendingFlag(event.buildingId)));
+  if (event.kind === 'character') return Boolean(event.survivorId && !state.survivors.some((survivor) => survivor.id === event.survivorId));
   if (event.kind === 'location') return Boolean(event.locationId && !isLocationUnlocked(state, event.locationId));
   return false;
 }
@@ -79,7 +80,8 @@ export function pendingCampaignEvent(state: GameState): CampaignFixedEvent | nul
 export function resolveCampaignEvent(state: GameState, eventId: string): GameState {
   const event = CAMPAIGN_FIXED_EVENTS.find((candidate) => candidate.id === eventId);
   if (!event || !eventEligible(state, event)) return state;
-  const storyFlags = [...new Set([...state.storyFlags, seenFlag(event.id)])];
+  let storyFlags = [...new Set([...state.storyFlags, seenFlag(event.id)])];
+  if (event.buildingId) storyFlags = storyFlags.filter((flag) => flag !== buildingPendingFlag(event.buildingId));
   let next: GameState = { ...state, storyFlags };
 
   if (event.kind === 'character' && event.survivorId && !next.survivors.some((survivor) => survivor.id === event.survivorId)) {
