@@ -14,7 +14,10 @@ export function pendingLowHopeDepartureId(state: GameState): string | null {
 }
 
 export function advanceUntreatedRisk(state: GameState): GameState {
+  const countedFlag = `untreated_risk_counted:${state.day}`;
+  if (state.storyFlags.includes(countedFlag)) return state;
   const flags = new Set(state.storyFlags);
+  flags.add(countedFlag);
   const survivors = state.survivors.map((survivor) => {
     if (survivor.condition === 'dead' || survivor.condition === 'missing') return { ...survivor, untreatedDays: 0 };
     if (survivor.condition !== 'serious' && survivor.condition !== 'critical') {
@@ -55,7 +58,12 @@ export function deferMedicalCrisis(state: GameState, survivorId: string): GameSt
   };
 }
 
-export function queueLowHopeDeparture(state: GameState): GameState {
+export function queueLowHopeDeparture(input: GameState): GameState {
+  let state = input;
+  const existing = pendingLowHopeDepartureId(state);
+  if (existing && state.storyFlags.some((flag) => flag.startsWith('low_hope_departure_resolved:'))) {
+    state = clearLowHopeDeparture(state, existing);
+  }
   if (state.day < 6 || state.hope > 12 || pendingLowHopeDepartureId(state)) return state;
   const checkedFlag = `low_hope_departure_checked:${state.day}`;
   if (state.storyFlags.includes(checkedFlag)) return state;
