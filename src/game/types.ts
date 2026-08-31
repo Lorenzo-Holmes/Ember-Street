@@ -82,6 +82,8 @@ export interface GameState {
   buildings: Buildings;
   forecast: DayForecast;
   chapterComplete: boolean;
+  catStage?: 0 | 1 | 2 | 3;
+  catFedToday?: boolean;
   stats: NightStats;
   lastMessage: string;
 }
