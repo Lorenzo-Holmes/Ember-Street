@@ -18,6 +18,6 @@ describe('daily challenge', () => {
     const score = challengeScore(state);
     const code = encodeChallenge(state.seed, score);
     expect(decodeChallenge(code)).toEqual({ seed: state.seed, score });
-    expect(decodeChallenge(`${code.slice(0, -1)}0`)).not.toEqual({ seed: state.seed, score });
+    expect(decodeChallenge(`${code.slice(0, -1)}G`)).toBeNull();
   });
 });
