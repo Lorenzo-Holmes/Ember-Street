@@ -66,6 +66,7 @@ export interface GameState {
   nightRemainingMs: number;
   slots: Array<SupplyItem | null>;
   racks: SupplyKind[];
+  rackStock?: number[];
   queue: SupplyKind[];
   currentOrder: Order;
   orderIndex: number;
