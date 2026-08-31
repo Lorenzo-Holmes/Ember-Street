@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createV060InitialState } from '../src/game/v060/campaign';
-import { assignDayJob, canTakeDayAssignment, lockDayAssignments, previewDispatchConfirmation, reopenDayAssignments } from '../src/game/v060/dayManagement';
+import { assignDayJob, canTakeDayAssignment, lockDayAssignments, previewDispatchConfirmation, previewNightPreparation, reopenDayAssignments } from '../src/game/v060/dayManagement';
 import { previewMeal } from '../src/game/v060/food';
 import type { GameState, Survivor } from '../src/game/types';
 
@@ -37,6 +37,34 @@ describe('v0.6 daytime management', () => {
   it('makes rescued civilians increase cooking pressure', () => {
     const base = fivePersonState(); const meal = previewMeal({ ...base, civilianResidents: 3, dayAssignments: { ahe: 'cook' } });
     expect(meal.residentCount).toBe(8); expect(meal.coverage).toBeCloseTo(3.5 / 8); expect(meal.quality).toBe('struggling');
+  });
+  it('previews community defense and medical support instead of falsely reporting nobody is helping', () => {
+    const base = fivePersonState();
+    const state: GameState = {
+      ...base,
+      civilianResidents: 6,
+      buildings: { ...base.buildings, clinic: 2, watchPost: 1 },
+      storyFlags: [...base.storyFlags, 'community_rotation_unlocked'],
+      communityState: { activeResidents: 6, pendingResidents: 0, supportMode: 'defense', lastSupportDay: base.day },
+    };
+    const prep = previewNightPreparation(state);
+    expect(prep.defense).toBe('一般');
+    expect(prep.defenseSource).toBe('居民轮值');
+    expect(prep.medical).toBe('居民协助');
+    expect(prep.repair).toBe('无人');
+  });
+  it('previews focused community repair, while core staff still take precedence', () => {
+    const base = fivePersonState();
+    const residents: GameState = {
+      ...base,
+      civilianResidents: 6,
+      communityState: { activeResidents: 6, pendingResidents: 0, supportMode: 'repair', lastSupportDay: base.day },
+    };
+    expect(previewNightPreparation(residents).repair).toBe('居民协助');
+    const staffed = { ...residents, dayAssignments: { zhou: 'repair' as const, aliang: 'watch' as const } };
+    const prep = previewNightPreparation(staffed);
+    expect(prep.repair).toBe('有人值守');
+    expect(prep.defenseSource).toBe('核心值守');
   });
   it('previews every final dispatch and marks unassigned survivors as automatic rest before locking', () => {
     const state = { ...fivePersonState(), dayAssignments: { 'lin-xia': 'expedition' as const, ahe: 'cook' as const } };
