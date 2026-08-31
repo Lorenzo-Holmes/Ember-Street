@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialState, revealStreet, takeRack, tick } from '../src/game/engine';
+import { createInitialState, revealStreet, startNextNight, takeRack, tick } from '../src/game/engine';
 import { choiceAvailability, enterDusk, resolveNarrativeChoice, survivalSnapshot } from '../src/game/narrative';
+import type { Survivor } from '../src/game/types';
 
 function dayOneStreet() {
   let state = createInitialState(404);
@@ -49,5 +50,29 @@ describe('survival narrative loop', () => {
     expect(snapshot.medicine).toBe('短缺');
     expect(snapshot.defense).toBe('稳固');
     expect(snapshot.power).toBe('吃紧');
+  });
+
+  it('lets a risky search create a recoverable injury', () => {
+    const linXia: Survivor = {
+      id: 'lin-xia', name: '林夏', specialty: 'search', energy: 88, mood: 'bright', perk: '搜索者', trust: 0, injury: 'healthy',
+    };
+    const base = createInitialState(405);
+    const street = {
+      ...base,
+      phase: 'street' as const,
+      day: 2,
+      dayStep: 'event' as const,
+      activeEventId: 'day-2-pharmacy',
+      survivors: [linXia],
+      assignments: { 'lin-xia': 'rest' as const },
+      searchStationRepaired: true,
+      buildings: { ...base.buildings, searchStation: 1 },
+      resolvedEventIds: ['day-1-broken-lamp'],
+    };
+    const injured = resolveNarrativeChoice(street, 'enter');
+    expect(injured.survivors[0].injury).toBe('minor');
+    expect(injured.survivors[0].energy).toBeLessThan(88);
+    const nextNight = startNextNight(enterDusk(injured));
+    expect(nextNight.survivors[0].injury).toBe('healthy');
   });
 });
