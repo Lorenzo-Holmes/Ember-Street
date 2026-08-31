@@ -56,6 +56,10 @@ export function locationForId(id: string): ExpeditionLocation | undefined {
   return EXPEDITION_LOCATIONS.find((location) => location.id === id);
 }
 
+export function availableExpeditionLocations(state: GameState): ExpeditionLocation[] {
+  return EXPEDITION_LOCATIONS.filter((location) => isLocationUnlocked(state, location.id));
+}
+
 export function expeditionRiskScore(state: GameState, partyIds: string[], locationId: string): number {
   const location = locationForId(locationId);
   if (!location) return 99;
@@ -94,7 +98,7 @@ export function canStartExpedition(state: GameState, partyIds: string[], locatio
   if (!state.dayState.assignmentsLocked) return { allowed: false, reason: '请先锁定今日调遣' };
   if (state.expeditionState.departed) return { allowed: false, reason: '搜索队已经在外面' };
   if (state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天的搜索队已经执行过一次' };
-  if (state.day < location.unlockDay || !isLocationUnlocked(state, locationId)) return { allowed: false, reason: '这片区域还没有被发现' };
+  if (!isLocationUnlocked(state, locationId)) return { allowed: false, reason: '这片区域还没有被事件情报解锁' };
   if (partyIds.length < 1 || partyIds.length > 2) return { allowed: false, reason: '探索队必须是 1–2 人' };
   if (new Set(partyIds).size !== partyIds.length) return { allowed: false, reason: '同一个人不能重复派遣' };
   for (const id of partyIds) {
