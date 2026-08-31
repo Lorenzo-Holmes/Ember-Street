@@ -14,6 +14,7 @@ export function canTakeDayAssignment(state: GameState, survivorId: string, job: 
   const survivor = state.survivors.find((item) => item.id === survivorId);
   if (!survivor) return { allowed: false, reason: '人物不在街区' };
   if (!survivorAvailableForDay(survivor)) return { allowed: false, reason: survivor.condition === 'missing' ? '人物仍然失踪' : survivor.condition === 'dead' ? '人物已经死亡' : '人物情况危重' };
+  if (job === 'expedition' && state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天的搜索队已经执行过一次' };
   if (job === 'expedition' && (survivor.condition === 'serious' || survivor.energy < 15)) return { allowed: false, reason: survivor.condition === 'serious' ? '重伤人物不能正常外出' : '精力过低，无法出发' };
   const building = JOB_BUILDING[job];
   if (building && state.buildings[building] <= 0) return { allowed: false, reason: '对应设施尚未修复' };
