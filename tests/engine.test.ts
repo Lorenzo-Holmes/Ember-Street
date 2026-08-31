@@ -28,6 +28,25 @@ describe('Ember Street first chapter', () => {
     expect(state.hope).toBeGreaterThan(8);
   });
 
+  it('keeps each rack stable for a three-item batch', () => {
+    let state = createInitialState(99);
+    const original = state.racks[0];
+    expect(state.rackStock?.[0]).toBe(3);
+    state = takeRack(state, 0);
+    expect(state.racks[0]).toBe(original);
+    expect(state.rackStock?.[0]).toBe(2);
+    state = takeRack(state, 0);
+    expect(state.racks[0]).toBe(original);
+    expect(state.rackStock?.[0]).toBe(1);
+    state = takeRack(state, 0);
+    expect(state.rackStock?.[0]).toBe(3);
+  });
+
+  it('gives the first request enough time to read and react', () => {
+    const state = createInitialState(7);
+    expect(state.currentOrder.maxPatienceMs).toBeGreaterThanOrEqual(30_000);
+  });
+
   it('repairs the search station and recruits Lin Xia', () => {
     let state = revealStreet(firstDawn());
     state = { ...state, parts: 10 };
