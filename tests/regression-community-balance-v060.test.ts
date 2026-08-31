@@ -16,6 +16,7 @@ describe('v0.6 community burden regression', () => {
 
     state = {
       ...state,
+      storyFlags: [...state.storyFlags, 'community_rotation_unlocked'],
       communityState: { pendingResidents: 0, activeResidents: 6, supportMode: null },
     };
     const logistics = selectCommunitySupportMode(state, 'logistics');
