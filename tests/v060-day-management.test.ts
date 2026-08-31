@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createV060InitialState } from '../src/game/v060/campaign';
-import { assignDayJob, canTakeDayAssignment, lockDayAssignments, reopenDayAssignments } from '../src/game/v060/dayManagement';
+import { assignDayJob, canTakeDayAssignment, lockDayAssignments, previewDispatchConfirmation, reopenDayAssignments } from '../src/game/v060/dayManagement';
 import { previewMeal } from '../src/game/v060/food';
 import type { GameState, Survivor } from '../src/game/types';
 
@@ -37,6 +37,30 @@ describe('v0.6 daytime management', () => {
   it('makes rescued civilians increase cooking pressure', () => {
     const base = fivePersonState(); const meal = previewMeal({ ...base, civilianResidents: 3, dayAssignments: { ahe: 'cook' } });
     expect(meal.residentCount).toBe(8); expect(meal.coverage).toBeCloseTo(3.5 / 8); expect(meal.quality).toBe('struggling');
+  });
+  it('previews every final dispatch and marks unassigned survivors as automatic rest before locking', () => {
+    const state = { ...fivePersonState(), dayAssignments: { 'lin-xia': 'expedition' as const, ahe: 'cook' as const } };
+    const preview = previewDispatchConfirmation(state);
+    expect(preview.manuallyAssigned).toBe(2);
+    expect(preview.autoResting).toBe(3);
+    expect(preview.expeditionCount).toBe(1);
+    expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('探索');
+    expect(preview.entries.find((entry) => entry.survivorId === 'zhou')?.label).toBe('休息 · 自动安排');
+    expect(state.dayState.assignmentsLocked).toBe(false);
+  });
+  it('keeps critical and already committed survivors out of automatic rest in the confirmation preview', () => {
+    const base = fivePersonState();
+    const state: GameState = {
+      ...base,
+      survivors: FIVE.map((survivor) => survivor.id === 'cheng' ? { ...survivor, condition: 'critical' as const } : survivor),
+      dayState: { ...base.dayState, committedSurvivorIds: ['lin-xia'] },
+      dayAssignments: { 'lin-xia': 'expedition' },
+    };
+    const preview = previewDispatchConfirmation(state);
+    expect(preview.committed).toBe(1);
+    expect(preview.autoResting).toBe(3);
+    expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('探索 · 已执行');
+    expect(preview.entries.find((entry) => entry.survivorId === 'cheng')?.label).toBe('危重 · 不可派遣');
   });
   it('locks daytime jobs and refuses dead, serious, or committed survivors', () => {
     let state = assignDayJob(fivePersonState(), 'lin-xia', 'expedition'); state = lockDayAssignments(state);
