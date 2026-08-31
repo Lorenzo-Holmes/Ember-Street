@@ -8,6 +8,7 @@ import { currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, locat
 import { resolveMeal } from './food';
 import { resolveEnding } from './endings';
 import { recordDeath, recoverMissing } from './memorial';
+import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from './mortality';
 
 const STARTERS = ['lin-xia', 'zhou', 'ahe'];
 const JOIN_DAYS: Record<number, string> = { 6: 'cheng', 12: 'aliang', 18: 'xiaoman' };
@@ -56,7 +57,7 @@ export function createV060InitialState(seed = Date.now()): GameState {
 }
 
 export function upgradeSaveToV060(input: GameState): GameState {
-  if (input.storyFlags.includes('v060_started')) return { ...input, communityState: normalizeCommunityState(input.communityState, input.civilianResidents) };
+  if (input.storyFlags.includes('v060_started')) return { ...input, communityState: normalizeCommunityState(input.communityState, input.civilianResidents), survivors: input.survivors.map(normalizeSurvivor) };
   const survivors = input.survivors.length ? input.survivors.map(normalizeSurvivor) : starterRoster();
   return {
     ...input,
@@ -120,7 +121,12 @@ function resolveMedicalWork(state: GameState): GameState {
   const lightCandidates = candidates.filter((s) => !treated.has(s.id) && (s.condition === 'minor' || s.condition === 'fatigued')).slice(0, communityCapacity);
   for (const survivor of lightCandidates) treated.add(survivor.id);
   if (!treated.size) return state;
-  return { ...state, inventory: { ...state.inventory, medicine }, survivors: state.survivors.map((s) => treated.has(s.id) ? { ...s, condition: medicalStep(s.condition) } : s) };
+  const treatedState: GameState = {
+    ...state,
+    inventory: { ...state.inventory, medicine },
+    survivors: state.survivors.map((s) => treated.has(s.id) ? { ...s, condition: medicalStep(s.condition) } : s),
+  };
+  return clearUntreatedRisk(treatedState, treated);
 }
 
 function resolveRadioWork(state: GameState): GameState {
@@ -149,6 +155,7 @@ export function finalizeDay(state: GameState): GameState {
   next = resolveMedicalWork(next);
   next = resolveRadioWork(next);
   next = resolveMeal(next);
+  next = advanceUntreatedRisk(next);
   return { ...next, phase: 'night', nightState: createDefaultNightState(), pendingCheck: null, lastMessage: `NIGHT ${next.day} · 今日岗位已经锁定。` };
 }
 
@@ -276,5 +283,6 @@ export function advanceCampaignDay(state: GameState): GameState {
   };
   next = unlockNextDayAssignments(next);
   next = advanceCommunityDay(next);
+  next = queueLowHopeDeparture(next);
   return recruitForDay(next, day);
 }
