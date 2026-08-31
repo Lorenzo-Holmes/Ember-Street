@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { challengeScore, createDailyChallenge, encodeChallenge } from './game/challenge';
 import { SUPPLY_META } from './game/config';
 import { continueChapter } from './game/continue';
@@ -103,8 +103,7 @@ export default function App() {
   const setChallenge = (next: GameState | null) => { challengeRef.current = next; setChallengeRaw(next); };
   useEffect(() => { stateRef.current = state; saveGame(state); }, [state]);
   useEffect(() => {
-    if (challenge) return;
-    if (state.phase !== 'night') return;
+    if (challenge || state.phase !== 'night') return;
     let previous = performance.now();
     const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; setState(tick(stateRef.current, elapsed)); }, 250);
     return () => window.clearInterval(id);
@@ -115,7 +114,18 @@ export default function App() {
     const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; const current = challengeRef.current; if (current) setChallenge(tick(current, elapsed)); }, 250);
     return () => window.clearInterval(id);
   }, [challenge?.phase]);
-  if (challenge) return challenge.phase === 'night' ? <div className="app-root"><NightScene state={challenge} setState={setChallenge}/></div> : <div className="app-root"><ChallengeSummary state={challenge} onRetry={() => setChallenge(createDailyChallenge())} onBack={() => setChallenge(null)}/></div>;
-  const screen = useMemo(() => state.phase === 'summary' ? <Summary state={state} setState={setState}/> : state.phase === 'street' ? <StreetScene state={state} setState={setState} onDaily={() => setChallenge(createDailyChallenge())} onShare={() => downloadCampaignShareCard(state)}/> : <NightScene state={state} setState={setState}/>, [state]);
-  return <div className="app-root">{screen}<button className="reset" onClick={() => { if (window.confirm('重新开始余烬长街？当前本地进度会清除。')) { clearSave(); setState(createInitialState(20260831)); } }}>重置</button></div>;
+
+  const campaignScreen = state.phase === 'summary'
+    ? <Summary state={state} setState={setState}/>
+    : state.phase === 'street'
+      ? <StreetScene state={state} setState={setState} onDaily={() => setChallenge(createDailyChallenge())} onShare={() => downloadCampaignShareCard(state)}/>
+      : <NightScene state={state} setState={setState}/>;
+
+  if (challenge) {
+    return challenge.phase === 'night'
+      ? <div className="app-root"><NightScene state={challenge} setState={setChallenge}/></div>
+      : <div className="app-root"><ChallengeSummary state={challenge} onRetry={() => setChallenge(createDailyChallenge())} onBack={() => setChallenge(null)}/></div>;
+  }
+
+  return <div className="app-root">{campaignScreen}<button className="reset" onClick={() => { if (window.confirm('重新开始余烬长街？当前本地进度会清除。')) { clearSave(); setState(createInitialState(20260831)); } }}>重置</button></div>;
 }
