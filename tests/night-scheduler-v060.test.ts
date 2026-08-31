@@ -3,7 +3,7 @@ import { rollPendingCheck } from '../src/game/dice';
 import { SURVIVOR_ROSTER } from '../src/game/progression';
 import { createV060InitialState } from '../src/game/v060/campaign';
 import { ALL_V060_NIGHT_EVENTS, nightEventById } from '../src/game/v060/nightEvents';
-import { acceptNightCheckResult, chooseNightOption, currentNightEvent, eligibleEvent, nextNightEventId, scheduleNight } from '../src/game/v060/nightScheduler';
+import { acceptNightCheckResult, chooseNightOption, currentNightEvent, eligibleEvent, nextNightEventId, nightCheckContext, scheduleNight } from '../src/game/v060/nightScheduler';
 import type { GameState } from '../src/game/types';
 
 function stateFor(day: number, seed = 123456): GameState {
@@ -52,6 +52,51 @@ describe('v0.6 night scheduler', () => {
     const withoutRadio = { ...stateFor(12, 1212), buildings: { ...stateFor(12, 1212).buildings, radio: 0 } };
     expect(eligibleEvent(withoutRadio, radioVoice)).toBe(false);
     expect(eligibleEvent({ ...withoutRadio, buildings: { ...withoutRadio.buildings, radio: 1 } }, radioVoice)).toBe(true);
+  });
+
+  it('lets an active defense rotation replace the unmanned-watch disadvantage, but keeps it weaker than a core watch survivor', () => {
+    const verify = nightEventById('gate-knocking')!.choices.find((choice) => choice.id === 'verify')!;
+    const base = stateFor(12, 12120);
+    const unmanned = nightCheckContext(base, verify);
+    expect(unmanned.actor).toBeUndefined();
+    expect(unmanned.mode).toBe('disadvantage');
+    expect(unmanned.modifiers).toContainEqual({ label: '无人值守', value: -2 });
+
+    const community: GameState = {
+      ...base,
+      civilianResidents: 6,
+      communityState: { pendingResidents: 0, activeResidents: 6, supportMode: 'defense', lastSupportDay: base.day },
+    };
+    const residents = nightCheckContext(community, verify);
+    expect(residents.actor).toBeUndefined();
+    expect(residents.mode).toBe('normal');
+    expect(residents.modifiers).toContainEqual({ label: '居民守备轮值', value: -1 });
+    expect(residents.modifiers.some((modifier) => modifier.label === '无人值守')).toBe(false);
+
+    const aliang = SURVIVOR_ROSTER.find((survivor) => survivor.id === 'aliang')!;
+    const staffed: GameState = { ...community, survivors: [...community.survivors, { ...aliang }], dayAssignments: { aliang: 'watch' } };
+    const core = nightCheckContext(staffed, verify);
+    expect(core.actor?.id).toBe('aliang');
+    expect(core.mode).toBe('normal');
+    expect(core.modifiers).toContainEqual({ label: '人物专长', value: 1 });
+    expect(core.modifiers.some((modifier) => modifier.label === '居民守备轮值')).toBe(false);
+  });
+
+  it('lets an active repair rotation cover infrastructure checks when no core repair survivor is available', () => {
+    const repair = nightEventById('generator-drop')!.choices.find((choice) => choice.id === 'repair')!;
+    const base = stateFor(12, 12121);
+    const withoutRepairer: GameState = { ...base, survivors: base.survivors.filter((survivor) => survivor.id !== 'zhou') };
+    expect(nightCheckContext(withoutRepairer, repair).mode).toBe('disadvantage');
+
+    const community: GameState = {
+      ...withoutRepairer,
+      civilianResidents: 6,
+      communityState: { pendingResidents: 0, activeResidents: 6, supportMode: 'repair', lastSupportDay: base.day },
+    };
+    const residents = nightCheckContext(community, repair);
+    expect(residents.actor).toBeUndefined();
+    expect(residents.mode).toBe('normal');
+    expect(residents.modifiers).toContainEqual({ label: '居民维修轮值', value: -1 });
   });
 
   it.each([10, 20, 29])('forces a horde on DAY %i', (day) => {
