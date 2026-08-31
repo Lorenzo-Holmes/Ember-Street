@@ -3,7 +3,7 @@ import { createPendingCheck } from '../dice';
 import { nextRandom } from '../rng';
 import type { BuildingId, CheckModifier, CheckOutcome, GameState, Role, Survivor, SurvivorCondition } from '../types';
 import { nightEventWeight } from './causalNight';
-import { communityDefenseSupport } from './community';
+import { communityDefenseSupport, communitySupportSummary } from './community';
 import { markMissing, recordDeath } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, loseCommunityResidents, medicalCrisisFlag } from './mortality';
 import { mortalityEventById, pendingMortalityEventIds } from './mortalityEvents';
@@ -190,15 +190,25 @@ function buildingModifier(state: GameState, role: Role | undefined): CheckModifi
   const level = state.buildings[id]; return level >= 3 ? { label: '设施 Lv3', value: 2 } : level >= 2 ? { label: '设施 Lv2', value: 1 } : null;
 }
 
-function checkContext(state: GameState, choice: NightChoice): { actor?: Survivor; modifiers: CheckModifier[]; mode: 'normal' | 'advantage' | 'disadvantage' } {
+function communityRoleSupport(state: GameState, role: Role | undefined): CheckModifier | null {
+  if (role !== 'watch' && role !== 'repair') return null;
+  const support = communitySupportSummary(state);
+  if (role === 'watch' && support.supportMode === 'defense' && support.activeResidents >= 5) return { label: '居民守备轮值', value: -1 };
+  if (role === 'repair' && support.supportMode === 'repair' && support.activeResidents >= 5) return { label: '居民维修轮值', value: -1 };
+  return null;
+}
+
+export function nightCheckContext(state: GameState, choice: NightChoice): { actor?: Survivor; modifiers: CheckModifier[]; mode: 'normal' | 'advantage' | 'disadvantage' } {
   const role = choice.check?.role; const actor = actorForRole(state, role); const modifiers: CheckModifier[] = [];
   if (actor && role && actor.specialty === role) modifiers.push({ label: '人物专长', value: 1 });
   if (actor && (actor.trust ?? 0) >= 2) modifiers.push({ label: '信任', value: 1 });
   if (actor?.condition === 'fatigued' || actor?.condition === 'minor') modifiers.push({ label: '状态不佳', value: -1 });
   if (actor?.condition === 'serious' || actor?.condition === 'critical') modifiers.push({ label: '伤势严重', value: -2 });
   const facility = buildingModifier(state, role); if (facility) modifiers.push(facility);
-  if (!actor) modifiers.push({ label: '无人值守', value: -2 });
-  return { actor, modifiers, mode: !actor ? 'disadvantage' : choice.check?.mode ?? 'normal' };
+  const community = actor ? null : communityRoleSupport(state, role);
+  if (community) modifiers.push(community);
+  if (!actor && !community) modifiers.push({ label: '无人值守', value: -2 });
+  return { actor, modifiers, mode: !actor && !community ? 'disadvantage' : choice.check?.mode ?? 'normal' };
 }
 
 export function canAffordNightChoice(state: GameState, choice: NightChoice): boolean {
@@ -344,7 +354,7 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
   const before = state;
   const paid = applyCost(state, choice);
   if (choice.check) {
-    const context = checkContext(paid, choice);
+    const context = nightCheckContext(paid, choice);
     return createPendingCheck(paid, { source: 'night', eventId: event.id, choiceId: choice.id, label: choice.check.label, actorId: context.actor?.id, mode: context.mode, modifiers: context.modifiers });
   }
   let next = applyEffect(paid, choice.direct, undefined, event.title);
