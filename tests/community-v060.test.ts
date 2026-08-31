@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { advanceCampaignDay, createV060InitialState, finalizeDay } from '../src/game/v060/campaign';
+import { pendingCampaignEvent, resolveCampaignEvent } from '../src/game/v060/campaignEvents';
 import {
   communityCookingSupport,
   communityDefenseSupport,
   communityRepairSupport,
+  communitySupportSummary,
   rescueCommunityResidents,
   selectCommunitySupportMode,
 } from '../src/game/v060/community';
@@ -19,6 +21,7 @@ function withCommunity(activeResidents: number, pendingResidents = 0): GameState
     civilianResidents: activeResidents + pendingResidents,
     communityState: { pendingResidents, activeResidents, supportMode: null },
     inventory: { ...state.inventory, ration: 50, power: 60 },
+    storyFlags: activeResidents >= 5 ? [...state.storyFlags, 'community_rotation_unlocked'] : state.storyFlags,
   };
 }
 
@@ -44,12 +47,19 @@ describe('v0.6 community support', () => {
     expect(state.communityState.supportMode).toBeNull();
   });
 
-  it('unlocks the duty roster at five active residents', () => {
+  it('requires the fixed duty-roster event before five residents unlock rotation', () => {
     const start = { ...withCommunity(0, 5), day: 1 };
-    const next = advanceCampaignDay(start);
+    let next = advanceCampaignDay(start);
     expect(next.communityState.activeResidents).toBe(5);
+    expect(next.storyFlags).not.toContain('community_rotation_unlocked');
+    expect(selectCommunitySupportMode(next, 'repair').communityState.supportMode).toBeNull();
+
+    expect(pendingCampaignEvent(next)?.id).toBe('community-2');
+    next = resolveCampaignEvent(next, 'community-2');
+    expect(pendingCampaignEvent(next)?.id).toBe('community-5');
+    next = resolveCampaignEvent(next, 'community-5');
     expect(next.storyFlags).toContain('community_rotation_unlocked');
-    expect(next.storyFlags).toContain('community_event_duty_roster');
+
     const selected = selectCommunitySupportMode(next, 'repair');
     expect(selected.communityState.supportMode).toBe('repair');
     expect(selected.communityState.lastSupportDay).toBe(next.day);
@@ -88,6 +98,15 @@ describe('v0.6 community support', () => {
     const state = withCommunity(10);
     expect(state.survivors.some((s) => s.id === 'community-resident-1')).toBe(false);
     expect(canTakeDayAssignment(state, 'community-resident-1', 'expedition').allowed).toBe(false);
+  });
+
+  it('community summary exposes visible support contributions', () => {
+    const state = selectCommunitySupportMode({ ...withCommunity(8), buildings: { ...withCommunity(8).buildings, shelter: 3, workshop: 3, clinic: 3, watchPost: 3 } }, 'logistics');
+    const summary = communitySupportSummary(state);
+    expect(summary.activeResidents).toBe(8);
+    expect(summary.supportModeLabel).toBe('后勤');
+    expect(summary.cookingCapacity).toBeGreaterThan(0);
+    expect(summary.medicalAssist).toBe(2);
   });
 
   it('community support functions and final defense stay clamped', () => {
