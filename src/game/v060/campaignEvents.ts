@@ -82,7 +82,8 @@ export function resolveCampaignEvent(state: GameState, eventId: string): GameSta
   const event = CAMPAIGN_FIXED_EVENTS.find((candidate) => candidate.id === eventId);
   if (!event || !eventEligible(state, event)) return state;
   let storyFlags = [...new Set([...state.storyFlags, seenFlag(event.id)])];
-  if (event.buildingId) storyFlags = storyFlags.filter((flag) => flag !== buildingPendingFlag(event.buildingId));
+  const resolvedBuildingId = event.buildingId;
+  if (resolvedBuildingId) storyFlags = storyFlags.filter((flag) => flag !== buildingPendingFlag(resolvedBuildingId));
   let next: GameState = { ...state, storyFlags };
 
   if (event.kind === 'location' && event.locationId) {
