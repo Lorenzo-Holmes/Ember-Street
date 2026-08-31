@@ -48,5 +48,11 @@ export function createDefaultCampaignStats(): CampaignStats {
 export function normalizeSurvivor(survivor: Survivor): Survivor {
   let condition: SurvivorCondition = survivor.condition ?? (survivor.energy < 40 ? 'fatigued' : 'healthy');
   if (!['healthy', 'fatigued', 'minor', 'serious', 'critical', 'missing', 'dead'].includes(condition)) condition = 'healthy';
-  return { ...survivor, trust: survivor.trust ?? 0, trait: survivor.trait ?? survivor.perk, condition };
+  return {
+    ...survivor,
+    trust: survivor.trust ?? 0,
+    trait: survivor.trait ?? survivor.perk,
+    condition,
+    untreatedDays: Math.max(0, Math.floor(Number(survivor.untreatedDays) || 0)),
+  };
 }
