@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { rollPendingCheck } from '../src/game/dice';
 import { promoteV2ToV3 } from '../src/game/storage/migrations';
+import { createV060InitialState } from '../src/game/v060/campaign';
+import { chooseNightOption, currentNightEvent, scheduleNight } from '../src/game/v060/nightScheduler';
 
 describe('v0.5 -> v0.6 save migration', () => {
   it('salvages seven-slot and rack resources into the v0.6 inventory', () => {
@@ -24,5 +27,26 @@ describe('v0.5 -> v0.6 save migration', () => {
       assignments: { 'legacy-scout': 'search' }, buildings: { searchStation: 1, workshop: 0, clinic: 0, watchPost: 0, shelter: 1, radio: 0 },
     })!;
     expect(migrated.dayAssignments['legacy-scout']).toBe('expedition'); expect(migrated.survivors[0]?.condition).toBe('minor'); expect(migrated.survivors[0]?.trust).toBe(0); expect(migrated.memorials).toEqual([]);
+  });
+});
+
+describe('v0.6 save resume', () => {
+  it('preserves night phase, event schedule, committed dice, and rng state across JSON reload', () => {
+    let state = createV060InitialState(991122);
+    state = scheduleNight({ ...state, day: 12, phase: 'night', buildings: { searchStation: 2, workshop: 2, clinic: 2, watchPost: 2, shelter: 2, radio: 2 } });
+    const event = currentNightEvent(state)!;
+    const checked = event.choices.find((choice) => Boolean(choice.check))!;
+    state = chooseNightOption(state, checked.id);
+    state = rollPendingCheck(state);
+    const dice = state.pendingCheck?.dice;
+    const rng = state.rngState;
+    const schedule = [...state.nightState.scheduledEventIds];
+
+    const restored = promoteV2ToV3(JSON.parse(JSON.stringify(state)))!;
+    expect(restored.phase).toBe('night');
+    expect(restored.pendingCheck?.dice).toEqual(dice);
+    expect(restored.rngState).toBe(rng);
+    expect(restored.nightState.scheduledEventIds).toEqual(schedule);
+    expect(rollPendingCheck(restored).pendingCheck?.dice).toEqual(dice);
   });
 });
