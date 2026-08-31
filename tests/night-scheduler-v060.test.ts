@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { rollPendingCheck } from '../src/game/dice';
+import { SURVIVOR_ROSTER } from '../src/game/progression';
 import { createV060InitialState } from '../src/game/v060/campaign';
 import { ALL_V060_NIGHT_EVENTS, nightEventById } from '../src/game/v060/nightEvents';
-import { acceptNightCheckResult, chooseNightOption, currentNightEvent, nextNightEventId, scheduleNight } from '../src/game/v060/nightScheduler';
+import { acceptNightCheckResult, chooseNightOption, currentNightEvent, eligibleEvent, nextNightEventId, scheduleNight } from '../src/game/v060/nightScheduler';
 import type { GameState } from '../src/game/types';
 
 function stateFor(day: number, seed = 123456): GameState {
@@ -15,26 +16,64 @@ describe('v0.6 night scheduler', () => {
     expect(ALL_V060_NIGHT_EVENTS.length).toBeGreaterThan(20);
     for (const event of ALL_V060_NIGHT_EVENTS) expect(event.choices).toHaveLength(3);
   });
+
   it('is deterministic for the same state and seed', () => {
     const a = scheduleNight(stateFor(17, 99117)); const b = scheduleNight(stateFor(17, 99117));
     expect(a.nightState.scheduledEventIds).toEqual(b.nightState.scheduledEventIds); expect(a.nightState.emergencyEventIds).toEqual(b.nightState.emergencyEventIds); expect(a.nightState.hordeActive).toBe(b.nightState.hordeActive); expect(a.rngState).toBe(b.rngState);
   });
+
+  it('keeps Cheng events ineligible on DAY 4 until Cheng is actually present', () => {
+    const withoutCheng = stateFor(4, 4404);
+    const fever = nightEventById('fever-resident')!;
+    const chengEvents = ALL_V060_NIGHT_EVENTS.filter((event) => event.requiredSurvivorIds?.includes('cheng'));
+    expect(chengEvents.map((event) => event.id)).toContain('fever-resident');
+    for (const event of chengEvents) expect(eligibleEvent(withoutCheng, event)).toBe(false);
+
+    const cheng = SURVIVOR_ROSTER.find((survivor) => survivor.id === 'cheng')!;
+    const withCheng = { ...withoutCheng, survivors: [...withoutCheng.survivors, { ...cheng }] };
+    expect(eligibleEvent(withCheng, fever)).toBe(true);
+    expect(eligibleEvent({ ...withCheng, survivors: withCheng.survivors.map((survivor) => survivor.id === 'cheng' ? { ...survivor, condition: 'missing' as const } : survivor) }, fever)).toBe(false);
+  });
+
+  it('keeps military-burst out until Xiaoman is present, while generic watch events do not name Aliang', () => {
+    const military = nightEventById('military-burst')!;
+    const withoutXiaoman = stateFor(18, 1818);
+    expect(eligibleEvent(withoutXiaoman, military)).toBe(false);
+    const xiaoman = SURVIVOR_ROSTER.find((survivor) => survivor.id === 'xiaoman')!;
+    expect(eligibleEvent({ ...withoutXiaoman, survivors: [...withoutXiaoman.survivors, { ...xiaoman }] }, military)).toBe(true);
+
+    const eastFootsteps = nightEventById('east-footsteps')!;
+    expect(JSON.stringify(eastFootsteps)).not.toContain('阿梁');
+    expect(eastFootsteps.requiredSurvivorIds).toBeUndefined();
+  });
+
+  it('honors building requirements through the same eligibility function', () => {
+    const radioVoice = nightEventById('radio-voice')!;
+    const withoutRadio = { ...stateFor(12, 1212), buildings: { ...stateFor(12, 1212).buildings, radio: 0 } };
+    expect(eligibleEvent(withoutRadio, radioVoice)).toBe(false);
+    expect(eligibleEvent({ ...withoutRadio, buildings: { ...withoutRadio.buildings, radio: 1 } }, radioVoice)).toBe(true);
+  });
+
   it.each([10, 20, 29])('forces a horde on DAY %i', (day) => {
     const state = scheduleNight(stateFor(day, 7000 + day)); expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(6);
     expect(state.nightState.scheduledEventIds.map((id) => nightEventById(id)).some((event) => event?.category === 'horde')).toBe(true);
   });
+
   it('gives milestone nights extra emergencies without consuming six main slots', () => {
     const day10 = scheduleNight(stateFor(10, 1010)); expect(day10.nightState.scheduledEventIds).toHaveLength(6); expect(day10.nightState.emergencyEventIds).toHaveLength(1);
     const day29 = scheduleNight(stateFor(29, 2929)); expect(day29.nightState.scheduledEventIds).toHaveLength(6); expect(day29.nightState.emergencyEventIds.length).toBeGreaterThanOrEqual(2); expect(day29.nightState.emergencyEventIds.length).toBeLessThanOrEqual(3);
   });
+
   it('never creates a playable night on DAY 30', () => {
     const state = scheduleNight(stateFor(30, 3030)); expect(state.phase).toBe('ending'); expect(state.nightState.eventTotal).toBe(0); expect(state.nightState.scheduledEventIds).toEqual([]); expect(state.nightState.currentEventId).toBeNull();
   });
+
   it('inserts emergency events without consuming main slots', () => {
     let state = scheduleNight(stateFor(10, 5010)); expect(state.nightState.emergencyEventIds).toHaveLength(1);
     for (let i = 0; i < 2; i += 1) { const event = currentNightEvent(state)!; const safe = event.choices.find((choice) => choice.strategy === 'consequence')!; state = chooseNightOption(state, safe.id); }
     expect(nextNightEventId(state)).toBe(state.nightState.emergencyEventIds[0]); expect(currentNightEvent(state)?.category).toBe('emergency'); expect(state.nightState.eventIndex).toBe(2);
   });
+
   it('resolves a checked option through deterministic 2D6 and cannot reroll by refresh', () => {
     let state = scheduleNight(stateFor(12, 81212)); const event = currentNightEvent(state)!; const checked = event.choices.find((choice) => Boolean(choice.check))!;
     state = chooseNightOption(state, checked.id); expect(state.pendingCheck?.eventId).toBe(event.id); expect(state.pendingCheck?.dice).toBeUndefined();

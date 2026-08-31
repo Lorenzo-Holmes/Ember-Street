@@ -2,6 +2,7 @@ import { createDefaultCampaignStats, createDefaultDayState, createDefaultExpedit
 import { SURVIVOR_ROSTER, forecastFor } from '../progression';
 import { nextRandom, normalizeSeed } from '../rng';
 import type { CheckOutcome, FinalHordeResult, GameState, Survivor, SurvivorCondition } from '../types';
+import { advanceCommunityDay, communityMedicalSupport, communityRepairSupport, createDefaultCommunityState, normalizeCommunityState, rescueCommunityResidents } from './community';
 import { lockDayAssignments, survivorAvailableForDay, unlockNextDayAssignments } from './dayManagement';
 import { currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, locationForId, resolveExpeditionOutcome, retreatExpedition } from './expedition';
 import { resolveMeal } from './food';
@@ -34,6 +35,7 @@ export function createV060InitialState(seed = Date.now()): GameState {
     storyFlags: ['v060_started'],
     mainLightStage: 1,
     civilianResidents: 0,
+    communityState: createDefaultCommunityState(),
     dayAssignments: {},
     dayState: createDefaultDayState(),
     expeditionState: createDefaultExpeditionState(),
@@ -54,7 +56,7 @@ export function createV060InitialState(seed = Date.now()): GameState {
 }
 
 export function upgradeSaveToV060(input: GameState): GameState {
-  if (input.storyFlags.includes('v060_started')) return input;
+  if (input.storyFlags.includes('v060_started')) return { ...input, communityState: normalizeCommunityState(input.communityState, input.civilianResidents) };
   const survivors = input.survivors.length ? input.survivors.map(normalizeSurvivor) : starterRoster();
   return {
     ...input,
@@ -66,6 +68,7 @@ export function upgradeSaveToV060(input: GameState): GameState {
       workshop: Math.min(3, input.buildings.workshop), clinic: Math.min(3, input.buildings.clinic),
       watchPost: Math.min(3, input.buildings.watchPost), radio: Math.min(3, input.buildings.radio),
     },
+    communityState: normalizeCommunityState(input.communityState, input.civilianResidents),
     dayAssignments: {},
     dayState: createDefaultDayState(),
     expeditionState: createDefaultExpeditionState(),
@@ -113,6 +116,9 @@ function resolveMedicalWork(state: GameState): GameState {
     if (survivor.condition === 'serious' || survivor.condition === 'critical') medicine -= 1;
     treated.add(survivor.id);
   }
+  const communityCapacity = communityMedicalSupport(state);
+  const lightCandidates = candidates.filter((s) => !treated.has(s.id) && (s.condition === 'minor' || s.condition === 'fatigued')).slice(0, communityCapacity);
+  for (const survivor of lightCandidates) treated.add(survivor.id);
   if (!treated.size) return state;
   return { ...state, inventory: { ...state.inventory, medicine }, survivors: state.survivors.map((s) => treated.has(s.id) ? { ...s, condition: medicalStep(s.condition) } : s) };
 }
@@ -123,16 +129,14 @@ function resolveRadioWork(state: GameState): GameState {
   const flags = new Set(state.storyFlags);
   flags.add(`radio_contact_day:${state.day}`);
   const radioDays = [...flags].filter((value) => value.startsWith('radio_contact_day:')).length;
-  let rescued = state.campaignStats.rescued;
-  let civilianResidents = state.civilianResidents;
   if (state.buildings.radio >= 2 && radioDays >= 2) flags.add('external_contact');
   if (state.buildings.radio >= 3 && radioDays >= 4) flags.add('military_contact');
+  let next: GameState = { ...state, storyFlags: [...flags] };
   if (state.buildings.radio >= 2 && radioDays % 3 === 0 && !flags.has(`radio_rescue:${state.day}`)) {
     flags.add(`radio_rescue:${state.day}`);
-    rescued += 1;
-    civilianResidents += 1;
+    next = rescueCommunityResidents({ ...next, storyFlags: [...flags], campaignStats: { ...state.campaignStats, rescued: state.campaignStats.rescued + 1 } }, 1, 1);
   }
-  return { ...state, storyFlags: [...flags], civilianResidents, campaignStats: { ...state.campaignStats, rescued }, hope: clamp(state.hope + 1) };
+  return next;
 }
 
 export function finalizeDay(state: GameState): GameState {
@@ -141,7 +145,7 @@ export function finalizeDay(state: GameState): GameState {
   next = spendEnergyForJobs(next);
   const watch = Object.values(next.dayAssignments).filter((job) => job === 'watch').length;
   const repair = Object.values(next.dayAssignments).filter((job) => job === 'repair').length;
-  next = { ...next, defense: clamp(next.defense + watch * 4 + repair * 2) };
+  next = { ...next, defense: clamp(next.defense + watch * 4 + repair * 2 + communityRepairSupport(next)) };
   next = resolveMedicalWork(next);
   next = resolveRadioWork(next);
   next = resolveMeal(next);
@@ -175,13 +179,11 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
   if (event?.tags.includes('rescue') && outcome !== 'failure') {
     const rescueFlag = `expedition_rescue:${state.day}:${event.id}`;
     if (!next.storyFlags.includes(rescueFlag)) {
-      next = {
+      next = rescueCommunityResidents({
         ...next,
         storyFlags: [...next.storyFlags, rescueFlag],
-        civilianResidents: next.civilianResidents + 1,
         campaignStats: { ...next.campaignStats, rescued: next.campaignStats.rescued + 1 },
-        hope: clamp(next.hope + 1),
-      };
+      }, 1, 1);
     }
   }
   if (state.expeditionState.locationId === 'subway' && outcome !== 'failure') next = { ...next, storyFlags: [...new Set([...next.storyFlags, 'subway_exit_known', 'evacuation_route_known'])] };
@@ -273,5 +275,6 @@ export function advanceCampaignDay(state: GameState): GameState {
     lastMessage: `DAY ${day} · 新的一天开始了。`,
   };
   next = unlockNextDayAssignments(next);
+  next = advanceCommunityDay(next);
   return recruitForDay(next, day);
 }

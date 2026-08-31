@@ -1,4 +1,4 @@
-import type { CheckOutcome, Inventory, Role, RollMode, SurvivorCondition } from '../types';
+import type { BuildingId, CheckOutcome, Inventory, Role, RollMode, SurvivorCondition } from '../types';
 
 export type NightEventCategory = 'threat' | 'infrastructure' | 'survivor' | 'resource' | 'world' | 'quiet' | 'horde' | 'emergency';
 export type NightChoiceStrategy = 'person' | 'resource' | 'consequence';
@@ -31,6 +31,10 @@ export interface V060NightEvent {
   title: string;
   body: string;
   quote?: string;
+  requiredSurvivorIds?: string[];
+  requiredBuildings?: Partial<Record<BuildingId, number>>;
+  requiredFlags?: string[];
+  excludedFlags?: string[];
   choices: [NightChoice, NightChoice, NightChoice];
 }
 
@@ -64,7 +68,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     id: 'east-footsteps', category: 'threat', minDay: 2, maxDay: 28, title: '东街传来连续脚步声',
     body: '不像一两个游荡者。声音移动得很慢，却一直没有散开。',
     choices: [
-      checked('scout', '让阿梁一类的守夜者去看', '确认尸影移动方向，为后续事件争取情报。', 'watch', { defense: 3, addFlags: ['east_route_known'] }, { actorCondition: 'minor', defense: -2 }),
+      checked('scout', '让守夜的人去看', '确认尸影移动方向，为后续事件争取情报。', 'watch', { defense: 3, addFlags: ['east_route_known'] }, { actorCondition: 'minor', defense: -2 }),
       resource('flares', '点亮街口照明', '消耗电力把暗处照亮。', { power: 7 }, { defense: 2 }),
       consequence('dark', '关闭外围灯光', '降低暴露，但街上的人会更紧张。', { hope: -1, addFlags: ['kept_street_dark'] }),
     ],
@@ -90,6 +94,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'clinic-blackout', category: 'infrastructure', minDay: 5, maxDay: 28, title: '诊疗站突然断电',
     body: '里面还有伤员。备用灯只够照亮一张床。',
+    requiredBuildings: { clinic: 1 },
     choices: [
       checked('rewire', '现场接回线路', '需要维修人员和稳定的手。', 'repair', { power: 2, hope: 1 }, { actorCondition: 'minor', hope: -1 }),
       resource('battery', '启用备用电源', '直接从街区电力储备切出一部分。', { power: 10 }, { hope: 1 }),
@@ -108,6 +113,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'water-on-radio', category: 'infrastructure', minDay: 12, maxDay: 28, title: '广播亭开始漏水',
     body: '雨沿着电缆滴进桌面。信号还在，但继续工作有短路风险。',
+    requiredBuildings: { radio: 1 },
     choices: [
       checked('protect', '让广播值守者抢救设备', '保留今晚的外界联系。', 'radio', { hope: 1, addFlags: ['radio_saved_in_rain'] }, { power: -5, actorCondition: 'minor' }),
       resource('cover', '用材料封住漏点', '花材料换稳定。', { materials: 2 }, { hope: 1 }),
@@ -117,6 +123,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'fever-resident', category: 'survivor', minDay: 4, maxDay: 28, title: '一个居民开始高烧',
     body: '程医生说不一定是感染，但拖到早上可能会更麻烦。',
+    requiredSurvivorIds: ['cheng'],
     choices: [
       checked('diagnose', '让医疗岗位立即处理', '判断病因并稳定状态。', 'medical', { hope: 1 }, { hope: -1 }),
       resource('medicine', '直接使用药品', '不赌诊断，先把人稳住。', { medicine: 1 }, { hope: 1 }),
@@ -180,6 +187,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'radio-voice', category: 'world', minDay: 9, maxDay: 28, title: '广播里出现清晰人声',
     body: '对方只重复一串坐标和一句“仍有人活着”。',
+    requiredBuildings: { radio: 1 },
     choices: [
       checked('answer', '让广播岗位回应', '可能建立长期联系，也可能暴露位置。', 'radio', { hope: 2, addFlags: ['external_contact'] }, { hope: -1, addFlags: ['radio_position_exposed'] }),
       resource('record', '只录下频率和坐标', '消耗一点电力保持监听。', { power: 4 }, { addFlags: ['recorded_external_signal'] }),
@@ -198,6 +206,8 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'military-burst', category: 'world', minDay: 18, maxDay: 28, title: '频段里闪过军用呼号',
     body: '只有几秒，夹着严重杂音。小满说这不是普通民用设备。',
+    requiredSurvivorIds: ['xiaoman'],
+    requiredBuildings: { radio: 1 },
     choices: [
       checked('trace', '追踪并尝试回应', '需要广播岗位和稳定电力。', 'radio', { hope: 2, addFlags: ['military_contact'] }, { power: -4 }),
       resource('boost', '提高发射功率', '用大量电力换一次清晰回应。', { power: 12 }, { addFlags: ['military_contact'], hope: 1 }),
@@ -207,6 +217,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'quiet-tea', category: 'quiet', minDay: 4, maxDay: 28, title: '难得没人敲门',
     body: '阿禾把剩下的热水倒进几只不一样的杯子里。外面仍然很黑。',
+    requiredSurvivorIds: ['ahe'],
     choices: [
       checked('talk', '坐下来聊一会儿', '放弃一点警惕，换一段真正的休息。', 'cook', { hope: 2 }, { hope: 1 }),
       resource('snack', '开一份罐头当夜宵', '这是浪费，也是生活。', { ration: 1 }, { hope: 2 }),
@@ -246,6 +257,8 @@ export const HORDE_EVENTS: V060NightEvent[] = [
   {
     id: 'horde-clinic', category: 'horde', minDay: 10, maxDay: 29, title: '伤员一下子多了起来',
     body: '诊疗站门口排起了人。程医生只能先处理最危险的几个。',
+    requiredSurvivorIds: ['cheng'],
+    requiredBuildings: { clinic: 1 },
     choices: [
       checked('triage', '让医疗岗位现场分诊', '用专业判断把药留给最需要的人。', 'medical', { hope: 2 }, { hope: -2, actorCondition: 'fatigued' }),
       resource('meds', '开放应急药品储备', '用药换稳定。', { medicine: 2 }, { hope: 2 }),
@@ -294,6 +307,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
   {
     id: 'emergency-clinic-fire', category: 'emergency', minDay: 7, maxDay: 29, title: '⚠ 诊疗站起火',
     body: '旧线路短路，墙后已经有明火。伤员还在里面。',
+    requiredBuildings: { clinic: 1 },
     choices: [
       checked('cut-power', '让维修人员进去断电', '抢在火势扩大前切掉故障线路。', 'repair', { hope: 2 }, { actorCondition: 'serious', hope: -2 }),
       resource('extinguish', '消耗材料和水直接灭火', '稳定处理，不赌人。', { materials: 2 }, { hope: 1 }),
@@ -330,6 +344,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
   {
     id: 'emergency-radio-distress', category: 'emergency', minDay: 15, maxDay: 29, title: '⚠ 广播收到近距离求救',
     body: '对方就在两条街之外，说他们被困在屋顶。尸潮正在靠近。',
+    requiredBuildings: { radio: 1 },
     choices: [
       checked('guide', '用广播指导他们撤离', '不派人出去，但需要稳定判断路线。', 'radio', { hope: 3, addFlags: ['rescued_by_radio'] }, { hope: -1 }),
       resource('signal', '开主灯和高功率信标', '让他们直接朝余烬长街移动。', { power: 12 }, { hope: 2, addFlags: ['rescued_by_radio'] }),
@@ -339,6 +354,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
   {
     id: 'emergency-building-collapse', category: 'emergency', minDay: 18, maxDay: 29, title: '⚠ 一面旧墙开始倒塌',
     body: '墙后就是居民休息区。现在加固还是撤人，只有几分钟。',
+    requiredBuildings: { shelter: 1 },
     choices: [
       checked('shore', '让维修人员支撑结构', '成功能保住房间，失败会受重伤。', 'repair', { hope: 2 }, { actorCondition: 'critical', hope: -2 }),
       resource('brace-material', '用建材搭临时支撑', '直接稳定到天亮。', { materials: 3 }, { hope: 1 }),
@@ -348,6 +364,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
   {
     id: 'emergency-main-light', category: 'emergency', minDay: 20, maxDay: 29, title: '⚠ 主灯彻底熄灭',
     body: '这次没有立刻重新亮起。黑暗里有人开始喊老周的名字。',
+    requiredSurvivorIds: ['zhou'],
     choices: [
       checked('restore-main', '现场抢修主灯', '成功会成为所有人记得的一刻。', 'repair', { hope: 5, addFlags: ['kept_main_light_on'] }, { hope: -4, actorCondition: 'serious' }),
       resource('backup-main', '牺牲备用零件和电力', '让灯立刻回来。', { parts: 3, power: 12 }, { hope: 4, addFlags: ['kept_main_light_on'] }),

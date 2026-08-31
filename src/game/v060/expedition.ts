@@ -1,5 +1,6 @@
 import { nextRandom } from '../rng';
 import type { CheckOutcome, GameState, Survivor } from '../types';
+import { isLocationUnlocked } from './campaignEvents';
 import { markMissing, recordDeath } from './memorial';
 
 export type ExpeditionRisk = 'safe' | 'cautious' | 'dangerous' | 'extreme';
@@ -90,12 +91,16 @@ export function canStartExpedition(state: GameState, partyIds: string[], locatio
   const location = locationForId(locationId);
   if (!location) return { allowed: false, reason: '地点不存在' };
   if (state.day > 29) return { allowed: false, reason: '最终尸潮以后不再外出' };
-  if (state.day < location.unlockDay) return { allowed: false, reason: '这片区域还没有被发现' };
+  if (!state.dayState.assignmentsLocked) return { allowed: false, reason: '请先锁定今日调遣' };
+  if (state.expeditionState.departed) return { allowed: false, reason: '搜索队已经在外面' };
+  if (state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天的搜索队已经执行过一次' };
+  if (state.day < location.unlockDay || !isLocationUnlocked(state, locationId)) return { allowed: false, reason: '这片区域还没有被发现' };
   if (partyIds.length < 1 || partyIds.length > 2) return { allowed: false, reason: '探索队必须是 1–2 人' };
   if (new Set(partyIds).size !== partyIds.length) return { allowed: false, reason: '同一个人不能重复派遣' };
   for (const id of partyIds) {
     const survivor = state.survivors.find((item) => item.id === id);
     if (!survivor || !aliveForExpedition(survivor)) return { allowed: false, reason: '队伍中有人无法外出' };
+    if (state.dayState.committedSurvivorIds.includes(id)) return { allowed: false, reason: '人物今天已经执行过行动' };
     if (state.dayAssignments[id] !== 'expedition') return { allowed: false, reason: '人物没有被安排为探索岗位' };
   }
   return { allowed: true };
@@ -149,12 +154,14 @@ function addLoot(state: GameState, loot: Partial<Record<ExpeditionResource, numb
 
 export function retreatExpedition(state: GameState): GameState {
   if (!state.expeditionState.departed) return state;
-  const party = new Set(state.expeditionState.activePartyIds);
+  const partyIds = [...state.expeditionState.activePartyIds];
+  const party = new Set(partyIds);
+  const committedSurvivorIds = [...new Set([...state.dayState.committedSurvivorIds, ...partyIds])];
   return {
     ...state,
     survivors: state.survivors.map((survivor) => party.has(survivor.id) ? { ...survivor, energy: Math.max(0, survivor.energy - 6) } : survivor),
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
-    dayState: { ...state.dayState, returnedExpeditions: state.dayState.returnedExpeditions + 1 },
+    dayState: { ...state.dayState, returnedExpeditions: state.dayState.returnedExpeditions + 1, committedSurvivorIds },
     lastMessage: '搜索队选择撤回 · 没有物资，但人回来了',
   };
 }
@@ -195,12 +202,13 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
 
   const locationFlag = `visited:${state.expeditionState.locationId}`;
   const firstVisit = !next.storyFlags.includes(locationFlag);
+  const committedSurvivorIds = [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])];
   return {
     ...next,
     storyFlags: firstVisit ? [...next.storyFlags, locationFlag] : next.storyFlags,
     campaignStats: { ...next.campaignStats, locationsDiscovered: next.campaignStats.locationsDiscovered + (firstVisit ? 1 : 0) },
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
-    dayState: { ...next.dayState, returnedExpeditions: next.dayState.returnedExpeditions + 1 },
+    dayState: { ...next.dayState, returnedExpeditions: next.dayState.returnedExpeditions + 1, committedSurvivorIds },
     lastMessage: message,
   };
 }
