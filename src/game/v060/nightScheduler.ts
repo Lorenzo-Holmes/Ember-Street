@@ -1,9 +1,11 @@
 import { HORDE_MILESTONE_DAYS } from '../config';
 import { createPendingCheck } from '../dice';
 import { nextRandom } from '../rng';
-import type { BuildingId, CheckModifier, GameState, Role, Survivor, SurvivorCondition } from '../types';
+import type { BuildingId, CheckModifier, CheckOutcome, GameState, Role, Survivor, SurvivorCondition } from '../types';
 import { communityDefenseSupport } from './community';
 import { markMissing, recordDeath } from './memorial';
+import { advanceUntreatedRisk, clearUntreatedRisk, loseCommunityResidents, medicalCrisisFlag } from './mortality';
+import { mortalityEventById, pendingMortalityEventIds } from './mortalityEvents';
 import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
 
 const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = { search: 'expedition', repair: 'repair', medical: 'medical', watch: 'watch', cook: 'cook', radio: 'radio', rest: 'rest' };
@@ -22,6 +24,10 @@ function pickWithoutReplacement<T>(pool: T[], count: number, rngState: number): 
     const [index, next] = drawIndex(nextState, available.length); nextState = next; selected.push(available.splice(index, 1)[0]);
   }
   return [selected, nextState];
+}
+
+function eventById(state: GameState, id: string): V060NightEvent | undefined {
+  return nightEventById(id) ?? mortalityEventById(state, id);
 }
 
 export function eligibleEvent(state: GameState, event: V060NightEvent): boolean {
@@ -92,8 +98,9 @@ function normalComposition(state: GameState, count: number, rngState: number): [
   return [[...selected, ...fill], next];
 }
 
-export function scheduleNight(state: GameState): GameState {
-  if (state.day >= 30) return { ...state, phase: 'ending', nightState: { ...state.nightState, eventIndex: 0, eventTotal: 0, scheduledEventIds: [], emergencyEventIds: [], currentEventId: null, hordeActive: false, hordeStage: null, resolutions: [] }, lastMessage: 'DAY 30 · 天亮以后，只剩结算。' };
+export function scheduleNight(input: GameState): GameState {
+  if (input.day >= 30) return { ...input, phase: 'ending', nightState: { ...input.nightState, eventIndex: 0, eventTotal: 0, scheduledEventIds: [], emergencyEventIds: [], currentEventId: null, hordeActive: false, hordeStage: null, resolutions: [] }, lastMessage: 'DAY 30 · 天亮以后，只剩结算。' };
+  const state = advanceUntreatedRisk(input);
   let rngState = state.rngState;
   const [hordeRoll, afterHordeRoll] = nextRandom(rngState); rngState = afterHordeRoll;
   const hordeActive = hordeRoll < hordeChance(state);
@@ -108,13 +115,15 @@ export function scheduleNight(state: GameState): GameState {
   const [emergencyRoll, afterEmergencyRoll] = nextRandom(rngState); rngState = afterEmergencyRoll;
   const [emergencies, afterEmergency] = pickWithoutReplacement(eligible(EMERGENCY_EVENTS, state), emergencyCountFor(state, emergencyRoll), rngState); rngState = afterEmergency;
   const scheduledEventIds = scheduled.slice(0, eventTotal).map((event) => event.id);
-  const emergencyEventIds = emergencies.map((event) => event.id);
+  const mortalityIds = pendingMortalityEventIds(state);
+  const emergencyEventIds = [...new Set([...mortalityIds, ...emergencies.map((event) => event.id)])];
+  const urgentMedical = emergencyEventIds.find((id) => id.startsWith('mortality-medical:'));
   return {
     ...state,
     rngState,
     phase: 'night',
-    nightState: { eventIndex: 0, eventTotal: scheduledEventIds.length, scheduledEventIds, emergencyEventIds, currentEventId: scheduledEventIds[0] ?? emergencyEventIds[0] ?? null, hordeActive, hordeStage: hordeActive ? 'approach' : null, resolutions: [] },
-    lastMessage: hordeActive ? `NIGHT ${state.day} · 尸群迹象正在靠近` : `NIGHT ${state.day} · 今晚先听清每一个声音`,
+    nightState: { eventIndex: 0, eventTotal: scheduledEventIds.length, scheduledEventIds, emergencyEventIds, currentEventId: urgentMedical ?? scheduledEventIds[0] ?? emergencyEventIds[0] ?? null, hordeActive, hordeStage: hordeActive ? 'approach' : null, resolutions: [] },
+    lastMessage: urgentMedical ? `NIGHT ${state.day} · 有人的伤势已经不能再拖` : hordeActive ? `NIGHT ${state.day} · 尸群迹象正在靠近` : `NIGHT ${state.day} · 今晚先听清每一个声音`,
   };
 }
 
@@ -122,7 +131,7 @@ function emergencyThresholds(count: number): number[] { return count >= 3 ? [1, 
 
 function availableScheduledIds(state: GameState, ids: string[]): string[] {
   return ids.filter((id) => {
-    const event = nightEventById(id);
+    const event = eventById(state, id);
     if (!event) return false;
     const dayState = state.day === 29 && event.category !== 'horde' && event.category !== 'emergency' ? { ...state, day: 28 } : state;
     return eligibleEvent(dayState, event);
@@ -133,6 +142,8 @@ export function nextNightEventId(state: GameState): string | null {
   const mainIds = availableScheduledIds(state, state.nightState.scheduledEventIds);
   const emergencyIds = availableScheduledIds(state, state.nightState.emergencyEventIds);
   const resolved = new Set(state.nightState.resolutions);
+  const urgentMedical = emergencyIds.find((id) => id.startsWith('mortality-medical:') && !resolved.has(id));
+  if (urgentMedical) return urgentMedical;
   const mainResolved = mainIds.filter((id) => resolved.has(id)).length; const emergencyResolved = emergencyIds.filter((id) => resolved.has(id)).length;
   const thresholds = emergencyThresholds(emergencyIds.length);
   if (emergencyResolved < emergencyIds.length && mainResolved >= (thresholds[emergencyResolved] ?? Number.POSITIVE_INFINITY)) return emergencyIds[emergencyResolved];
@@ -140,13 +151,13 @@ export function nextNightEventId(state: GameState): string | null {
 }
 
 export function currentNightEvent(state: GameState): V060NightEvent | null {
-  const current = state.nightState.currentEventId ? nightEventById(state.nightState.currentEventId) : null;
+  const current = state.nightState.currentEventId ? eventById(state, state.nightState.currentEventId) : undefined;
   if (current) {
     const dayState = state.day === 29 && current.category !== 'horde' && current.category !== 'emergency' ? { ...state, day: 28 } : state;
     if (eligibleEvent(dayState, current)) return current;
   }
   const id = nextNightEventId({ ...state, nightState: { ...state.nightState, currentEventId: null } });
-  return id ? nightEventById(id) ?? null : null;
+  return id ? eventById(state, id) ?? null : null;
 }
 
 function actorForRole(state: GameState, role: Role | undefined): Survivor | undefined {
@@ -205,6 +216,87 @@ function applyEffect(input: GameState, effect: NightEffect | undefined, actorId?
   return next;
 }
 
+function mortalityTarget(eventId: string): string | null {
+  if (eventId.startsWith('mortality-medical:')) return eventId.slice('mortality-medical:'.length);
+  if (eventId.startsWith('mortality-hope:')) return eventId.slice('mortality-hope:'.length);
+  return null;
+}
+
+function setTargetCondition(state: GameState, survivorId: string, condition: SurvivorCondition, untreatedDays = 0): GameState {
+  return {
+    ...state,
+    survivors: state.survivors.map((survivor) => survivor.id === survivorId ? { ...survivor, condition, untreatedDays } : survivor),
+  };
+}
+
+function addResolutionFlag(state: GameState, flag: string): GameState {
+  return state.storyFlags.includes(flag) ? state : { ...state, storyFlags: [...state.storyFlags, flag] };
+}
+
+function resolveMedicalDirect(state: GameState, eventId: string, choiceId: string): GameState {
+  const targetId = mortalityTarget(eventId); if (!targetId) return state;
+  const target = state.survivors.find((survivor) => survivor.id === targetId); if (!target) return state;
+  if (choiceId === 'mortality-medicine') {
+    const condition: SurvivorCondition = target.condition === 'critical' ? 'serious' : 'minor';
+    return clearUntreatedRisk(setTargetCondition(state, targetId, condition, 0), [targetId]);
+  }
+  if (choiceId === 'mortality-isolate') {
+    if (target.condition === 'critical') {
+      const dead = recordDeath(state, targetId, '尸变 · 长时间未接受医疗');
+      return addResolutionFlag(dead, `turned:${targetId}`);
+    }
+    return setTargetCondition(state, targetId, 'critical', 0);
+  }
+  return state;
+}
+
+function resolveMedicalCheck(state: GameState, eventId: string, outcome: CheckOutcome): GameState {
+  const targetId = mortalityTarget(eventId); if (!targetId) return state;
+  const target = state.survivors.find((survivor) => survivor.id === targetId); if (!target) return state;
+  if (outcome === 'success' || outcome === 'critical') {
+    const condition: SurvivorCondition = target.condition === 'critical' ? 'serious' : 'minor';
+    return clearUntreatedRisk(setTargetCondition(state, targetId, condition, 0), [targetId]);
+  }
+  if (outcome === 'partial') {
+    const condition: SurvivorCondition = target.condition === 'critical' ? 'serious' : 'serious';
+    return clearUntreatedRisk(setTargetCondition(state, targetId, condition, 0), [targetId]);
+  }
+  if (target.condition === 'critical') {
+    const dead = recordDeath(state, targetId, '尸变 · 医疗危机处理失败');
+    return addResolutionFlag(dead, `turned:${targetId}`);
+  }
+  return setTargetCondition(state, targetId, 'critical', 0);
+}
+
+function resolveHopeDirect(state: GameState, eventId: string, choiceId: string): GameState {
+  const targetId = mortalityTarget(eventId); if (!targetId) return state;
+  let next = addResolutionFlag(state, `low_hope_departure_resolved:${state.day}`);
+  if (choiceId === 'mortality-leave') next = markMissing(next, targetId, '希望崩溃后离开街区');
+  return next;
+}
+
+function resolveHopeCheck(state: GameState, eventId: string, outcome: CheckOutcome): GameState {
+  const targetId = mortalityTarget(eventId); if (!targetId) return state;
+  let next = addResolutionFlag(state, `low_hope_departure_resolved:${state.day}`);
+  if (outcome === 'failure') next = markMissing(next, targetId, '希望过低 · 夜间离开');
+  return next;
+}
+
+function applyCivilianIncident(state: GameState, eventId: string, choiceId: string, outcome?: CheckOutcome): GameState {
+  if (state.civilianResidents <= 0) return state;
+  const failed = outcome === 'failure';
+  if (eventId === 'emergency-panic' && choiceId === 'calm' && failed) return loseCommunityResidents(state, 1, '恐慌踩踏');
+  if (eventId === 'emergency-missing-child' && choiceId === 'search-child' && failed) return loseCommunityResidents(state, 1, '夜间搜救失败');
+  if (eventId === 'emergency-missing-child' && choiceId === 'wait-child' && outcome === undefined) return loseCommunityResidents(state, 1, '居民失踪');
+  if (eventId === 'emergency-building-collapse' && choiceId === 'shore' && failed) return loseCommunityResidents(state, state.day >= 24 ? 2 : 1, '建筑坍塌');
+  if (eventId === 'emergency-north-breach' && choiceId === 'rush-repair' && failed) return loseCommunityResidents(state, 1, '北门缺口');
+  if (eventId === 'horde-north-gate' && choiceId === 'hold-gate' && failed) return loseCommunityResidents(state, 1, '北门失守');
+  if (eventId === 'horde-breakthrough' && choiceId === 'counter' && failed) return loseCommunityResidents(state, state.day >= 24 ? 2 : 1, '尸群突破外围');
+  if (eventId === 'horde-clinic' && choiceId === 'triage' && failed) return loseCommunityResidents(state, 1, '伤员没能等到救治');
+  if (eventId === 'horde-clinic' && choiceId === 'combat-first' && outcome === undefined) return loseCommunityResidents(state, 1, '医疗被延后');
+  return state;
+}
+
 function completeCurrentEvent(state: GameState, eventId: string): GameState {
   const already = state.nightState.resolutions.includes(eventId);
   const resolutions = already ? state.nightState.resolutions : [...state.nightState.resolutions, eventId];
@@ -221,7 +313,7 @@ function completeCurrentEvent(state: GameState, eventId: string): GameState {
     campaignStats: already ? temporary.campaignStats : {
       ...temporary.campaignStats,
       nightEventsResolved: temporary.campaignStats.nightEventsResolved + 1,
-      emergencyEventsResolved: temporary.campaignStats.emergencyEventsResolved + (eventId.startsWith('emergency-') ? 1 : 0),
+      emergencyEventsResolved: temporary.campaignStats.emergencyEventsResolved + (eventId.startsWith('emergency-') || eventId.startsWith('mortality-') ? 1 : 0),
     },
     lastMessage: complete ? `NIGHT ${state.day} · 今晚的决定已经落下` : '下一个声音从黑暗里传来。',
   };
@@ -235,14 +327,21 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
     const context = checkContext(paid, choice);
     return createPendingCheck(paid, { source: 'night', eventId: event.id, choiceId: choice.id, label: choice.check.label, actorId: context.actor?.id, mode: context.mode, modifiers: context.modifiers });
   }
-  return completeCurrentEvent(applyEffect(paid, choice.direct, undefined, event.title), event.id);
+  let next = applyEffect(paid, choice.direct, undefined, event.title);
+  if (event.id.startsWith('mortality-medical:')) next = resolveMedicalDirect(next, event.id, choice.id);
+  if (event.id.startsWith('mortality-hope:')) next = resolveHopeDirect(next, event.id, choice.id);
+  next = applyCivilianIncident(next, event.id, choice.id);
+  return completeCurrentEvent(next, event.id);
 }
 
 export function acceptNightCheckResult(state: GameState): GameState {
   const check = state.pendingCheck; if (!check?.outcome || check.source !== 'night') return state;
-  const event = nightEventById(check.eventId); const choice = event?.choices.find((item) => item.id === check.choiceId);
+  const event = eventById(state, check.eventId); const choice = event?.choices.find((item) => item.id === check.choiceId);
   if (!event || !choice) return { ...state, pendingCheck: null };
   let next = applyEffect({ ...state, pendingCheck: null }, choice.outcomes?.[check.outcome], check.actorId, event.title);
+  if (event.id.startsWith('mortality-medical:')) next = resolveMedicalCheck(next, event.id, check.outcome);
+  if (event.id.startsWith('mortality-hope:')) next = resolveHopeCheck(next, event.id, check.outcome);
+  next = applyCivilianIncident(next, event.id, choice.id, check.outcome);
   const actor = check.actorId ? next.survivors.find((item) => item.id === check.actorId) : undefined;
   if (state.day >= 11 && check.twist === 'double-one' && (event.category === 'horde' || event.category === 'emergency') && actor && (actor.condition === 'serious' || actor.condition === 'critical')) next = recordDeath(next, actor.id, `${event.title} · 双一`);
   return completeCurrentEvent(next, event.id);
