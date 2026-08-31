@@ -1,5 +1,6 @@
 import { eventForDay } from './narrative';
 import { forecastFor } from './progression';
+import { ensureStoryDay } from './story';
 import type { GameState, Role, Survivor } from './types';
 
 const KEY_V2 = 'ember-street-save-v2';
@@ -21,12 +22,12 @@ function normalizeV2(parsed: GameState): GameState {
   const resolved = parsed.resolvedEventIds ?? [];
   const event = eventForDay(parsed.day ?? 1);
   const shouldSurfaceEvent = parsed.phase === 'street' && !parsed.chapterComplete && event && !resolved.includes(event.id) && parsed.dayStep !== 'dusk';
-  return {
+  let normalized: GameState = {
     ...parsed,
     rackStock: parsed.rackStock ?? Array.from({ length: parsed.racks?.length ?? 4 }, () => 3),
     orderActive: parsed.orderActive ?? true,
     orderCooldownMs: parsed.orderCooldownMs ?? 0,
-    nightOrderLimit: parsed.nightOrderLimit ?? (parsed.day >= 7 ? 7 : parsed.day <= 1 ? 3 : 5),
+    nightOrderLimit: parsed.nightOrderLimit ?? 5,
     medicalGraceUsed: parsed.medicalGraceUsed ?? false,
     medicine: parsed.medicine ?? 0,
     power: parsed.power ?? 62,
@@ -40,7 +41,18 @@ function normalizeV2(parsed: GameState): GameState {
     activeEventId: shouldSurfaceEvent ? event.id : parsed.activeEventId ?? null,
     resolvedEventIds: resolved,
     logs: parsed.logs ?? [],
+    storyFlags: parsed.storyFlags ?? [],
+    resolvedStoryEventIds: parsed.resolvedStoryEventIds ?? [],
+    storyDailyIds: parsed.storyDailyIds ?? [],
+    storyPreparedDay: parsed.storyPreparedDay ?? 0,
+    pendingCheck: parsed.pendingCheck ?? null,
+    nightFeed: parsed.nightFeed ?? [],
+    nightNarrativeFlags: parsed.nightNarrativeFlags ?? [],
+    nightStoryDay: parsed.nightStoryDay ?? 0,
+    nightIncidentId: parsed.nightIncidentId ?? null,
   };
+  if (normalized.phase === 'street' && normalized.dayStep !== 'dusk') normalized = ensureStoryDay(normalized);
+  return normalized;
 }
 
 export function saveGame(state: GameState, force = false): void {
@@ -73,6 +85,15 @@ function migrateV1(old: Record<string, unknown>): GameState | null {
       activeEventId: null,
       resolvedEventIds: [],
       logs: [],
+      storyFlags: [],
+      resolvedStoryEventIds: [],
+      storyDailyIds: [],
+      storyPreparedDay: 0,
+      pendingCheck: null,
+      nightFeed: [],
+      nightNarrativeFlags: [],
+      nightStoryDay: 0,
+      nightIncidentId: null,
     };
     return normalizeV2(migrated);
   } catch { return null; }
