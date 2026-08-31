@@ -27,13 +27,9 @@ function qualityForCoverage(coverage: number): MealQuality {
   return 'well-fed';
 }
 
-function qualityRank(quality: MealQuality): number {
-  return ['cold', 'struggling', 'hot', 'full', 'well-fed'].indexOf(quality);
-}
-
-function qualityFromRank(rank: number): MealQuality {
-  return (['cold', 'struggling', 'hot', 'full', 'well-fed'] as MealQuality[])[Math.max(0, Math.min(4, rank))];
-}
+const QUALITY: MealQuality[] = ['cold', 'struggling', 'hot', 'full', 'well-fed'];
+const qualityRank = (quality: MealQuality) => QUALITY.indexOf(quality);
+const qualityFromRank = (rank: number) => QUALITY[Math.max(0, Math.min(4, rank))];
 
 export interface MealPreview extends MealState {
   residentCount: number;
@@ -44,8 +40,8 @@ export interface MealPreview extends MealState {
 }
 
 export function previewMeal(state: GameState): MealPreview {
-  const residents = state.survivors.filter(residentPresent);
-  const residentCount = residents.length;
+  const coreResidents = state.survivors.filter(residentPresent);
+  const residentCount = coreResidents.length + Math.max(0, state.civilianResidents);
   if (residentCount === 0) {
     return {
       quality: 'cold', coverage: 0, cookingCapacity: 0, residentsFed: 0, rationCoverage: 1,
@@ -54,7 +50,7 @@ export function previewMeal(state: GameState): MealPreview {
     };
   }
 
-  const cooks = residents.filter((survivor) => state.dayAssignments[survivor.id] === 'cook');
+  const cooks = coreResidents.filter((survivor) => state.dayAssignments[survivor.id] === 'cook');
   const cookingCapacity = cooks.reduce((sum, survivor) => sum + effectiveCookingCapacity(state, survivor), 0);
   const cookingCoverage = cookingCapacity / residentCount;
   const rationNeeded = residentCount;
@@ -75,9 +71,7 @@ export function previewMeal(state: GameState): MealPreview {
 
   const shortage = quality === 'cold' || quality === 'struggling';
   const consecutiveShortageDays = shortage ? state.mealState.consecutiveShortageDays + 1 : 0;
-  if (quality === 'cold') {
-    hopeDelta = consecutiveShortageDays <= 1 ? 0 : consecutiveShortageDays === 2 ? -1 : -2;
-  }
+  if (quality === 'cold') hopeDelta = consecutiveShortageDays <= 1 ? 0 : consecutiveShortageDays === 2 ? -1 : -2;
 
   return {
     quality,
@@ -98,7 +92,6 @@ export function previewMeal(state: GameState): MealPreview {
 
 export function resolveMeal(state: GameState): GameState {
   const preview = previewMeal(state);
-  const remainingRations = Math.max(0, state.inventory.ration - preview.rationConsumed);
   const survivors = state.survivors.map((survivor) => {
     if (!residentPresent(survivor)) return survivor;
     const energy = Math.min(100, survivor.energy + preview.energyRecovery);
@@ -107,20 +100,14 @@ export function resolveMeal(state: GameState): GameState {
     return { ...survivor, energy, condition };
   });
   const mealState: MealState = {
-    quality: preview.quality,
-    coverage: preview.coverage,
-    cookingCapacity: preview.cookingCapacity,
-    residentsFed: preview.residentsFed,
-    rationCoverage: preview.rationCoverage,
-    consecutiveShortageDays: preview.consecutiveShortageDays,
-    wellFed: preview.wellFed,
-    wellFedPlus: preview.wellFedPlus,
+    quality: preview.quality, coverage: preview.coverage, cookingCapacity: preview.cookingCapacity,
+    residentsFed: preview.residentsFed, rationCoverage: preview.rationCoverage,
+    consecutiveShortageDays: preview.consecutiveShortageDays, wellFed: preview.wellFed, wellFedPlus: preview.wellFedPlus,
   };
   return {
     ...state,
-    inventory: { ...state.inventory, ration: remainingRations },
-    supplies: remainingRations,
-    hope: Math.max(0, state.hope + preview.hopeDelta),
+    inventory: { ...state.inventory, ration: Math.max(0, state.inventory.ration - preview.rationConsumed) },
+    hope: Math.max(0, Math.min(100, state.hope + preview.hopeDelta)),
     survivors,
     mealState,
     lastMessage: `今晚供餐：${mealLabel(preview.quality)} · 精力 +${preview.energyRecovery}${preview.hopeDelta ? ` · 希望 ${preview.hopeDelta > 0 ? '+' : ''}${preview.hopeDelta}` : ''}`,
@@ -128,11 +115,5 @@ export function resolveMeal(state: GameState): GameState {
 }
 
 export function mealLabel(quality: MealQuality): string {
-  return {
-    cold: '冷食',
-    struggling: '勉强开伙',
-    hot: '普通热食',
-    full: '饱腹',
-    'well-fed': '充分饱腹',
-  }[quality];
+  return { cold: '冷食', struggling: '勉强开伙', hot: '普通热食', full: '饱腹', 'well-fed': '充分饱腹' }[quality];
 }
