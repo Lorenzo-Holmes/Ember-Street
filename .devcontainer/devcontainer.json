@@ -1,0 +1,25 @@
+{
+  "name": "Ember Street Web",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [5173],
+  "portsAttributes": {
+    "5173": {
+      "label": "Ember Street Vite Preview",
+      "onAutoForward": "openPreview",
+      "protocol": "http"
+    }
+  },
+  "postCreateCommand": "npm install --no-audit --no-fund",
+  "postStartCommand": "nohup npm run dev:codespaces > /tmp/ember-street-vite.log 2>&1 &",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnSave": true,
+        "typescript.tsdk": "node_modules/typescript/lib"
+      },
+      "extensions": [
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
