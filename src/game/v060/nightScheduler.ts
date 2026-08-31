@@ -2,6 +2,7 @@ import { HORDE_MILESTONE_DAYS } from '../config';
 import { createPendingCheck } from '../dice';
 import { nextRandom } from '../rng';
 import type { BuildingId, CheckModifier, GameState, Role, Survivor, SurvivorCondition } from '../types';
+import { communityDefenseSupport } from './community';
 import { markMissing, recordDeath } from './memorial';
 import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
 
@@ -31,7 +32,7 @@ function assignedCount(state: GameState, role: Role): number {
   return state.survivors.filter((survivor) => playable(survivor) && state.dayAssignments[survivor.id] === assignment).length;
 }
 
-function hordeChance(state: GameState): number {
+export function hordeChance(state: GameState): number {
   if (HORDE_MILESTONE_DAYS.includes(state.day as (typeof HORDE_MILESTONE_DAYS)[number])) return 1;
   const dayPressure = state.day <= 5 ? 0.03 : state.day <= 12 ? 0.08 : state.day <= 20 ? 0.13 : 0.2;
   const defensePenalty = Math.max(0, 55 - state.defense) * 0.004;
@@ -39,7 +40,8 @@ function hordeChance(state: GameState): number {
   const watchReduction = Math.min(0.12, assignedCount(state, 'watch') * 0.04 + state.buildings.watchPost * 0.02);
   const intelReduction = state.storyFlags.includes('horde_route_known') || state.storyFlags.includes('east_route_known') ? 0.06 : 0;
   const radioReduction = state.buildings.radio >= 3 && assignedCount(state, 'radio') ? 0.04 : 0;
-  return clamp(dayPressure + defensePenalty + lightPressure - watchReduction - intelReduction - radioReduction, 0.02, 0.55);
+  const communityReduction = communityDefenseSupport(state);
+  return clamp(dayPressure + defensePenalty + lightPressure - watchReduction - intelReduction - radioReduction - communityReduction, 0.02, 0.55);
 }
 
 export function emergencyRisk(state: GameState): number {
@@ -52,7 +54,8 @@ export function emergencyRisk(state: GameState): number {
   const watchReduction = Math.min(0.18, assignedCount(state, 'watch') * 0.05 + state.buildings.watchPost * 0.025);
   const workshopReduction = state.buildings.workshop >= 2 ? 0.04 : 0;
   const radioReduction = state.buildings.radio >= 2 ? 0.03 : 0;
-  return clamp(0.08 + defensePenalty + powerPenalty + injuryPenalty + phasePenalty + hordePenalty - watchReduction - workshopReduction - radioReduction, 0.02, 0.8);
+  const communityReduction = communityDefenseSupport(state);
+  return clamp(0.08 + defensePenalty + powerPenalty + injuryPenalty + phasePenalty + hordePenalty - watchReduction - workshopReduction - radioReduction - communityReduction, 0.02, 0.8);
 }
 
 function emergencyCountFor(state: GameState, roll: number): number {
