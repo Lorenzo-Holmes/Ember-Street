@@ -28,6 +28,17 @@ function nightWithMedicalCrisis(condition: 'serious' | 'critical'): GameState {
   return state;
 }
 
+function withCommunityRotation(mode: 'repair' | 'defense'): GameState {
+  const base = createV060InitialState(707008);
+  return {
+    ...base,
+    day: 8,
+    civilianResidents: 6,
+    storyFlags: [...base.storyFlags, 'community_rotation_unlocked'],
+    communityState: { pendingResidents: 0, activeResidents: 6, supportMode: mode, lastSupportDay: 8 },
+  };
+}
+
 describe('v0.6 causal density', () => {
   it('makes threat events more likely when nobody is assigned to watch', () => {
     const base = { ...createV060InitialState(707002), day: 8 };
@@ -35,6 +46,32 @@ describe('v0.6 causal density', () => {
     const watched = nightEventWeight({ ...base, dayAssignments: { 'lin-xia': 'watch' } }, event('gate-knocking'));
     expect(unwatched).toBeGreaterThan(watched);
     expect(nightCausalSignals(base).some((value) => value.includes('无人守备'))).toBe(true);
+  });
+
+  it('lets defense-focused residents partially cover an unstaffed watch shift', () => {
+    const base = { ...createV060InitialState(707009), day: 8 };
+    const unsupported = nightEventWeight(base, event('gate-knocking'));
+    const community = withCommunityRotation('defense');
+    const residentCovered = nightEventWeight(community, event('gate-knocking'));
+    const coreWatch = nightEventWeight({ ...community, dayAssignments: { 'lin-xia': 'watch' } }, event('gate-knocking'));
+    expect(unsupported).toBeGreaterThan(residentCovered);
+    expect(residentCovered).toBeGreaterThan(coreWatch);
+    const signals = nightCausalSignals(community);
+    expect(signals.some((value) => value.includes('居民正在守备轮值'))).toBe(true);
+    expect(signals.some((value) => value.includes('无人守备'))).toBe(false);
+  });
+
+  it('lets repair-focused residents partially cover infrastructure risk without replacing a specialist', () => {
+    const base = { ...createV060InitialState(707010), day: 8 };
+    const unsupported = nightEventWeight(base, event('generator-drop'));
+    const community = withCommunityRotation('repair');
+    const residentCovered = nightEventWeight(community, event('generator-drop'));
+    const coreRepair = nightEventWeight({ ...community, dayAssignments: { zhou: 'repair' } }, event('generator-drop'));
+    expect(unsupported).toBeGreaterThan(residentCovered);
+    expect(residentCovered).toBeGreaterThan(coreRepair);
+    const signals = nightCausalSignals(community);
+    expect(signals.some((value) => value.includes('居民正在维修轮值'))).toBe(true);
+    expect(signals.some((value) => value.includes('无人维修'))).toBe(false);
   });
 
   it('makes ration conflict more likely after poor meals', () => {
