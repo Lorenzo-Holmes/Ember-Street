@@ -61,6 +61,27 @@ describe('Ember Street first chapter', () => {
     expect(state.orderActive).toBe(true);
   });
 
+  it('uses one medicine as emergency grace instead of instantly missing a medical request', () => {
+    const base = createInitialState(66);
+    const state = {
+      ...base,
+      medicine: 1,
+      currentOrder: { ...base.currentOrder, targetKind: 'medical' as const, patienceMs: 50, maxPatienceMs: 24_000 },
+    };
+    const next = tick(state, 100);
+    expect(next.stats.missed).toBe(0);
+    expect(next.medicine).toBe(0);
+    expect(next.medicalGraceUsed).toBe(true);
+    expect(next.currentOrder.patienceMs).toBe(6_000);
+  });
+
+  it('makes a low-power night accumulate pressure faster', () => {
+    const base = createInitialState(67);
+    const lowPower = tick({ ...base, power: 20 }, 10_000);
+    const stablePower = tick({ ...base, power: 90 }, 10_000);
+    expect(lowPower.hordePressure).toBeGreaterThan(stablePower.hordePressure);
+  });
+
   it('repairs the search station and recruits Lin Xia after the day-one event', () => {
     let state = revealStreet(firstDawn());
     state = resolveNarrativeChoice(state, 'repair');
