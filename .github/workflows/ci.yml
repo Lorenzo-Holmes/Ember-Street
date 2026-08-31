@@ -22,6 +22,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Validate Codespaces devcontainer
+        run: node -e "JSON.parse(require('fs').readFileSync('.devcontainer/devcontainer.json', 'utf8'))"
+
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
