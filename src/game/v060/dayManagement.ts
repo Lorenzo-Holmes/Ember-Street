@@ -14,7 +14,7 @@ export function survivorAvailableForDay(survivor: Survivor): boolean {
 }
 
 export function canTakeDayAssignment(state: GameState, survivorId: string, job: DayAssignment): { allowed: boolean; reason?: string } {
-  if (state.dayState.assignmentsLocked) return { allowed: false, reason: '今日调遣已经锁定' };
+  if (state.dayState.assignmentsLocked) return { allowed: false, reason: '今日派遣已经锁定' };
   if (state.dayState.committedSurvivorIds.includes(survivorId)) return { allowed: false, reason: '今天已经执行过行动' };
   const survivor = state.survivors.find((item) => item.id === survivorId);
   if (!survivor) return { allowed: false, reason: '人物不在街区' };
@@ -28,7 +28,7 @@ export function canTakeDayAssignment(state: GameState, survivorId: string, job: 
 
 export function assignDayJob(state: GameState, survivorId: string, job: DayAssignment): GameState {
   const availability = canTakeDayAssignment(state, survivorId, job);
-  if (!availability.allowed) return { ...state, lastMessage: availability.reason ?? '无法执行这项调遣' };
+  if (!availability.allowed) return { ...state, lastMessage: availability.reason ?? '无法执行这项派遣' };
   return {
     ...state,
     dayAssignments: { ...state.dayAssignments, [survivorId]: job },
@@ -58,7 +58,7 @@ export function lockDayAssignments(state: GameState): GameState {
     ...state,
     dayAssignments: nextAssignments,
     dayState: { ...state.dayState, assignmentsLocked: true },
-    lastMessage: '今日调遣已锁定 · 天黑以后不能临时换岗',
+    lastMessage: '今日派遣已锁定 · 天黑以后不能临时换岗',
   };
 }
 
@@ -68,19 +68,25 @@ export function lockDayAssignmentsAndRoute(state: GameState): GameState {
   return { ...locked, phase: hasPendingExpeditionAssignment(locked) ? 'expedition' : 'dusk' };
 }
 
+export function hasCommittedDayAction(state: GameState): boolean {
+  return state.dayState.returnedExpeditions > 0 || state.dayState.committedSurvivorIds.length > 0;
+}
+
 export function reopenDayAssignments(state: GameState): GameState {
-  const completedExpeditionIds = state.dayState.returnedExpeditions > 0
-    ? Object.entries(state.dayAssignments).filter(([, job]) => job === 'expedition').map(([id]) => id)
-    : [];
-  const committedSurvivorIds = [...new Set([...state.dayState.committedSurvivorIds, ...completedExpeditionIds])];
+  if (hasCommittedDayAction(state)) {
+    return {
+      ...state,
+      phase: 'dusk',
+      dayState: { ...state.dayState, assignmentsLocked: true },
+      lastMessage: '今天已经有人执行过探索或搜救，不能重新调整派遣。',
+    };
+  }
   return {
     ...state,
     phase: 'street',
-    dayAssignments: pendingAssignments(state, committedSurvivorIds),
-    dayState: { ...state.dayState, assignmentsLocked: false, committedSurvivorIds },
-    lastMessage: committedSurvivorIds.length
-      ? '已返回白天调遣 · 已行动人物保持锁定。'
-      : '已返回白天调遣 · 可以继续调整岗位。',
+    dayAssignments: { ...state.dayAssignments },
+    dayState: { ...state.dayState, assignmentsLocked: false, committedSurvivorIds: [] },
+    lastMessage: '已返回白天派遣 · 可以继续调整岗位。',
   };
 }
 
