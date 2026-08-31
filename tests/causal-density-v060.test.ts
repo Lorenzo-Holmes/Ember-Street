@@ -45,6 +45,26 @@ describe('v0.6 causal density', () => {
     expect(hungry).toBeGreaterThan(normal);
   });
 
+  it('shows dusk food causality from tonight preview instead of yesterday meal state', () => {
+    const initial = createV060InitialState(707007);
+    const yesterdayHungry: GameState = {
+      ...initial,
+      phase: 'dusk',
+      inventory: { ...initial.inventory, ration: 12 },
+      mealState: { ...initial.mealState, quality: 'struggling', consecutiveShortageDays: 2 },
+      dayAssignments: { 'lin-xia': 'cook', zhou: 'cook', ahe: 'cook' },
+    };
+    expect(nightCausalSignals(yesterdayHungry).some((value) => value.includes('供餐不足'))).toBe(false);
+
+    const tonightHungry: GameState = {
+      ...initial,
+      phase: 'dusk',
+      mealState: { ...initial.mealState, quality: 'well-fed', consecutiveShortageDays: 0 },
+      dayAssignments: { 'lin-xia': 'watch', zhou: 'repair', ahe: 'rest' },
+    };
+    expect(nightCausalSignals(tonightHungry).some((value) => value.includes('今晚供餐不足'))).toBe(true);
+  });
+
   it('queues a medical crisis before untreated serious injuries can become fatal', () => {
     let state = createV060InitialState(707004);
     state = { ...state, day: 8, survivors: state.survivors.map((survivor) => survivor.id === 'lin-xia' ? { ...survivor, condition: 'serious' as const, untreatedDays: 1 } : survivor) };
