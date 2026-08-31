@@ -72,12 +72,18 @@ export function upgradeBuilding(state: GameState, id: BuildingId): GameState {
   const buildings = { ...state.buildings, [id]: next.level };
   const sum = Object.values(buildings).reduce((total, value) => total + value, 0);
   const mainLightStage = Math.max(1, Math.min(5, Math.ceil((sum + 1) / 4))) as 1 | 2 | 3 | 4 | 5;
+  const storyFlags = next.level === 1
+    ? [...new Set([...state.storyFlags, `building_event_pending:${id}`])]
+    : state.storyFlags;
   return {
     ...state,
     inventory,
     buildings,
+    storyFlags,
     mainLightStage,
     hope: Math.min(100, state.hope + (next.level === 1 ? 2 : 1)),
-    lastMessage: `${V060_BUILDINGS[id].name}升级到 Lv${next.level} · ${next.unlock}`,
+    lastMessage: next.level === 1
+      ? `${V060_BUILDINGS[id].name}建成了 · 有件事值得所有人停下来看看`
+      : `${V060_BUILDINGS[id].name}升级到 Lv${next.level} · ${next.unlock}`,
   };
 }
