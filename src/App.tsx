@@ -3,7 +3,8 @@ import { challengeScore, createDailyChallenge, encodeChallenge } from './game/ch
 import { SUPPLY_META } from './game/config';
 import { continueChapter } from './game/continue';
 import { careForCat, CAT_COPY } from './game/emotion';
-import { assignSurvivor, createInitialState, repairBuilding, revealStreet, takeRack, tick } from './game/engine';
+import { assignSurvivor, createInitialState, repairBuilding, revealStreet } from './game/engine';
+import { emergencyClear, takeRackWithFeel, tickWithFeel } from './game/feel';
 import { autoAssignBySpecialty, autoAssignForHorde } from './game/management';
 import { BUILDING_META } from './game/progression';
 import { clearSave, loadGame, saveGame } from './game/storage';
@@ -44,6 +45,8 @@ function NightScene({ state, setState }: { state: GameState; setState: (next: Ga
   const orderMeta = SUPPLY_META[state.currentOrder.targetKind];
   const patience = Math.round((state.currentOrder.patienceMs / state.currentOrder.maxPatienceMs) * 100);
   const timeSeconds = Math.ceil(state.nightRemainingMs / 1000);
+  const full = state.slots.every((slot) => slot !== null);
+  const combo = state.combo ?? 0;
   return <main className={`game-shell game-shell--night intensity-${state.forecast.intensity}`}>
     <div className="sky-noise" />
     <header className="hud"><div><span className="eyebrow">NIGHT</span><strong>{state.day}</strong></div><div className="hud__center">余烬长街 · EMBER STREET</div><div><span className="eyebrow">TIME</span><strong>{timeSeconds}s</strong></div></header>
@@ -51,21 +54,21 @@ function NightScene({ state, setState }: { state: GameState; setState: (next: Ga
     <section className="street-backdrop" aria-hidden="true"><div className="ruin ruin--left"/><div className="tower" data-level={state.firstLightLevel}><i/></div><div className="ruin ruin--right"/><div className="fence"><span/><span/><span/><span/><span/></div><div className="horde" style={{ opacity: 0.12 + state.hordePressure / 135 }}><b/><b/><b/><b/><b/><b/></div></section>
     <section className="pressure-panel"><div className="pressure-panel__top"><span>尸潮压力</span><strong>{Math.round(state.hordePressure)}%</strong></div><div className="meter"><i style={{ width: `${state.hordePressure}%` }}/></div></section>
     <section className={`request request--${state.currentOrder.kind}`}><div className="request__tag">{state.currentOrder.title}</div><p>{state.currentOrder.line}</p><div className="request__target"><span>需要</span><strong>{orderMeta.tier2}</strong><span className={`mini-sigil mini-sigil--${state.currentOrder.targetKind}`}>{orderMeta.short}</span></div><div className="patience"><i style={{ width: `${patience}%` }}/></div></section>
-    <div className="status-strip"><span>希望 {state.hope}</span><span>零件 {state.parts}</span><span>{state.lastMessage}</span></div>
-    <section className="tray-wrap"><div className="tray-label"><span>七格配给台</span><small>3 个同类物资自动升级</small></div><div className="tray">{state.slots.map((slot, index) => <div className="slot" key={index}>{slot ? <Token item={slot}/> : <span>{index + 1}</span>}</div>)}</div></section>
-    <section className="racks">{state.racks.map((kind, index) => <RackButton key={`${index}-${kind}`} kind={kind} onClick={() => { const before = state.stats.served; const next = takeRack(state, index); if (next !== state) { vibrate(next.stats.served > before ? 14 : 6); beep(next.stats.served > before ? 720 : next.stats.merges > state.stats.merges ? 620 : 390); setState(next); } }}/>)}</section>
+    <div className="status-strip"><span>希望 {state.hope}{combo >= 2 ? ` · COMBO ×${combo}` : ''}</span><span>零件 {state.parts}</span><span>{state.lastMessage}</span></div>
+    <section className="tray-wrap"><div className="tray-label"><span>七格配给台</span><div className="tray-meta">{combo >= 2 && <strong>🔥 ×{combo}</strong>}{full ? <button className="clear-tray" onClick={() => { const next = emergencyClear(state); vibrate(20); beep(230, .08); setState(next); }}>紧急清台 {(state.clearances ?? 0) + 1}/3</button> : <small>3 个同类物资自动升级</small>}</div></div><div className="tray">{state.slots.map((slot, index) => <div className="slot" key={index}>{slot ? <Token item={slot}/> : <span>{index + 1}</span>}</div>)}</div></section>
+    <section className="racks">{state.racks.map((kind, index) => <RackButton key={`${index}-${kind}`} kind={kind} onClick={() => { const beforeServed = state.stats.served; const beforeMerges = state.stats.merges; const next = takeRackWithFeel(state, index); if (next !== state) { vibrate(next.stats.served > beforeServed ? 14 : 6); beep(next.extremeServes !== state.extremeServes ? 860 : next.stats.served > beforeServed ? 720 : next.stats.merges > beforeMerges ? 620 : 390); setState(next); } }}/>)}</section>
   </main>;
 }
 
 function Summary({ state, setState }: { state: GameState; setState: (next: GameState) => void }) {
   const wonChapter = state.day === 7 && state.chapterComplete;
-  return <main className="game-shell summary-screen"><div className="dawn"/><div className="summary-card"><span className="eyebrow">DAWN · DAY {state.day}</span><h1>{wonChapter ? '这条街，还活着。' : state.hordePressure >= 100 ? '今晚很险。' : '天亮了。'}</h1><p>{wonChapter ? '尸潮正在退去。第一街段的灯，一盏接一盏重新亮了起来。' : '主灯还亮着。街里的人，又多撑过了一晚。'}</p><div className="summary-grid"><div><strong>{state.stats.served}</strong><span>成功交付</span></div><div><strong>{state.stats.merges}</strong><span>三合升级</span></div><div><strong>{state.parts}</strong><span>零件</span></div><div><strong>{state.hope}</strong><span>希望</span></div></div><button className="primary" onClick={() => setState(revealStreet(state))}>{wonChapter ? '看天亮后的长街' : '回到避难街'}</button></div></main>;
+  return <main className="game-shell summary-screen"><div className="dawn"/><div className="summary-card"><span className="eyebrow">DAWN · DAY {state.day}</span><h1>{wonChapter ? '这条街，还活着。' : state.hordePressure >= 100 ? '今晚很险。' : '天亮了。'}</h1><p>{wonChapter ? '尸潮正在退去。第一街段的灯，一盏接一盏重新亮了起来。' : '主灯还亮着。街里的人，又多撑过了一晚。'}</p><div className="summary-grid"><div><strong>{state.stats.served}</strong><span>成功交付</span></div><div><strong>{state.bestCombo ?? 0}</strong><span>最高 Combo</span></div><div><strong>{state.extremeServes ?? 0}</strong><span>极限出餐</span></div><div><strong>{state.hope}</strong><span>希望</span></div></div><button className="primary" onClick={() => setState(revealStreet(state))}>{wonChapter ? '看天亮后的长街' : '回到避难街'}</button></div></main>;
 }
 
 function ChallengeSummary({ state, onRetry, onBack }: { state: GameState; onRetry: () => void; onBack: () => void }) {
   const score = challengeScore(state);
   const code = encodeChallenge(state.seed, score);
-  return <main className="game-shell summary-screen"><div className="dawn"/><div className="summary-card"><span className="eyebrow">DAILY CHALLENGE</span><h1>{score}</h1><p>主线完全没动。这一局只记录你在标准 Seed 下的七格判断。</p><div className="summary-grid"><div><strong>{state.stats.served}</strong><span>成功交付</span></div><div><strong>{state.stats.merges}</strong><span>三合升级</span></div><div><strong>{Math.round(state.stats.peakPressure)}%</strong><span>最高压力</span></div><div><strong>{state.stats.missed}</strong><span>错失请求</span></div></div><div className="challenge-code">{code}</div><button className="primary" onClick={() => { const generated = downloadChallengeShareCard(state); navigator.clipboard?.writeText(generated).catch(() => undefined); }}>生成分享卡 + 复制挑战码</button><div className="summary-actions"><button className="secondary" onClick={onRetry}>再挑战一次</button><button className="secondary" onClick={onBack}>返回主线</button></div></div></main>;
+  return <main className="game-shell summary-screen"><div className="dawn"/><div className="summary-card"><span className="eyebrow">DAILY CHALLENGE</span><h1>{score}</h1><p>主线完全没动。这一局只记录你在标准 Seed 下的七格判断。</p><div className="summary-grid"><div><strong>{state.stats.served}</strong><span>成功交付</span></div><div><strong>{state.bestCombo ?? 0}</strong><span>最高 Combo</span></div><div><strong>{Math.round(state.stats.peakPressure)}%</strong><span>最高压力</span></div><div><strong>{state.extremeServes ?? 0}</strong><span>极限出餐</span></div></div><div className="challenge-code">{code}</div><button className="primary" onClick={() => { const generated = downloadChallengeShareCard(state); navigator.clipboard?.writeText(generated).catch(() => undefined); }}>生成分享卡 + 复制挑战码</button><div className="summary-actions"><button className="secondary" onClick={onRetry}>再挑战一次</button><button className="secondary" onClick={onBack}>返回主线</button></div></div></main>;
 }
 
 function rolesFor(state: GameState): Role[] {
@@ -117,13 +120,13 @@ export default function App() {
   useEffect(() => {
     if (challenge || state.phase !== 'night') return;
     let previous = performance.now();
-    const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; setState(tick(stateRef.current, elapsed)); }, 250);
+    const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; setState(tickWithFeel(stateRef.current, elapsed)); }, 250);
     return () => window.clearInterval(id);
   }, [state.phase, state.day, challenge]);
   useEffect(() => {
     if (!challenge || challenge.phase !== 'night') return;
     let previous = performance.now();
-    const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; const current = challengeRef.current; if (current) setChallenge(tick(current, elapsed)); }, 250);
+    const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; const current = challengeRef.current; if (current) setChallenge(tickWithFeel(current, elapsed)); }, 250);
     return () => window.clearInterval(id);
   }, [challenge?.phase]);
 
