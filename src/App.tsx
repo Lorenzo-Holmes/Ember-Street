@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { challengeScore, createDailyChallenge, encodeChallenge } from './game/challenge';
 import { SUPPLY_META } from './game/config';
 import { continueChapter } from './game/continue';
 import { assignSurvivor, createInitialState, repairBuilding, revealStreet, takeRack, tick } from './game/engine';
 import { BUILDING_META } from './game/progression';
 import { clearSave, loadGame, saveGame } from './game/storage';
 import type { BuildingId, GameState, Role, SupplyItem, SupplyKind } from './game/types';
+import { downloadCampaignShareCard, downloadChallengeShareCard } from './shareCard';
 
 const ROLE_LABEL: Record<Role, string> = { search: '搜索', repair: '修理', medical: '诊疗', watch: '守夜', cook: '炊事', radio: '广播', rest: '休息' };
 const BUILDING_IDS = Object.keys(BUILDING_META) as BuildingId[];
@@ -58,6 +60,12 @@ function Summary({ state, setState }: { state: GameState; setState: (next: GameS
   return <main className="game-shell summary-screen"><div className="dawn"/><div className="summary-card"><span className="eyebrow">DAWN · DAY {state.day}</span><h1>{wonChapter ? '这条街，还活着。' : state.hordePressure >= 100 ? '今晚很险。' : '天亮了。'}</h1><p>{wonChapter ? '尸潮正在退去。第一街段的灯，一盏接一盏重新亮了起来。' : '主灯还亮着。街里的人，又多撑过了一晚。'}</p><div className="summary-grid"><div><strong>{state.stats.served}</strong><span>成功交付</span></div><div><strong>{state.stats.merges}</strong><span>三合升级</span></div><div><strong>{state.parts}</strong><span>零件</span></div><div><strong>{state.hope}</strong><span>希望</span></div></div><button className="primary" onClick={() => setState(revealStreet(state))}>{wonChapter ? '看天亮后的长街' : '回到避难街'}</button></div></main>;
 }
 
+function ChallengeSummary({ state, onRetry, onBack }: { state: GameState; onRetry: () => void; onBack: () => void }) {
+  const score = challengeScore(state);
+  const code = encodeChallenge(state.seed, score);
+  return <main className="game-shell summary-screen"><div className="dawn"/><div className="summary-card"><span className="eyebrow">DAILY CHALLENGE</span><h1>{score}</h1><p>主线完全没动。这一局只记录你在标准 Seed 下的七格判断。</p><div className="summary-grid"><div><strong>{state.stats.served}</strong><span>成功交付</span></div><div><strong>{state.stats.merges}</strong><span>三合升级</span></div><div><strong>{Math.round(state.stats.peakPressure)}%</strong><span>最高压力</span></div><div><strong>{state.stats.missed}</strong><span>错失请求</span></div></div><div className="challenge-code">{code}</div><button className="primary" onClick={() => { const generated = downloadChallengeShareCard(state); navigator.clipboard?.writeText(generated).catch(() => undefined); }}>生成分享卡 + 复制挑战码</button><div className="summary-actions"><button className="secondary" onClick={onRetry}>再挑战一次</button><button className="secondary" onClick={onBack}>返回主线</button></div></div></main>;
+}
+
 function rolesFor(state: GameState): Role[] {
   const roles: Role[] = ['cook', 'rest'];
   if (state.buildings.searchStation) roles.push('search');
@@ -68,13 +76,14 @@ function rolesFor(state: GameState): Role[] {
   return roles;
 }
 
-function StreetScene({ state, setState }: { state: GameState; setState: (next: GameState) => void }) {
+function StreetScene({ state, setState, onDaily, onShare }: { state: GameState; setState: (next: GameState) => void; onDaily: () => void; onShare: () => void }) {
   const availableRoles = rolesFor(state);
   const unlockedBuildings = BUILDING_IDS.filter((id) => BUILDING_META[id].unlockDay <= state.day);
   const failedHorde = state.day === 7 && !state.chapterComplete;
   return <main className={`game-shell street-screen ${state.chapterComplete ? 'street-screen--dawn' : ''}`}>
     <header className="hud hud--street"><div><span className="eyebrow">DAY</span><strong>{state.day}</strong></div><div className="hud__center">避难街 · 第一街段</div><div><span className="eyebrow">HOPE</span><strong>{state.hope}</strong></div></header>
     <section className="day-brief"><div><span className="eyebrow">下一夜预报</span><strong>{state.chapterComplete ? '第一章完成' : failedHorde ? '尸潮夜 · 重整再战' : `DAY ${state.day + 1} · ${state.day === 6 ? '尸潮之夜' : '继续守夜'}`}</strong></div><p>{state.chapterComplete ? '第一街段已经稳定下来。下一阶段将向更深的城区扩张。' : failedHorde ? '昨夜没有完全守住，但没有死档。调整岗位、补修设施，再试一次。' : state.day === 6 ? '大规模尸群就在外围。把人调到最关键的位置。' : '岗位收益会在下一次开夜时立即结算。'}</p></section>
+    <section className="street-tools"><button className="secondary" onClick={onDaily}>今夜挑战</button><button className="secondary" onClick={onShare}>保存街区卡</button></section>
     <section className="street-map">
       <article className="building building--tower"><span className="building__light building__light--main"/><small>FIRST LIGHT · LV.{state.firstLightLevel}</small><h3>主灯塔</h3><p>街区成长中枢。每修复一处设施，灯火都会更稳定。</p></article>
       {unlockedBuildings.map((id) => { const meta = BUILDING_META[id]; const level = state.buildings[id]; const canRepair = level === 0 && state.parts >= meta.cost; return <article key={id} className={`building ${level ? 'building--active' : 'building--ruin'}`}><span className="building__light"/><small>{level ? `ONLINE · LV.${level}` : `LOCK BROKEN · ${meta.cost} 零件`}</small><h3>{meta.name}</h3><p>{meta.description}</p>{!level && <button className="secondary" disabled={!canRepair} onClick={() => { const next = repairBuilding(state, id); if (next !== state) { vibrate(18); beep(780, 0.08); setState(next); } }}>{canRepair ? `修复 · ${meta.cost} 零件` : `还差 ${Math.max(0, meta.cost - state.parts)} 零件`}</button>}</article>; })}
@@ -88,14 +97,25 @@ function StreetScene({ state, setState }: { state: GameState; setState: (next: G
 export default function App() {
   const [state, setStateRaw] = useState<GameState>(() => loadGame() ?? createInitialState(20260831));
   const stateRef = useRef(state);
+  const [challenge, setChallengeRaw] = useState<GameState | null>(null);
+  const challengeRef = useRef<GameState | null>(challenge);
   const setState = (next: GameState) => { stateRef.current = next; setStateRaw(next); };
+  const setChallenge = (next: GameState | null) => { challengeRef.current = next; setChallengeRaw(next); };
   useEffect(() => { stateRef.current = state; saveGame(state); }, [state]);
   useEffect(() => {
+    if (challenge) return;
     if (state.phase !== 'night') return;
     let previous = performance.now();
     const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; setState(tick(stateRef.current, elapsed)); }, 250);
     return () => window.clearInterval(id);
-  }, [state.phase, state.day]);
-  const screen = useMemo(() => state.phase === 'summary' ? <Summary state={state} setState={setState}/> : state.phase === 'street' ? <StreetScene state={state} setState={setState}/> : <NightScene state={state} setState={setState}/>, [state]);
+  }, [state.phase, state.day, challenge]);
+  useEffect(() => {
+    if (!challenge || challenge.phase !== 'night') return;
+    let previous = performance.now();
+    const id = window.setInterval(() => { const now = performance.now(); const elapsed = Math.min(500, now - previous); previous = now; const current = challengeRef.current; if (current) setChallenge(tick(current, elapsed)); }, 250);
+    return () => window.clearInterval(id);
+  }, [challenge?.phase]);
+  if (challenge) return challenge.phase === 'night' ? <div className="app-root"><NightScene state={challenge} setState={setChallenge}/></div> : <div className="app-root"><ChallengeSummary state={challenge} onRetry={() => setChallenge(createDailyChallenge())} onBack={() => setChallenge(null)}/></div>;
+  const screen = useMemo(() => state.phase === 'summary' ? <Summary state={state} setState={setState}/> : state.phase === 'street' ? <StreetScene state={state} setState={setState} onDaily={() => setChallenge(createDailyChallenge())} onShare={() => downloadCampaignShareCard(state)}/> : <NightScene state={state} setState={setState}/>, [state]);
   return <div className="app-root">{screen}<button className="reset" onClick={() => { if (window.confirm('重新开始余烬长街？当前本地进度会清除。')) { clearSave(); setState(createInitialState(20260831)); } }}>重置</button></div>;
 }
