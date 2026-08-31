@@ -104,8 +104,10 @@ function medicalStep(condition: SurvivorCondition | undefined): SurvivorConditio
 }
 
 function resolveMedicalWork(state: GameState): GameState {
+  if (state.buildings.clinic <= 0) return state;
   const workers = state.survivors.filter((s) => state.dayAssignments[s.id] === 'medical' && s.condition !== 'dead' && s.condition !== 'missing').length;
-  if (!workers || state.buildings.clinic <= 0) return state;
+  const communityCapacity = communityMedicalSupport(state);
+  if (!workers && !communityCapacity) return state;
   const severity: Record<string, number> = { critical: 4, serious: 3, minor: 2, fatigued: 1, healthy: 0 };
   const candidates = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing' && (severity[s.condition ?? 'healthy'] ?? 0) > 0)
     .sort((a, b) => (severity[b.condition ?? 'healthy'] ?? 0) - (severity[a.condition ?? 'healthy'] ?? 0));
@@ -117,7 +119,6 @@ function resolveMedicalWork(state: GameState): GameState {
     if (survivor.condition === 'serious' || survivor.condition === 'critical') medicine -= 1;
     treated.add(survivor.id);
   }
-  const communityCapacity = communityMedicalSupport(state);
   const lightCandidates = candidates.filter((s) => !treated.has(s.id) && (s.condition === 'minor' || s.condition === 'fatigued')).slice(0, communityCapacity);
   for (const survivor of lightCandidates) treated.add(survivor.id);
   if (!treated.size) return state;
