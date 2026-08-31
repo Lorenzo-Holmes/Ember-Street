@@ -22,9 +22,10 @@ function migrateAssignments(assignments: Record<string, Role> | undefined): Reco
 
 export function promoteV2ToV3(input: unknown): GameState | null {
   if (!input || typeof input !== 'object') return null;
-  const legacy = input as Partial<GameState> & { version?: number };
-  if (legacy.version !== 2 && legacy.version !== 3) return null;
+  const version = Number((input as { version?: unknown }).version);
+  if (version !== 2 && version !== 3) return null;
 
+  const legacy = input as Partial<Omit<GameState, 'version'>>;
   const supplies = Number(legacy.supplies ?? 2);
   const medicine = Number(legacy.medicine ?? 1);
   const power = Number(legacy.power ?? 62);
@@ -32,7 +33,7 @@ export function promoteV2ToV3(input: unknown): GameState | null {
   const survivors = (legacy.survivors ?? []).map(normalizeV3Survivor);
 
   return {
-    ...(legacy as GameState),
+    ...(legacy as Omit<GameState, 'version'>),
     version: 3,
     inventory: legacy.inventory ?? createDefaultInventory({ supplies, medicine, power, parts }),
     storyItems: legacy.storyItems ?? [],
