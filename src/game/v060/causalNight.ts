@@ -1,4 +1,5 @@
 import type { GameState, Role } from '../types';
+import { previewMeal } from './food';
 import { hopeBand } from './mortality';
 import type { V060NightEvent } from './nightEvents';
 
@@ -13,6 +14,12 @@ function assignedCount(state: GameState, role: Role): number {
   return state.survivors.filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing' && state.dayAssignments[survivor.id] === assignment).length;
 }
 
+function poorMealForCausalSignal(state: GameState): boolean {
+  const preparingTonight = ['street', 'assignment', 'expedition', 'dusk'].includes(state.phase);
+  const meal = preparingTonight ? previewMeal(state) : state.mealState;
+  return meal.quality === 'cold' || meal.quality === 'struggling' || meal.consecutiveShortageDays >= 2;
+}
+
 export function nightCausalSignals(state: GameState): string[] {
   const signals: string[] = [];
   const injured = state.survivors.filter((survivor) => ['minor', 'serious', 'critical'].includes(survivor.condition ?? '')).length;
@@ -21,7 +28,7 @@ export function nightCausalSignals(state: GameState): string[] {
   if (!assignedCount(state, 'repair')) signals.push('无人维修：发电机、围栏与建筑故障权重上升');
   if (injured > 0 && !assignedCount(state, 'medical')) signals.push(`有 ${injured} 名伤员且无人医疗：医疗危机更容易在夜里爆发`);
   if (state.inventory.power < 35) signals.push('电力吃紧：断电与设备故障更容易发生');
-  if (state.mealState.quality === 'cold' || state.mealState.quality === 'struggling' || state.mealState.consecutiveShortageDays >= 2) signals.push('供餐不足：配给争执与低士气事件更容易出现');
+  if (poorMealForCausalSignal(state)) signals.push('今晚供餐不足：配给争执与低士气事件更容易出现');
   if (hope === 'low' || hope === 'collapse') signals.push('希望低迷：争执、离开与恐慌事件权重上升');
   if (assignedCount(state, 'radio')) signals.push('广播有人值守：远方信号与外界情报更容易出现');
   return signals.slice(0, 6);
