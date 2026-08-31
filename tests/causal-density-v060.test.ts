@@ -38,7 +38,8 @@ describe('v0.6 causal density', () => {
   });
 
   it('makes ration conflict more likely after poor meals', () => {
-    const base = { ...createV060InitialState(707003), day: 8 };
+    const initial = createV060InitialState(707003);
+    const base = { ...initial, day: 8, mealState: { ...initial.mealState, quality: 'hot' as const, consecutiveShortageDays: 0 } };
     const normal = nightEventWeight(base, event('argument-rations'));
     const hungry = nightEventWeight({ ...base, mealState: { ...base.mealState, quality: 'struggling', consecutiveShortageDays: 2 } }, event('argument-rations'));
     expect(hungry).toBeGreaterThan(normal);
