@@ -2,7 +2,11 @@ import type { Order, OrderKind, SupplyKind } from './types';
 
 export const NIGHT_DURATION_MS = 75_000;
 export const CHAPTER_FINAL_DAY = 30;
-export const HORDE_MILESTONE_DAYS = [10, 20, 30] as const;
+export const ENDING_DAY = 30;
+export const FINAL_PLAYABLE_DAY = 29;
+export const HORDE_MILESTONE_DAYS = [10, 20, 29] as const;
+
+// v0.5 compatibility exports. These are removed when the seven-slot runtime is deleted.
 export const SLOT_COUNT = 7;
 export const RACK_COUNT = 4;
 export const RACK_BATCH_SIZE = 3;
@@ -12,7 +16,7 @@ export function isHordeMilestone(day: number): boolean {
 }
 
 export function nightDurationFor(day: number): number {
-  if (day >= CHAPTER_FINAL_DAY) return 120_000;
+  if (day >= FINAL_PLAYABLE_DAY) return 120_000;
   if (day === 20) return 100_000;
   if (day === 10) return 90_000;
   if (day >= 24) return 85_000;
@@ -24,7 +28,7 @@ export function nightOrderLimitFor(day: number): number {
   if (day <= 6) return 4;
   if (day <= 14) return day === 10 ? 6 : 5;
   if (day <= 23) return day === 20 ? 7 : 6;
-  if (day < CHAPTER_FINAL_DAY) return 7;
+  if (day < FINAL_PLAYABLE_DAY) return 7;
   return 8;
 }
 
