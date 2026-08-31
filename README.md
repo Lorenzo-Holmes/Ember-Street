@@ -1,5 +1,7 @@
 # Ember Street · 余烬长街
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/Lorenzo-Holmes/Ember-Street?quickstart=1)
+
 > **Seven slots. One last light.**  
 > 只有七格，守住最后的灯火。
 
@@ -74,11 +76,30 @@
 - Vite
 - Vitest
 - Cloudflare Workers Static Assets
+- GitHub Codespaces
 - CSS / SVG / Web Audio / Canvas / localStorage
 
 游戏核心位于 `src/game/`，React 主要承担表现层。尸潮采用「压力状态 + 少量视觉剪影」而不是大量独立僵尸实体，优先保证手机 WebView 的响应速度。
 
-## 开发
+## GitHub Codespaces 在线调试
+
+点击 README 顶部 **Open in GitHub Codespaces**，或直接打开：
+
+`https://codespaces.new/Lorenzo-Holmes/Ember-Street?quickstart=1`
+
+仓库已提供 `.devcontainer/devcontainer.json`：
+
+- Node.js 22 开发容器
+- 创建 Codespace 后自动执行 `npm install`
+- 容器启动后自动运行 `npm run dev:codespaces`
+- Vite 固定监听 `0.0.0.0:5173`
+- 5173 自动转发为 **Ember Street Vite Preview** 并尝试自动打开预览
+
+如果预览没有自动弹出，在 Codespaces 底部 **PORTS / 端口** 面板找到 `5173`，点击地球图标即可打开。
+
+开发时保存 `src/` 中的代码，Vite HMR 会立即刷新预览；完成后可直接在 Codespaces 的 Source Control 中 commit / push。
+
+## 本地开发
 
 ```bash
 npm install
@@ -115,6 +136,7 @@ npm run deploy:cf
 
 ## 目录
 
+- `.devcontainer/`：GitHub Codespaces 一键开发环境
 - `src/game/`：规则、经营、挑战、存档与核心手感
 - `src/feedback.ts`：音频 / 震动渐进增强与本地偏好
 - `src/App.tsx`：主界面与场景编排
