@@ -84,6 +84,11 @@ export interface GameState {
   chapterComplete: boolean;
   catStage?: 0 | 1 | 2 | 3;
   catFedToday?: boolean;
+  combo?: number;
+  bestCombo?: number;
+  comboRemainingMs?: number;
+  clearances?: number;
+  extremeServes?: number;
   stats: NightStats;
   lastMessage: string;
 }
