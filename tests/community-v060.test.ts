@@ -94,6 +94,30 @@ describe('v0.6 community support', () => {
     expect(emergencyRisk(focused)).toBeLessThan(emergencyRisk(base));
   });
 
+  it('community medical assistants independently recover light injuries', () => {
+    const base = withCommunity(4);
+    const state: GameState = {
+      ...base,
+      buildings: { ...base.buildings, clinic: 2 },
+      survivors: base.survivors.map((s) => s.id === 'lin-xia' ? { ...s, condition: 'minor' as const } : s),
+    };
+    const resolved = finalizeDay(state);
+    expect(resolved.survivors.find((s) => s.id === 'lin-xia')?.condition).toBe('healthy');
+    expect(resolved.inventory.medicine).toBe(state.inventory.medicine);
+  });
+
+  it('community medical assistants do not replace a medic for serious injuries', () => {
+    const base = withCommunity(8);
+    const state: GameState = {
+      ...base,
+      buildings: { ...base.buildings, clinic: 3 },
+      survivors: base.survivors.map((s) => s.id === 'lin-xia' ? { ...s, condition: 'serious' as const } : s),
+    };
+    const resolved = finalizeDay(state);
+    expect(resolved.survivors.find((s) => s.id === 'lin-xia')?.condition).toBe('serious');
+    expect(resolved.inventory.medicine).toBe(state.inventory.medicine);
+  });
+
   it('ordinary residents are not Survivor entities and cannot be assigned to expeditions', () => {
     const state = withCommunity(10);
     expect(state.survivors.some((s) => s.id === 'community-resident-1')).toBe(false);
