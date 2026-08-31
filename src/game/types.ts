@@ -8,6 +8,14 @@ export type CheckOutcome = 'failure' | 'partial' | 'success' | 'critical';
 export type MealQuality = 'cold' | 'struggling' | 'hot' | 'full' | 'well-fed';
 export type FinalHordeResult = 'perfect' | 'held' | 'damaged' | 'breached';
 export type EndingId = 'E01' | 'E02' | 'E03' | 'E04' | 'E05' | 'E06' | 'E07' | 'E08' | 'E09' | 'E10' | 'E11' | 'E12' | 'E13';
+export type CommunitySupportMode = 'logistics' | 'repair' | 'defense';
+
+export interface CommunityState {
+  pendingResidents: number;
+  activeResidents: number;
+  supportMode: CommunitySupportMode | null;
+  lastSupportDay?: number;
+}
 
 export interface Survivor {
   id: string;
@@ -134,6 +142,7 @@ export interface GameState {
   storyFlags: string[];
   mainLightStage: 1 | 2 | 3 | 4 | 5;
   civilianResidents: number;
+  communityState: CommunityState;
   dayAssignments: Record<string, DayAssignment>;
   dayState: DayState;
   expeditionState: ExpeditionState;
