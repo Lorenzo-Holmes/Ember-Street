@@ -84,7 +84,9 @@ function emergencyCountFor(state: GameState, roll: number): number {
 }
 
 function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
-  const pool = eligible(NORMAL_NIGHT_EVENTS, state.day);
+  // DAY 29 is the final playable night. Reuse the late-game DAY 28 normal pool
+  // around the dedicated horde events so the finale still contains six main decisions.
+  const pool = eligible(NORMAL_NIGHT_EVENTS, Math.min(state.day, 28));
   const selected: V060NightEvent[] = [];
   let nextState = rngState;
   const preferred = ['threat', 'infrastructure', 'survivor'] as const;
