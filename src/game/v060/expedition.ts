@@ -3,6 +3,8 @@ import type { CheckOutcome, GameState, Survivor } from '../types';
 import { isLocationUnlocked } from './campaignEvents';
 import { markMissing, recordDeath } from './memorial';
 
+export { isLocationUnlocked };
+
 export type ExpeditionRisk = 'safe' | 'cautious' | 'dangerous' | 'extreme';
 export type ExpeditionResource = 'ration' | 'medicine' | 'materials' | 'parts';
 
@@ -115,7 +117,13 @@ export function startExpedition(state: GameState, partyIds: string[], locationId
   if (!validation.allowed) return { ...state, lastMessage: validation.reason ?? '无法出发' };
   return {
     ...state,
+    phase: 'street',
     expeditionState: { activePartyIds: [...partyIds], locationId, eventId: null, departed: true },
+    dayState: {
+      ...state.dayState,
+      assignmentsLocked: false,
+      committedSurvivorIds: [...new Set([...state.dayState.committedSurvivorIds, ...partyIds])],
+    },
     campaignStats: { ...state.campaignStats, expeditions: state.campaignStats.expeditions + 1 },
     lastMessage: `${partyIds.map((id) => state.survivors.find((item) => item.id === id)?.name ?? id).join('、')}出发前往${locationForId(locationId)?.name}`,
   };
@@ -163,9 +171,10 @@ export function retreatExpedition(state: GameState): GameState {
   const committedSurvivorIds = [...new Set([...state.dayState.committedSurvivorIds, ...partyIds])];
   return {
     ...state,
+    phase: 'street',
     survivors: state.survivors.map((survivor) => party.has(survivor.id) ? { ...survivor, energy: Math.max(0, survivor.energy - 6) } : survivor),
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
-    dayState: { ...state.dayState, returnedExpeditions: state.dayState.returnedExpeditions + 1, committedSurvivorIds },
+    dayState: { ...state.dayState, assignmentsLocked: false, returnedExpeditions: state.dayState.returnedExpeditions + 1, committedSurvivorIds },
     lastMessage: '搜索队选择撤回 · 没有物资，但人回来了',
   };
 }
@@ -209,10 +218,11 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
   const committedSurvivorIds = [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])];
   return {
     ...next,
+    phase: 'street',
     storyFlags: firstVisit ? [...next.storyFlags, locationFlag] : next.storyFlags,
     campaignStats: { ...next.campaignStats, locationsDiscovered: next.campaignStats.locationsDiscovered + (firstVisit ? 1 : 0) },
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
-    dayState: { ...next.dayState, returnedExpeditions: next.dayState.returnedExpeditions + 1, committedSurvivorIds },
+    dayState: { ...next.dayState, assignmentsLocked: false, returnedExpeditions: next.dayState.returnedExpeditions + 1, committedSurvivorIds },
     lastMessage: message,
   };
 }
