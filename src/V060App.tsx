@@ -4,9 +4,9 @@ import { clearSave, loadGame, saveGame } from './game/storage';
 import type { BuildingId, DayAssignment, EndingId, GameState, SurvivorCondition } from './game/types';
 import { V060_BUILDINGS, canUpgradeBuilding, upgradeBuilding } from './game/v060/buildings';
 import { advanceCampaignDay, createV060InitialState, finalizeDay, resolveExpeditionStance, retreatCurrentExpedition, searchForMissing, upgradeSaveToV060 } from './game/v060/campaign';
-import { assignDayJob, canTakeDayAssignment, clearDayJob, lockDayAssignments, previewNightPreparation } from './game/v060/dayManagement';
+import { assignDayJob, canTakeDayAssignment, clearDayJob, lockDayAssignmentsAndRoute, openExpeditionEvent, previewNightPreparation, reopenDayAssignments } from './game/v060/dayManagement';
 import { ENDINGS, endingHint, loadMetaProgress, recordEnding, type MetaProgress } from './game/v060/endings';
-import { EXPEDITION_LOCATIONS, currentExpeditionEvent, drawExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, startExpedition } from './game/v060/expedition';
+import { EXPEDITION_LOCATIONS, currentExpeditionEvent, drawExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, isLocationUnlocked, locationForId, startExpedition } from './game/v060/expedition';
 import { mealLabel, previewMeal } from './game/v060/food';
 
 const JOBS: Array<{ id: DayAssignment; label: string; note: string }> = [
@@ -30,7 +30,10 @@ function initialRun(): GameState {
   return loaded ? upgradeSaveToV060(loaded) : createV060InitialState();
 }
 
-function commit(next: GameState, setState: (state: GameState) => void) { saveGame(next, true); setState(next); }
+function commit(next: GameState, setState: (state: GameState) => void) {
+  saveGame(next, true);
+  setState(next);
+}
 
 function InventoryBar({ state }: { state: GameState }) {
   return <section className="v6-inventory" aria-label="物资箱"><div className="v6-inventory__title"><span>📦 物资箱</span><small>救回的人也需要吃饭</small></div><div className="v6-resource-grid">
@@ -63,37 +66,50 @@ function MemorialPanel({ state }: { state: GameState }) {
   return <section className="v6-section"><div className="v6-section__head"><div><span>纪念墙</span><h2>这里曾经有人</h2></div><small>{state.memorials.length} 个名字</small></div><div className="v6-survivors">{state.memorials.map((entry) => <article className="v6-survivor" key={entry.survivorId}><div className="v6-survivor__top"><div><h3>{entry.name}</h3><span>DAY {entry.day} · {entry.cause}</span></div></div><p>{entry.epitaph}</p></article>)}</div></section>;
 }
 
+function ExpeditionStatusPanel({ state, setState, summary }: { state: GameState; setState: (state: GameState) => void; summary: string | null }) {
+  if (state.expeditionState.departed) {
+    const location = state.expeditionState.locationId ? locationForId(state.expeditionState.locationId) : undefined;
+    const names = state.expeditionState.activePartyIds.map((id) => state.survivors.find((s) => s.id === id)?.name ?? id).join('、');
+    return <section className="v6-section"><div className="v6-section__head"><div><span>搜索队外出中</span><h2>{names || '搜索队'} → {location?.name ?? '未知地点'}</h2></div><small>可先查看街区，再处理事件</small></div><article className="v6-survivor"><p>队伍已经出发。事件会保留在这里，不会因为返回主界面而丢失。</p><button className="v6-link" onClick={() => commit(openExpeditionEvent(state), setState)}>处理探索事件</button></article></section>;
+  }
+  if (state.dayState.returnedExpeditions <= 0) return null;
+  return <section className="v6-section"><div className="v6-section__head"><div><span>搜索队已归队</span><h2>今天已有 {state.dayState.returnedExpeditions} 支搜索队返回</h2></div><small>已行动队员保持 committed</small></div><article className="v6-survivor"><p>{summary ?? '探索已经结束。你仍可查看物资、人物和建筑，再决定何时进入黄昏。'}</p></article></section>;
+}
+
 function AssignmentPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
-  const expeditionCount = Object.values(state.dayAssignments).filter((job) => job === 'expedition').length;
-  return <section className="v6-section"><div className="v6-section__head"><div><span>今日调遣</span><h2>一个人，一天只做一件主要的事</h2></div><small>黄昏后不可改岗</small></div><div className="v6-survivors">{state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').map((survivor) => {
-    const condition = survivor.condition ?? 'healthy'; const unavailable = condition === 'critical'; const current = state.dayAssignments[survivor.id]; const committed = state.dayState.committedSurvivorIds.includes(survivor.id);
-    return <article className={`v6-survivor ${unavailable || committed ? 'is-unavailable' : ''}`} key={survivor.id}><div className="v6-survivor__top"><div><h3>{survivor.name}</h3><span>{committed ? '今天已经参加搜救' : survivor.trait ?? survivor.perk}</span></div><div><b>{survivor.energy}</b><small>精力</small></div></div><div className="v6-survivor__status"><span>{CONDITION_LABEL[condition]}</span><span>信任 {survivor.trust ?? 0}</span><span>{survivor.specialty}</span></div><div className="v6-job-grid">{JOBS.map((job) => {
+  const committedIds = new Set(state.dayState.committedSurvivorIds);
+  const expeditionCount = Object.entries(state.dayAssignments).filter(([id, job]) => job === 'expedition' && !committedIds.has(id)).length;
+  return <section className="v6-section"><div className="v6-section__head"><div><span>今日调遣</span><h2>一个人，一天只做一件主要的事</h2></div><small>已行动人物不会因回退重新可用</small></div><div className="v6-survivors">{state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').map((survivor) => {
+    const condition = survivor.condition ?? 'healthy'; const unavailable = condition === 'critical'; const current = state.dayAssignments[survivor.id]; const committed = committedIds.has(survivor.id); const away = state.expeditionState.departed && state.expeditionState.activePartyIds.includes(survivor.id);
+    return <article className={`v6-survivor ${unavailable || committed ? 'is-unavailable' : ''}`} key={survivor.id}><div className="v6-survivor__top"><div><h3>{survivor.name}</h3><span>{away ? '搜索队外出中' : committed ? '今天已经执行过行动' : survivor.trait ?? survivor.perk}</span></div><div><b>{survivor.energy}</b><small>精力</small></div></div><div className="v6-survivor__status"><span>{CONDITION_LABEL[condition]}</span><span>信任 {survivor.trust ?? 0}</span><span>{survivor.specialty}</span></div><div className="v6-job-grid">{JOBS.map((job) => {
       const availability = canTakeDayAssignment(state, survivor.id, job.id); const extraLimit = job.id === 'expedition' && current !== 'expedition' && expeditionCount >= 2; const disabled = !availability.allowed || extraLimit;
       return <button key={job.id} className={current === job.id ? 'active' : ''} disabled={disabled} title={extraLimit ? '一支探索队最多两人' : availability.reason ?? job.note} onClick={() => commit(current === job.id ? clearDayJob(state, survivor.id) : assignDayJob(state, survivor.id, job.id), setState)}>{job.label}</button>;
     })}</div></article>;
   })}</div></section>;
 }
 
-function DayScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
-  const meal = previewMeal(state); const prep = previewNightPreparation(state); const assigned = Object.keys(state.dayAssignments).length;
-  const available = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing' && s.condition !== 'critical' && !state.dayState.committedSurvivorIds.includes(s.id)).length;
-  const lock = () => { const locked = lockDayAssignments(state); const expeditions = Object.values(locked.dayAssignments).filter((job) => job === 'expedition').length; commit({ ...locked, phase: expeditions ? 'expedition' : 'dusk' }, setState); };
-  return <main className="v6-shell"><header className="v6-topbar"><div><span>EMBER STREET</span><strong>DAY {state.day}</strong></div><div><b>{state.day === 29 ? '最后的白天' : state.forecast.title}</b><small>{state.day === 29 ? '天黑以后就是最终尸潮。' : state.forecast.detail}</small></div></header><StreetVisual state={state}/><InventoryBar state={state}/><MissingPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/><MemorialPanel state={state}/><section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section><button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={lock}>确认今日调遣 <small>{assigned} 已手动安排 · 未安排者自动休息</small></button><p className="v6-message">{state.lastMessage}</p></main>;
+function DayScreen({ state, setState, expeditionSummary }: { state: GameState; setState: (state: GameState) => void; expeditionSummary: string | null }) {
+  const committed = new Set(state.dayState.committedSurvivorIds);
+  const previewState = { ...state, dayAssignments: Object.fromEntries(Object.entries(state.dayAssignments).filter(([id]) => !committed.has(id))) };
+  const meal = previewMeal(previewState); const prep = previewNightPreparation(state); const assigned = Object.keys(previewState.dayAssignments).length;
+  const lock = () => commit(lockDayAssignmentsAndRoute(state), setState);
+  return <main className="v6-shell"><header className="v6-topbar"><div><span>EMBER STREET</span><strong>DAY {state.day}</strong></div><div><b>{state.day === 29 ? '最后的白天' : state.forecast.title}</b><small>{state.day === 29 ? '天黑以后就是最终尸潮。' : state.forecast.detail}</small></div></header><StreetVisual state={state}/><InventoryBar state={state}/><ExpeditionStatusPanel state={state} setState={setState} summary={expeditionSummary}/><MissingPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><MemorialPanel state={state}/><section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section><button className="v6-cta" disabled={state.expeditionState.departed} onClick={lock}>{state.expeditionState.departed ? '搜索队外出中' : '锁定今日调遣'} <small>{state.expeditionState.departed ? '先处理探索事件，再进入黄昏' : `${assigned} 已手动安排 · 未安排者自动休息`}</small></button><p className="v6-message">{state.lastMessage}</p></main>;
 }
 
 function ExpeditionScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
-  const assignedIds = state.survivors.filter((s) => state.dayAssignments[s.id] === 'expedition' && s.condition !== 'dead' && s.condition !== 'missing').map((s) => s.id).slice(0, 2);
-  const availableLocations = EXPEDITION_LOCATIONS.filter((location) => location.unlockDay <= state.day);
+  const committed = new Set(state.dayState.committedSurvivorIds);
+  const assignedIds = state.survivors.filter((s) => state.dayAssignments[s.id] === 'expedition' && !committed.has(s.id) && s.condition !== 'dead' && s.condition !== 'missing').map((s) => s.id).slice(0, 2);
+  const availableLocations = EXPEDITION_LOCATIONS.filter((location) => isLocationUnlocked(state, location.id));
   const [party, setParty] = useState<string[]>(assignedIds); const [locationId, setLocationId] = useState(availableLocations[availableLocations.length - 1]?.id ?? 'convenience-store');
   const event = currentExpeditionEvent(state); const risk = expeditionRiskLabel(expeditionRiskScore(state, party, locationId));
-  const begin = () => { let next = startExpedition(state, party, locationId); next = drawExpeditionEvent(next); commit(next, setState); };
-  if (!state.expeditionState.departed) return <main className="v6-shell"><header className="v6-page-head"><span>白天 · 探索</span><h1>今天谁出去？</h1><p>DAY 1–5 不会永久死亡；DAY 6 起可能失踪；DAY 11 以后，极险状态与双一可能真正带走一个人。</p></header><InventoryBar state={state}/><section className="v6-section"><div className="v6-section__head"><div><span>探索队</span><h2>1–2 人</h2></div></div><div className="v6-party">{assignedIds.map((id) => { const s = state.survivors.find((item) => item.id === id)!; const active = party.includes(id); return <button className={active ? 'active' : ''} key={id} onClick={() => setParty((current) => active ? current.filter((x) => x !== id) : current.length < 2 ? [...current, id] : current)}><strong>{s.name}</strong><span>精力 {s.energy} · {CONDITION_LABEL[s.condition ?? 'healthy']}</span></button>; })}</div></section><section className="v6-section"><div className="v6-section__head"><div><span>地点</span><h2>选择今天要赌在哪里</h2></div><strong className={`v6-risk v6-risk--${risk}`}>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</strong></div><div className="v6-locations">{availableLocations.map((location) => <button className={location.id === locationId ? 'active' : ''} key={location.id} onClick={() => setLocationId(location.id)}><strong>{location.name}</strong><span>{location.description}</span><small>主要：{location.primary} · 危险 {location.danger}/5</small></button>)}</div></section><button className="v6-cta" disabled={!party.length} onClick={begin}>搜索队出发</button><button className="v6-link" onClick={() => commit({ ...state, phase: 'dusk', lastMessage: '今天取消外出，所有人留在街区。' }, setState)}>取消今天的探索</button></main>;
-  return <main className="v6-shell"><header className="v6-page-head"><span>探索途中</span><h1>{event?.title ?? '搜索队进入了建筑'}</h1><p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p></header><section className="v6-expedition-choices"><button onClick={() => commit(resolveExpeditionStance(state, 'push'), setState)}><b>A</b><strong>继续深入</strong><span>更高风险；成功时额外带回主要物资。</span></button><button onClick={() => commit(resolveExpeditionStance(state, 'careful'), setState)}><b>B</b><strong>谨慎绕行</strong><span>2D6 获得 +1，但不追求额外收益。</span></button><button onClick={() => commit(retreatCurrentExpedition(state), setState)}><b>C</b><strong>立刻撤回</strong><span>今天什么都拿不到，但人会回来。</span></button></section><p className="v6-message">{state.lastMessage}</p></main>;
+  const begin = () => { let next = startExpedition(state, party, locationId); if (next.expeditionState.departed) next = drawExpeditionEvent(next); commit(next, setState); };
+  if (!state.expeditionState.departed) return <main className="v6-shell"><header className="v6-page-head"><span>白天 · 探索</span><h1>今天谁出去？</h1><p>DAY 1–5 不会永久死亡；DAY 6 起可能失踪；DAY 11 以后，极险状态与双一可能真正带走一个人。</p></header><button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回街区</button><InventoryBar state={state}/><section className="v6-section"><div className="v6-section__head"><div><span>探索队</span><h2>1–2 人</h2></div></div><div className="v6-party">{assignedIds.map((id) => { const s = state.survivors.find((item) => item.id === id)!; const active = party.includes(id); return <button className={active ? 'active' : ''} key={id} onClick={() => setParty((current) => active ? current.filter((x) => x !== id) : current.length < 2 ? [...current, id] : current)}><strong>{s.name}</strong><span>精力 {s.energy} · {CONDITION_LABEL[s.condition ?? 'healthy']}</span></button>; })}</div></section><section className="v6-section"><div className="v6-section__head"><div><span>地点</span><h2>选择今天要赌在哪里</h2></div><strong className={`v6-risk v6-risk--${risk}`}>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</strong></div><div className="v6-locations">{availableLocations.map((location) => <button className={location.id === locationId ? 'active' : ''} key={location.id} onClick={() => setLocationId(location.id)}><strong>{location.name}</strong><span>{location.description}</span><small>主要：{location.primary} · 危险 {location.danger}/5</small></button>)}</div></section><button className="v6-cta" disabled={!party.length} onClick={begin}>搜索队出发 <small>出发后立即回到街区主界面</small></button></main>;
+  return <main className="v6-shell"><header className="v6-page-head"><span>探索途中</span><h1>{event?.title ?? '搜索队进入了建筑'}</h1><p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p></header><button className="v6-link" onClick={() => commit({ ...state, phase: 'street' }, setState)}>← 返回街区</button><section className="v6-expedition-choices"><button onClick={() => commit(resolveExpeditionStance(state, 'push'), setState)}><b>A</b><strong>继续深入</strong><span>更高风险；成功时额外带回主要物资。</span></button><button onClick={() => commit(resolveExpeditionStance(state, 'careful'), setState)}><b>B</b><strong>谨慎绕行</strong><span>2D6 获得 +1，但不追求额外收益。</span></button><button onClick={() => commit(retreatCurrentExpedition(state), setState)}><b>C</b><strong>立刻撤回</strong><span>今天什么都拿不到，但人会回来。</span></button></section><p className="v6-message">{state.lastMessage}</p></main>;
 }
 
 function DuskScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const meal = previewMeal(state); const prep = previewNightPreparation(state);
-  return <main className="v6-shell v6-shell--dusk"><header className="v6-page-head"><span>DUSK · DAY {state.day}</span><h1>天黑以后，不再换岗。</h1><p>这是白天最后一次确认。今晚发生什么，取决于现在留下了谁、修好了什么、物资还剩多少。</p></header><InventoryBar state={state}/><section className="v6-dusk-grid"><article><span>供餐</span><h2>{mealLabel(meal.quality)}</h2><p>人口 {meal.residentCount} · 炊事能力 {meal.cookingCapacity.toFixed(1)} · 覆盖 {Math.round(meal.coverage * 100)}%</p><strong>精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong></article><article><span>夜间准备</span><h2>{prep.defense}</h2><p>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</p><strong>守备和设施会改变随机事件风险</strong></article></section><button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>进入黄昏</button><p className="v6-message">{state.lastMessage}</p></main>;
+  return <main className="v6-shell v6-shell--dusk"><header className="v6-page-head"><span>DUSK · DAY {state.day}</span><h1>天黑以后，不再换岗。</h1><p>这是白天最后一次确认。今晚发生什么，取决于现在留下了谁、修好了什么、物资还剩多少。</p></header><button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回调整调遣</button><InventoryBar state={state}/><section className="v6-dusk-grid"><article><span>供餐</span><h2>{mealLabel(meal.quality)}</h2><p>人口 {meal.residentCount} · 炊事能力 {meal.cookingCapacity.toFixed(1)} · 覆盖 {Math.round(meal.coverage * 100)}%</p><strong>精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong></article><article><span>夜间准备</span><h2>{prep.defense}</h2><p>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</p><strong>守备和设施会改变随机事件风险</strong></article></section><button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>进入夜晚</button><p className="v6-message">{state.lastMessage}</p></main>;
 }
 
 function DawnScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
@@ -106,18 +122,24 @@ function EndingScreen({ state, meta, onRestart }: { state: GameState; meta: Meta
 }
 
 export default function V060App() {
-  const [state, setState] = useState<GameState>(() => initialRun()); const [meta, setMeta] = useState<MetaProgress>(() => loadMetaProgress()); const recorded = useRef<string | null>(null);
+  const [state, setState] = useState<GameState>(() => initialRun()); const [meta, setMeta] = useState<MetaProgress>(() => loadMetaProgress()); const [expeditionSummary, setExpeditionSummary] = useState<string | null>(null); const recorded = useRef<string | null>(null); const expeditionMarker = useRef({ day: state.day, returned: state.dayState.returnedExpeditions });
   useEffect(() => { saveGame(state); }, [state]);
   useEffect(() => { if (state.phase !== 'ending' || !state.ending || !state.finalHordeResult || recorded.current === `${state.seed}:${state.ending.id}`) return; recorded.current = `${state.seed}:${state.ending.id}`; setMeta((current) => recordEnding(current, state.ending!, state.finalHordeResult!)); }, [state.phase, state.ending, state.finalHordeResult, state.seed]);
-  const restart = () => { clearSave(); recorded.current = null; const next = createV060InitialState(); saveGame(next, true); setState(next); };
+  useEffect(() => {
+    const previous = expeditionMarker.current;
+    if (state.day !== previous.day) setExpeditionSummary(null);
+    else if (state.dayState.returnedExpeditions > previous.returned) setExpeditionSummary(state.lastMessage);
+    expeditionMarker.current = { day: state.day, returned: state.dayState.returnedExpeditions };
+  }, [state.day, state.dayState.returnedExpeditions, state.lastMessage]);
+  const restart = () => { clearSave(); recorded.current = null; setExpeditionSummary(null); const next = createV060InitialState(); saveGame(next, true); setState(next); };
   const screen = useMemo(() => {
-    if (state.phase === 'street' || state.phase === 'assignment') return <DayScreen state={state} setState={setState}/>;
+    if (state.phase === 'street' || state.phase === 'assignment') return <DayScreen state={state} setState={setState} expeditionSummary={expeditionSummary}/>;
     if (state.phase === 'expedition') return <ExpeditionScreen state={state} setState={setState}/>;
     if (state.phase === 'dusk') return <DuskScreen state={state} setState={setState}/>;
     if (state.phase === 'night' || state.phase === 'night-summary') return <V060NightScene state={state} setState={setState}/>;
     if (state.phase === 'summary' || state.phase === 'dawn') return <DawnScreen state={state} setState={setState}/>;
     if (state.phase === 'ending') return <EndingScreen state={state} meta={meta} onRestart={restart}/>;
-    return <DayScreen state={{ ...state, phase: 'street' }} setState={setState}/>;
-  }, [state, meta]);
+    return <DayScreen state={{ ...state, phase: 'street' }} setState={setState} expeditionSummary={expeditionSummary}/>;
+  }, [state, meta, expeditionSummary]);
   return <>{screen}</>;
 }
