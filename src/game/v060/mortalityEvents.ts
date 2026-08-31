@@ -1,6 +1,6 @@
 import type { GameState } from '../types';
 import type { NightChoice, NightEffect, V060NightEvent } from './nightEvents';
-import { medicalCrisisFlag } from './mortality';
+import { medicalCrisisFlag, pendingLowHopeDepartureId } from './mortality';
 
 const checked = (
   id: string,
@@ -27,26 +27,8 @@ const consequence = (id: string, label: string, detail: string, effect: NightEff
   id, label, detail, strategy: 'consequence', direct: effect,
 });
 
-function hash01(seed: number, day: number, salt: number): number {
-  let value = (seed ^ Math.imul(day + 17, 0x45d9f3b) ^ salt) >>> 0;
-  value ^= value >>> 16;
-  value = Math.imul(value, 0x7feb352d) >>> 0;
-  value ^= value >>> 15;
-  value = Math.imul(value, 0x846ca68b) >>> 0;
-  value ^= value >>> 16;
-  return value / 0x100000000;
-}
-
 export function lowHopeDepartureTarget(state: GameState): string | null {
-  if (state.day < 6 || state.hope > 15 || state.storyFlags.includes(`low_hope_departure_resolved:${state.day}`)) return null;
-  const candidates = state.survivors
-    .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing' && survivor.condition !== 'critical')
-    .sort((a, b) => a.id.localeCompare(b.id));
-  if (!candidates.length) return null;
-  const chance = state.hope <= 5 ? 0.68 : state.hope <= 10 ? 0.48 : 0.28;
-  if (hash01(state.seed, state.day, 0x1f123bb5) >= chance) return null;
-  const index = Math.floor(hash01(state.seed, state.day, 0x6d2b79f5) * candidates.length) % candidates.length;
-  return candidates[index]?.id ?? null;
+  return pendingLowHopeDepartureId(state);
 }
 
 function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEvent | undefined {
@@ -91,7 +73,7 @@ function lowHopeEvent(state: GameState, survivorId: string): V060NightEvent | un
 }
 
 export function pendingMortalityEventIds(state: GameState): string[] {
-  const medical = state.storyFlags
+  const events = state.storyFlags
     .filter((flag) => flag.startsWith('medical_crisis_pending:'))
     .map((flag) => flag.slice('medical_crisis_pending:'.length))
     .filter((id) => Boolean(medicalCrisisEvent(state, id)))
@@ -99,8 +81,8 @@ export function pendingMortalityEventIds(state: GameState): string[] {
     .slice(0, 2)
     .map((id) => `mortality-medical:${id}`);
   const lowHopeTarget = lowHopeDepartureTarget(state);
-  if (lowHopeTarget) medical.push(`mortality-hope:${lowHopeTarget}`);
-  return medical;
+  if (lowHopeTarget) events.push(`mortality-hope:${lowHopeTarget}`);
+  return events;
 }
 
 export function mortalityEventById(state: GameState, id: string): V060NightEvent | undefined {
