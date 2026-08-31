@@ -77,7 +77,7 @@ const EVENTS: NarrativeEventDefinition[] = [
       { id: 'leave', label: '立刻离开', detail: '保存状态，不让一个机会拖垮整条街。', risk: '无' },
     ],
     effects: {
-      enter: (state) => appendLog(trustUp(updateSurvivor({ ...state, medicine: state.medicine + 3 }, 'lin-xia', (survivor) => ({ ...survivor, energy: Math.max(25, survivor.energy - 18) })), 'lin-xia'), '林夏从药店回来', '药品 +3。她衣袖上都是灰，但确认西街还有可搜索区域。', 'resource', '15:18'),
+      enter: (state) => appendLog(trustUp(updateSurvivor({ ...state, medicine: state.medicine + 3 }, 'lin-xia', (survivor) => ({ ...survivor, energy: Math.max(25, survivor.energy - 18), injury: 'minor' })), 'lin-xia'), '林夏从药店回来', '药品 +3。她衣袖上都是灰，但确认西街还有可搜索区域。', 'resource', '15:18'),
       observe: (state) => appendLog(trustUp({ ...state, defense: clamp((state.defense ?? 50) + 6) }, 'lin-xia'), '西街路线被记下', '林夏没有进门，而是把附近巷口、尸群方向和撤退路线画进地图。', 'neutral', '15:06'),
       leave: (state) => appendLog(state, '今天不冒险', '药店被标记在地图上。没有收获，也没有人受伤。', 'neutral', '14:51'),
     },
