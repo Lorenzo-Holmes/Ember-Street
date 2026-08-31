@@ -8,6 +8,15 @@ export const medicalCrisisFlag = (survivorId: string) => `medical_crisis_pending
 export const lowHopeDepartureFlag = (survivorId: string) => `low_hope_departure_pending:${survivorId}`;
 const LOW_HOPE_PREFIX = 'low_hope_departure_pending:';
 
+export type HopeBand = 'stable' | 'tense' | 'low' | 'collapse';
+
+export function hopeBand(state: Pick<GameState, 'hope'>): HopeBand {
+  if (state.hope >= 60) return 'stable';
+  if (state.hope >= 30) return 'tense';
+  if (state.hope >= 13) return 'low';
+  return 'collapse';
+}
+
 export function pendingLowHopeDepartureId(state: GameState): string | null {
   const flag = state.storyFlags.find((value) => value.startsWith(LOW_HOPE_PREFIX));
   return flag ? flag.slice(LOW_HOPE_PREFIX.length) : null;
@@ -97,6 +106,18 @@ export function clearLowHopeDeparture(state: GameState, survivorId: string): Gam
   return { ...state, storyFlags: state.storyFlags.filter((flag) => flag !== lowHopeDepartureFlag(survivorId)) };
 }
 
+function residentLossNarrative(cause: string, loss: number): string {
+  const countText = loss === 1 ? '一个人' : `${loss}个人`;
+  if (cause.includes('踩踏')) return `宿营屋门口一度挤成一团。等门重新关上时，负责帮大家分热水的人里少了${countText}。`;
+  if (cause.includes('搜救')) return `出去找人的队伍最后只带回了空手电。那个一直帮忙搬物资的居民没有回来。`;
+  if (cause.includes('失踪')) return `天亮清点铺位时，${countText}的毯子是空的。没人知道他们什么时候离开的。`;
+  if (cause.includes('坍塌')) return `倒下来的墙没有给人反应时间。清理碎石时，街区确认失去了${countText}。`;
+  if (cause.includes('北门')) return `北门缺口被堵住以后，地上留下了来不及带走的东西。${countText}没能退回来。`;
+  if (cause.includes('尸群')) return `尸群退开后，清点人数少了${countText}。他们原本只是帮着搬障碍和递工具。`;
+  if (cause.includes('医疗')) return `诊疗站重新安静下来时，${countText}已经没有呼吸。有人替他们把毯子拉到了肩上。`;
+  return `${cause}之后，街区少了${countText}。他们不是一个数字，而是每天一起吃饭、搬东西、守门的人。`;
+}
+
 export function loseCommunityResidents(state: GameState, requestedLoss: number, cause: string): GameState {
   const loss = Math.min(state.civilianResidents, Math.max(0, Math.floor(requestedLoss)));
   if (!loss) return state;
@@ -113,6 +134,6 @@ export function loseCommunityResidents(state: GameState, requestedLoss: number, 
     communityState: { ...community, activeResidents, pendingResidents, supportMode },
     hope: clamp(state.hope - Math.min(6, loss * 2)),
     storyFlags,
-    lastMessage: `${cause} · ${loss} 名居民没能撑过去。`,
+    lastMessage: residentLossNarrative(cause, loss),
   };
 }

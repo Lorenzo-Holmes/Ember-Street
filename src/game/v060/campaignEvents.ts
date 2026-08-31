@@ -1,7 +1,8 @@
 import { SURVIVOR_ROSTER } from '../progression';
 import type { BuildingId, GameState } from '../types';
+import { communityEventPendingFlag } from './community';
 
-export type CampaignEventKind = 'character' | 'building' | 'location';
+export type CampaignEventKind = 'character' | 'building' | 'community' | 'location';
 
 export interface CampaignFixedEvent {
   id: string;
@@ -13,6 +14,7 @@ export interface CampaignFixedEvent {
   survivorId?: string;
   buildingId?: BuildingId;
   locationId?: string;
+  communityCount?: number;
 }
 
 const BUILDING_EVENTS: CampaignFixedEvent[] = [
@@ -30,6 +32,13 @@ const CHARACTER_EVENTS: CampaignFixedEvent[] = [
   { id: 'character-xiaoman', kind: 'character', survivorId: 'xiaoman', minDay: 18, title: '别让声音断掉', body: '小满把缺旋钮的收音机摆到广播桌上，又摊开一叠抄满频率的纸。她说外面还有人在播，只是大多数人已经不再回应。', actionLabel: '记住小满' },
 ];
 
+const COMMUNITY_EVENTS: CampaignFixedEvent[] = [
+  { id: 'community-2', kind: 'community', communityCount: 2, title: '有人开始烧水', body: '最开始没有人说是谁负责。第二天早上，炉子上的水壶已经是热的。有人洗锅，有人整理睡垫，街区第一次出现了不需要核心人物提醒的杂活。', actionLabel: '让他们继续帮忙' },
+  { id: 'community-5', kind: 'community', communityCount: 5, title: '值班表', body: '有人把一张纸钉在宿营屋门口。上面第一次不只有那几个核心幸存者的名字。后勤、维修和守备终于可以由居民轮值分担。', actionLabel: '启用居民轮值' },
+  { id: 'community-8', kind: 'community', communityCount: 8, title: '第二张桌子', body: '第一张桌子已经坐不下所有人。于是有人从废墟里拖回木板，拼出了第二张。吃饭、包扎和修东西第一次可以同时进行。', actionLabel: '扩展公共区域' },
+  { id: 'community-10', kind: 'community', communityCount: 10, title: '这已经不是避难点了', body: '夜里有人说，这里已经不像临时躲雨的地方。有人记得谁负责烧水，谁知道哪面墙漏风，谁会在天黑前主动检查门栓。它开始像一个社区。', actionLabel: '承认这条街已经长大' },
+];
+
 const LOCATION_EVENTS: CampaignFixedEvent[] = [
   { id: 'location-west-pharmacy', kind: 'location', locationId: 'west-pharmacy', minDay: 2, title: '西街的绿色招牌', body: '有人看见药店后门还锁着。橱窗已经空了，但真正的库存通常不会摆在外面。', actionLabel: '解锁西街药店' },
   { id: 'location-apartment-402', kind: 'location', locationId: 'apartment-402', minDay: 4, title: '四楼还有一扇窗', body: '夜里有人看见居民楼四层的窗帘动过。那里可能有人，也可能只是风。至少这栋楼还值得再去一次。', actionLabel: '解锁废弃居民楼' },
@@ -42,7 +51,7 @@ const LOCATION_EVENTS: CampaignFixedEvent[] = [
   { id: 'location-warehouse', kind: 'location', locationId: 'warehouse', minDay: 24, title: '北仓库坐标', body: '一张旧送货单标出了北仓库的位置。那里靠近尸群迁移方向，但如果还想做最后几次大规模建设，这可能是唯一选择。', actionLabel: '解锁北仓库' },
 ];
 
-export const CAMPAIGN_FIXED_EVENTS: CampaignFixedEvent[] = [...BUILDING_EVENTS, ...CHARACTER_EVENTS, ...LOCATION_EVENTS];
+export const CAMPAIGN_FIXED_EVENTS: CampaignFixedEvent[] = [...BUILDING_EVENTS, ...CHARACTER_EVENTS, ...COMMUNITY_EVENTS, ...LOCATION_EVENTS];
 
 const seenFlag = (eventId: string) => `fixed_event_seen:${eventId}`;
 const buildingPendingFlag = (buildingId: BuildingId) => `building_event_pending:${buildingId}`;
@@ -64,13 +73,17 @@ function eventEligible(state: GameState, event: CampaignFixedEvent): boolean {
     return buildingId ? state.storyFlags.includes(buildingPendingFlag(buildingId)) : false;
   }
   if (event.kind === 'character') return Boolean(event.survivorId && collectedSurvivorIsPresent(state, event.survivorId));
+  if (event.kind === 'community') {
+    const communityCount = event.communityCount;
+    return communityCount !== undefined && state.storyFlags.includes(communityEventPendingFlag(communityCount));
+  }
   if (event.kind === 'location') return Boolean(event.locationId && !isLocationUnlocked(state, event.locationId));
   return false;
 }
 
 export function pendingCampaignEvent(state: GameState): CampaignFixedEvent | null {
   if (!['street', 'assignment'].includes(state.phase) || state.expeditionState.departed) return null;
-  const priority: CampaignEventKind[] = ['character', 'building', 'location'];
+  const priority: CampaignEventKind[] = ['character', 'building', 'community', 'location'];
   for (const kind of priority) {
     const event = CAMPAIGN_FIXED_EVENTS.find((candidate) => candidate.kind === kind && eventEligible(state, candidate));
     if (event) return event;
@@ -84,6 +97,11 @@ export function resolveCampaignEvent(state: GameState, eventId: string): GameSta
   let storyFlags = [...new Set([...state.storyFlags, seenFlag(event.id)])];
   const resolvedBuildingId = event.buildingId;
   if (resolvedBuildingId) storyFlags = storyFlags.filter((flag) => flag !== buildingPendingFlag(resolvedBuildingId));
+  const resolvedCommunityCount = event.communityCount;
+  if (event.kind === 'community' && resolvedCommunityCount !== undefined) {
+    storyFlags = storyFlags.filter((flag) => flag !== communityEventPendingFlag(resolvedCommunityCount));
+    if (resolvedCommunityCount === 5) storyFlags = [...new Set([...storyFlags, 'community_rotation_unlocked'])];
+  }
   let next: GameState = { ...state, storyFlags };
 
   if (event.kind === 'location' && event.locationId) {

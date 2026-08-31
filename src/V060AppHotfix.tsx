@@ -12,6 +12,8 @@ import {
   searchForMissing,
   upgradeSaveToV060,
 } from './game/v060/campaign';
+import { nightCausalSignals } from './game/v060/causalNight';
+import { communitySupportSummary, selectCommunitySupportMode } from './game/v060/community';
 import {
   assignDayJob,
   canTakeDayAssignment,
@@ -32,6 +34,7 @@ import {
 } from './game/v060/expedition';
 import { mealLabel, previewMeal } from './game/v060/food';
 import { isLocationUnlocked, pendingCampaignEvent, resolveCampaignEvent } from './game/v060/campaignEvents';
+import { dawnBriefEntries } from './game/v060/morningBrief';
 
 const JOBS: Array<{ id: DayAssignment; label: string; note: string }> = [
   { id: 'expedition', label: '探索', note: '外出搜集物资，可能受伤、失踪或死亡。' },
@@ -105,16 +108,42 @@ function MemorialPanel({ state }: { state: GameState }) {
 function CampaignEventScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const event = pendingCampaignEvent(state);
   if (!event) return null;
-  const kind = event.kind === 'character' ? '人物事件' : event.kind === 'building' ? '建成事件' : '探索情报';
+  const kind = event.kind === 'character' ? '人物事件' : event.kind === 'building' ? '建成事件' : event.kind === 'community' ? '社区事件' : '探索情报';
+  const subtitle = event.kind === 'location'
+    ? '新地点会在探索地图中出现'
+    : event.kind === 'building'
+      ? '这座设施正式进入街区运转'
+      : event.kind === 'community'
+        ? '居民数量正在把避难点变成真正的社区'
+        : '只有已经加入街区的人物才会出现自己的事件';
   return (
     <main className="v6-shell">
       <header className="v6-page-head"><span>{kind} · DAY {state.day}</span><h1>{event.title}</h1><p>{event.body}</p></header>
       <InventoryBar state={state}/>
       <section className="v6-section">
-        <div className="v6-section__head"><div><span>{kind}</span><h2>{event.kind === 'location' ? '新地点会在探索地图中出现' : event.kind === 'building' ? '这座设施正式进入街区运转' : '只有已经加入街区的人物才会出现自己的事件'}</h2></div></div>
+        <div className="v6-section__head"><div><span>{kind}</span><h2>{subtitle}</h2></div></div>
         <button className="v6-cta" onClick={() => commit(resolveCampaignEvent(state, event.id), setState)}>{event.actionLabel}</button>
       </section>
     </main>
+  );
+}
+
+function CommunityPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+  if (state.civilianResidents <= 0) return null;
+  const summary = communitySupportSummary(state);
+  return (
+    <section className="v6-section">
+      <div className="v6-section__head"><div><span>社区劳动力</span><h2>{summary.activeResidents} 人已安置 · {summary.pendingResidents} 人仍在安置期</h2></div><small>{summary.unlocked ? `今日轮值：${summary.supportModeLabel}` : '5 名已安置居民后解锁轮值'}</small></div>
+      <section className="v6-preview">
+        <div><span>后勤</span><strong>炊事 +{summary.cookingCapacity.toFixed(1)}</strong><small>宿营屋越完善，居民越能解放核心人物</small></div>
+        <div><span>维修</span><strong>防线 +{summary.repairDefense}</strong><small>居民处理搬运、封堵和轻度维护</small></div>
+        <div><span>守备</span><strong>夜间风险 -{Math.round(summary.nightRiskReduction * 100)}%</strong><small>守夜岗会放大居民守备协作</small></div>
+        <div><span>医疗辅助</span><strong>+{summary.medicalAssist}</strong><small>诊疗站 Lv2+ 后可协助照顾轻伤员</small></div>
+      </section>
+      {summary.unlocked && <div className="v6-job-grid">
+        {(['logistics', 'repair', 'defense'] as const).map((mode) => <button key={mode} className={summary.supportMode === mode ? 'active' : ''} disabled={state.dayState.assignmentsLocked} onClick={() => commit(selectCommunitySupportMode(state, mode), setState)}>{mode === 'logistics' ? '后勤轮值' : mode === 'repair' ? '维修轮值' : '守备轮值'}</button>)}
+      </div>}
+    </section>
   );
 }
 
@@ -220,6 +249,7 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <header className="v6-topbar"><div><span>EMBER STREET</span><strong>DAY {state.day}</strong></div><div><b>{state.day === 29 ? '最后的白天' : state.forecast.title}</b><small>{state.day === 29 ? '天黑以后就是最终尸潮。' : state.forecast.detail}</small></div></header>
       <StreetVisual state={state}/><InventoryBar state={state}/>
       <ExpeditionStatus state={state} setState={setState}/>
+      <CommunityPanel state={state} setState={setState}/>
       {!state.dayState.assignmentsLocked && <><MissingPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
       <MemorialPanel state={state}/>
       <section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section>
@@ -299,11 +329,13 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
   const meal = previewMeal(state);
   const prep = previewNightPreparation(state);
   const committed = hasCommittedDayAction(state);
+  const causalSignals = nightCausalSignals(state);
   return (
     <main className="v6-shell v6-shell--dusk">
       <header className="v6-page-head"><span>DUSK · DAY {state.day}</span><h1>天黑以后，不再换岗。</h1><p>这是白天最后一次确认。今晚发生什么，取决于现在留下了谁、修好了什么、物资还剩多少。</p></header>
       <InventoryBar state={state}/>
       <section className="v6-dusk-grid"><article><span>供餐</span><h2>{mealLabel(meal.quality)}</h2><p>人口 {meal.residentCount} · 炊事能力 {meal.cookingCapacity.toFixed(1)} · 覆盖 {Math.round(meal.coverage * 100)}%</p><strong>精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong></article><article><span>夜间准备</span><h2>{prep.defense}</h2><p>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</p><strong>守备和设施会改变随机事件风险</strong></article></section>
+      {!!causalSignals.length && <section className="v6-section"><div className="v6-section__head"><div><span>今晚的因果</span><h2>这些不是固定剧本，而是今天留下的风险</h2></div></div>{causalSignals.map((signal) => <p key={signal}>• {signal}</p>)}</section>}
       <button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>进入夜晚</button>
       {!committed ? <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回调整派遣</button> : <p className="v6-message">今日已经执行过探索或搜救，派遣不可再调整。</p>}
       <p className="v6-message">{state.lastMessage}</p>
@@ -312,11 +344,13 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
 }
 
 function DawnScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
+  const brief = dawnBriefEntries(state);
   return (
     <main className="v6-shell v6-shell--dawn">
       <header className="v6-page-head"><span>DAWN · DAY {state.day}</span><h1>{state.day === 29 ? '最后的夜结束了。' : '天亮了。'}</h1><p>{state.nightState.hordeActive ? '尸潮退去以后，街道重新有了颜色。现在才看得清昨夜留下的损失。' : '发电机的声音重新盖过远处的脚步。今天仍然有事要做。'}</p></header>
       <InventoryBar state={state}/>
       <section className="v6-stats"><div><span>夜间事件</span><b>{state.nightState.resolutions.length}</b></div><div><span>死亡</span><b>{state.campaignStats.deaths}</b></div><div><span>失踪</span><b>{state.campaignStats.missing}</b></div><div><span>救回</span><b>{state.campaignStats.rescued}</b></div></section>
+      {!!brief.length && <section className="v6-section"><div className="v6-section__head"><div><span>昨夜简报</span><h2>昨天的选择留下了什么</h2></div><small>只记录真正发生的变化</small></div>{brief.map((entry, index) => <p key={`${entry}-${index}`}>• {entry}</p>)}</section>}
       <MemorialPanel state={state}/>
       <button className="v6-cta" onClick={() => commit(advanceCampaignDay(state), setState)}>{state.day === 29 ? '进入 DAY 30 · 结算' : `开始 DAY ${state.day + 1}`}</button>
     </main>

@@ -151,6 +151,7 @@ export interface GameState {
   nightState: NightState;
   campaignStats: CampaignStats;
   memorials: MemorialEntry[];
+  dawnBrief?: string[];
   finalHordeResult?: FinalHordeResult;
   ending?: EndingResult | null;
   hope: number;
