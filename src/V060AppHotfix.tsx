@@ -16,6 +16,7 @@ import {
   assignDayJob,
   canTakeDayAssignment,
   clearDayJob,
+  hasCommittedDayAction,
   lockDayAssignments,
   previewNightPreparation,
   reopenDayAssignments,
@@ -131,7 +132,7 @@ function BuildingsPanel({ state, setState }: { state: GameState; setState: (stat
             <div><span>{definition.name}</span><b>Lv{level}</b></div>
             <h3>{level ? definition.levels[level - 1].title : '废墟'}</h3>
             <p>{level ? definition.levels[level - 1].unlock : '修复以后才会真正改变白天或夜晚的规则。'}</p>
-            {next ? <><small>下一阶：材料 {next.materials} · 零件 {next.parts}</small><button disabled={!check.allowed || state.dayState.assignmentsLocked} onClick={() => commit(upgradeBuilding(state, id), setState)}>{state.dayState.assignmentsLocked ? '今日调遣已锁定' : check.allowed ? `${level === 0 ? '建造' : '升级到'} Lv${next.level}` : check.reason}</button></> : <strong className="v6-max">已完成</strong>}
+            {next ? <><small>下一阶：材料 {next.materials} · 零件 {next.parts}</small><button disabled={!check.allowed || state.dayState.assignmentsLocked} onClick={() => commit(upgradeBuilding(state, id), setState)}>{state.dayState.assignmentsLocked ? '今日派遣已锁定' : check.allowed ? `${level === 0 ? '建造' : '升级到'} Lv${next.level}` : check.reason}</button></> : <strong className="v6-max">已完成</strong>}
           </article>
         );
       })}</div>
@@ -163,7 +164,7 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
   const expeditionCount = Object.values(state.dayAssignments).filter((job) => job === 'expedition').length;
   return (
     <section className="v6-section">
-      <div className="v6-section__head"><div><span>今日调遣</span><h2>一个人，一天只做一件主要的事</h2></div><small>黄昏后不可改岗</small></div>
+      <div className="v6-section__head"><div><span>今日派遣</span><h2>一个人，一天只做一件主要的事</h2></div><small>黄昏后不可改岗</small></div>
       <div className="v6-survivors">{state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').map((survivor) => {
         const condition = survivor.condition ?? 'healthy';
         const unavailable = condition === 'critical';
@@ -193,7 +194,7 @@ function ExpeditionStatus({ state, setState }: { state: GameState; setState: (st
   const event = currentExpeditionEvent(state);
   return (
     <section className="v6-section">
-      <div className="v6-section__head"><div><span>搜索队外出中</span><h2>{party} · {location}</h2></div><small>出发后已回到主界面</small></div>
+      <div className="v6-section__head"><div><span>搜索队外出中</span><h2>{party} · {location}</h2></div><small>今日派遣已锁定</small></div>
       <p>{event ? `途中传来消息：${event.title}` : '搜索队还在路上。'}</p>
       <button className="v6-cta" onClick={() => commit({ ...state, phase: 'expedition' }, setState)}>处理探索事件</button>
     </section>
@@ -224,7 +225,7 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <section className="v6-preview"><div><span>预计供餐</span><strong>{mealLabel(meal.quality)}</strong><small>炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>预计夜间</span><strong>{prep.defense}</strong><small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small></div></section>
       {!state.expeditionState.departed && (state.dayState.assignmentsLocked
         ? <button className="v6-cta" onClick={() => commit({ ...state, phase: 'dusk' }, setState)}>进入黄昏准备</button>
-        : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={lock}>确认今日调遣 <small>{assigned} 已手动安排 · 未安排者自动休息</small></button>)}
+        : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={lock}>确认今日派遣 <small>{assigned} 已手动安排 · 未安排者自动休息</small></button>)}
       <p className="v6-message">{state.lastMessage}</p>
     </main>
   );
@@ -246,7 +247,7 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
     let next = startExpedition(state, party, locationId);
     if (!next.expeditionState.departed) return commit(next, setState);
     next = drawExpeditionEvent(next);
-    commit({ ...next, phase: 'street', lastMessage: `${party.map((id) => state.survivors.find((s) => s.id === id)?.name ?? id).join('、')}已经出发 · 等待途中事件` }, setState);
+    commit({ ...next, phase: 'street', lastMessage: `${party.map((id) => state.survivors.find((s) => s.id === id)?.name ?? id).join('、')}已经出发 · 今日派遣保持锁定` }, setState);
   };
 
   const finish = (stance: 'push' | 'careful') => {
@@ -255,13 +256,13 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
     let next = resolveExpeditionStance(state, stance);
     const committedSurvivorIds = [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])];
     if (wasFirstVisit && next.campaignStats.locationsDiscovered > 0) next = { ...next, campaignStats: { ...next.campaignStats, locationsDiscovered: next.campaignStats.locationsDiscovered - 1 } };
-    commit({ ...next, phase: 'street', dayState: { ...next.dayState, committedSurvivorIds } }, setState);
+    commit({ ...next, phase: 'dusk', dayState: { ...next.dayState, assignmentsLocked: true, committedSurvivorIds } }, setState);
   };
 
   const retreat = () => {
     const partyIds = [...state.expeditionState.activePartyIds];
     const next = retreatCurrentExpedition(state);
-    commit({ ...next, phase: 'street', dayState: { ...next.dayState, committedSurvivorIds: [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])] } }, setState);
+    commit({ ...next, phase: 'dusk', dayState: { ...next.dayState, assignmentsLocked: true, committedSurvivorIds: [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])] } }, setState);
   };
 
   if (!state.expeditionState.departed) {
@@ -276,7 +277,7 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
         })}</div></section>
         <section className="v6-section"><div className="v6-section__head"><div><span>探索地图</span><h2>已发现地点</h2></div><strong className={`v6-risk v6-risk--${risk}`}>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</strong></div><div className="v6-locations">{availableLocations.map((location) => <button className={location.id === locationId ? 'active' : ''} key={location.id} onClick={() => setLocationId(location.id)}><strong>{location.name}</strong><span>{location.description}</span><small>主要：{location.primary} · 危险 {location.danger}/5</small></button>)}</div></section>
         <button className="v6-cta" disabled={!party.length || !availableLocations.length} onClick={begin}>搜索队出发 · 返回主界面</button>
-        <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回调遣</button>
+        <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回派遣</button>
       </main>
     );
   }
@@ -297,13 +298,14 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
 function DuskScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const meal = previewMeal(state);
   const prep = previewNightPreparation(state);
+  const committed = hasCommittedDayAction(state);
   return (
     <main className="v6-shell v6-shell--dusk">
       <header className="v6-page-head"><span>DUSK · DAY {state.day}</span><h1>天黑以后，不再换岗。</h1><p>这是白天最后一次确认。今晚发生什么，取决于现在留下了谁、修好了什么、物资还剩多少。</p></header>
       <InventoryBar state={state}/>
       <section className="v6-dusk-grid"><article><span>供餐</span><h2>{mealLabel(meal.quality)}</h2><p>人口 {meal.residentCount} · 炊事能力 {meal.cookingCapacity.toFixed(1)} · 覆盖 {Math.round(meal.coverage * 100)}%</p><strong>精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong></article><article><span>夜间准备</span><h2>{prep.defense}</h2><p>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</p><strong>守备和设施会改变随机事件风险</strong></article></section>
       <button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>进入夜晚</button>
-      <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回调整调遣</button>
+      {!committed ? <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回调整派遣</button> : <p className="v6-message">今日已经执行过探索或搜救，派遣不可再调整。</p>}
       <p className="v6-message">{state.lastMessage}</p>
     </main>
   );
