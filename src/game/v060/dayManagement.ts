@@ -4,8 +4,8 @@ const JOB_BUILDING: Partial<Record<DayAssignment, keyof GameState['buildings']>>
   expedition: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio',
 };
 
-function pendingAssignments(state: GameState): Record<string, DayAssignment> {
-  const committed = new Set(state.dayState.committedSurvivorIds);
+function pendingAssignments(state: GameState, committedIds = state.dayState.committedSurvivorIds): Record<string, DayAssignment> {
+  const committed = new Set(committedIds);
   return Object.fromEntries(Object.entries(state.dayAssignments).filter(([survivorId]) => !committed.has(survivorId)));
 }
 
@@ -69,12 +69,18 @@ export function lockDayAssignmentsAndRoute(state: GameState): GameState {
 }
 
 export function reopenDayAssignments(state: GameState): GameState {
+  const completedExpeditionIds = state.dayState.returnedExpeditions > 0
+    ? Object.entries(state.dayAssignments).filter(([, job]) => job === 'expedition').map(([id]) => id)
+    : [];
+  const committedSurvivorIds = [...new Set([...state.dayState.committedSurvivorIds, ...completedExpeditionIds])];
   return {
     ...state,
     phase: 'street',
-    dayAssignments: pendingAssignments(state),
-    dayState: { ...state.dayState, assignmentsLocked: false },
-    lastMessage: '已返回白天调遣 · 已行动人物保持锁定。',
+    dayAssignments: pendingAssignments(state, committedSurvivorIds),
+    dayState: { ...state.dayState, assignmentsLocked: false, committedSurvivorIds },
+    lastMessage: committedSurvivorIds.length
+      ? '已返回白天调遣 · 已行动人物保持锁定。'
+      : '已返回白天调遣 · 可以继续调整岗位。',
   };
 }
 

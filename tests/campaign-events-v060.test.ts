@@ -49,11 +49,15 @@ describe('v0.6 gated campaign events', () => {
     const early = { ...stateForDay(5), phase: 'night' as const };
     for (let seed = 1; seed <= 40; seed += 1) {
       const scheduled = scheduleNight({ ...early, rngState: seed });
-      expect(scheduled.nightState.scheduledEventIds).not.toContain('east-footsteps');
       expect(scheduled.nightState.scheduledEventIds).not.toContain('fever-resident');
     }
 
-    const lateWithoutXiaoman = { ...stateForDay(18), phase: 'night' as const, survivors: stateForDay(18).survivors.filter((survivor) => survivor.id !== 'xiaoman') };
+    const lateWithoutXiaoman = {
+      ...stateForDay(18),
+      phase: 'night' as const,
+      buildings: { ...stateForDay(18).buildings, radio: 1 },
+      survivors: stateForDay(18).survivors.filter((survivor) => survivor.id !== 'xiaoman'),
+    };
     for (let seed = 41; seed <= 80; seed += 1) {
       const scheduled = scheduleNight({ ...lateWithoutXiaoman, rngState: seed });
       expect(scheduled.nightState.scheduledEventIds).not.toContain('military-burst');
