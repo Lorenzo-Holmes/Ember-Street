@@ -1,12 +1,10 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
-import './styles.css';
-import './meta.css';
-import './living.css';
+import V060App from './V060App';
+import './v060.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <App />
+    <V060App />
   </React.StrictMode>,
 );
