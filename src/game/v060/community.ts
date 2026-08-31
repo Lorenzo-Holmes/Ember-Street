@@ -17,12 +17,11 @@ export function createDefaultCommunityState(activeResidents = 0): CommunityState
 }
 
 export function normalizeCommunityState(value: unknown, civilianResidents = 0): CommunityState {
-  const source = value && typeof value === 'object' ? value as Partial<CommunityState> : {};
   const total = count(civilianResidents);
-  let pendingResidents = Math.min(total, count(source.pendingResidents));
-  let activeResidents = Math.min(total - pendingResidents, count(source.activeResidents));
-  const untracked = Math.max(0, total - pendingResidents - activeResidents);
-  activeResidents += untracked;
+  const hasStoredState = Boolean(value && typeof value === 'object');
+  const source = hasStoredState ? value as Partial<CommunityState> : {};
+  const pendingResidents = hasStoredState ? Math.min(total, count(source.pendingResidents)) : 0;
+  const activeResidents = hasStoredState ? Math.min(total - pendingResidents, count(source.activeResidents)) : total;
   const supportMode = source.supportMode === 'logistics' || source.supportMode === 'repair' || source.supportMode === 'defense' ? source.supportMode : null;
   const lastSupportDay = Number.isFinite(Number(source.lastSupportDay)) ? count(source.lastSupportDay) : undefined;
   return { pendingResidents, activeResidents, supportMode, ...(lastSupportDay ? { lastSupportDay } : {}) };
