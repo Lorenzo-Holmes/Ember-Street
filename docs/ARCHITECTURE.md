@@ -1,159 +1,110 @@
-# Architecture — Ember Street v0.5.0
+# Architecture — Ember Street v0.6.0
 
-## 分层
+## Runtime
 
-1. `src/game/`：纯 TypeScript Game Core，负责七格、30 天 DAY/NIGHT 状态、RNG、经营、Story Pool、2D6、夜间叙事、日志、存档与挑战。
-2. `src/App.tsx`：场景编排、HUD、街区 / 行动 / 日志、骰子表现、黄昏和触控输入；不承载核心数值公式。
-3. `src/styles.css` / `src/meta.css` / `src/living.css`：夜间、街区、事件、骰子、日志与移动端表现。
-4. `src/shareCard.ts`：按需创建 Canvas 并生成本地分享 PNG。
-5. `src/game/storage.ts`：版本化 localStorage、兼容补全、节流写盘、关键判定强制保存与离线结算。
-6. `tests/`：规则、叙事、Living Street、30 天贯通、挑战、留存和 Game Feel 测试。
+`src/main.tsx` mounts `V060App` and `v060.css`. The player path is fully v0.6; the former seven-slot App/engine runtime is removed.
 
-## GameState
+Core files:
 
-主线使用单一 `GameState`。每日挑战使用 App 中独立第二份状态，不写主线存档。
+- `src/game/types.ts`: pure v3 `GameState` contract.
+- `src/game/foundation.ts`: default day / expedition / meal / night state.
+- `src/game/rng.ts`: seeded PRNG.
+- `src/game/dice.ts`: deterministic 2D6 / advantage / disadvantage / trust reroll.
+- `src/game/storage.ts`: v3 localStorage lifecycle.
+- `src/game/storage/migrations.ts`: the only boundary allowed to understand legacy v2 seven-slot fields.
+- `src/game/v060/dayManagement.ts`: one-job-per-person assignments and dusk lock.
+- `src/game/v060/expedition.ts`: locations, risk, encounter outcomes and retreat.
+- `src/game/v060/food.ts`: population-aware cooking coverage.
+- `src/game/v060/buildings.ts`: six Lv0–3 facilities.
+- `src/game/v060/nightEvents.ts`: three-choice night content.
+- `src/game/v060/nightScheduler.ts`: deterministic 5/6-event nights, emergencies and hordes.
+- `src/game/v060/memorial.ts`: missing rescue, confirmed death and memorial ledger.
+- `src/game/v060/campaign.ts`: DAY1→29 lifecycle and DAY30 transition.
+- `src/game/v060/endings.ts`: 13 ending definitions, resolver and MetaSave.
 
-关键状态包括：
+React components only render state and dispatch pure/core actions; core rules remain outside JSX wherever practical.
 
-- `phase`: `night | summary | street`
-- `dayStep`: `morning | event | dusk`
-- DAY / 预报 / DAY 30 第一章完成状态
-- 7 个配给槽、4 个货架、`rackStock` 批次库存、Fair Queue
-- 当前请求、请求 cooldown、当夜请求上限
-- 尸潮压力、防线、电力、希望、口粮、药品、零件
-- 建筑、幸存者、岗位、信任、伤病
-- `logs` / `activeEventId` / `resolvedEventIds`
-- `storyFlags` / `resolvedStoryEventIds` / `storyDailyIds`
-- `pendingCheck`: 当前 2D6 / 3D6 判定
-- `nightFeed` / `nightNarrativeFlags` / `nightIncidentId`
-- Combo / 极限出餐 / 紧急清台
-- 小灰连续状态
+## GameState v3
 
-## 白天状态机
+The runtime no longer contains slots, racks, orders, combo, clearances or night countdown fields. Key state includes:
+
+- `phase`: street / assignment / expedition / dusk / night / night-summary / dawn / ending
+- `inventory`: ration / medicine / power / materials / parts
+- `survivors`, `civilianResidents`, `memorials`
+- `dayAssignments`, `dayState`, `expeditionState`, `mealState`, `nightState`
+- six building levels and `mainLightStage`
+- hope, defense, Story Flags / Story Items
+- `pendingCheck`, `rngState`
+- campaign statistics, final horde result and ending
+
+Legacy seven-slot data is parsed only by `storage/migrations.ts`, where remaining slots/rack stock are salvaged into the new inventory before the legacy fields disappear.
+
+## State flow
 
 ```text
-summary
-→ revealStreet()
-→ beginStreetDay()
-→ 固定章节事件（若有）
-→ 每日街区状况 / Story Pool
-→ 可选 2D6 判定
-→ enterDusk()
+street / assignment
+→ optional expedition
 → dusk
-→ startNextNight()
 → night
+→ night-summary / dawn
+→ next street day
+
+DAY 29 dawn
+→ DAY 30 ending
 ```
 
-DAY 1–6 的固定章节事件承担前期主线门槛；DAY 7–29 的内容主要来自每日街区状况与 Story Pool。DAY 30 成功后才进入 `chapterComplete`。
+DAY 30 never schedules a playable night.
 
-## Narrative Core
+## Day management
 
-- `src/game/narrative.ts`：DAY 1–6 固定章节事件与基础日志。
-- `src/game/dailySituations.ts`：DAY 1–30 每日街区状况。
-- `src/game/story.ts`：地点 / 人物 / 街区 / 世界 / 小灰 Story Pool、Story Flags、条件事件和骰子后果。
-- `src/game/nightStory.ts`：夜间动态日志、阶段突发和 DAY 30 关键判定。
+A living, available survivor can hold one main assignment. Committed rescue personnel cannot be reassigned that day. Serious/critical/dead/missing conditions restrict dangerous work. Unassigned survivors effectively rest.
 
-事件规则只通过 `GameState` 产生后果，不直接操作 React。
+Rescued non-core residents are stored as `civilianResidents`; they count toward meal population and ending population without becoming full character objects.
 
-## Dice Core
+## Expedition and mortality
 
-`src/game/dice.ts` 负责：
+Expedition risk is derived from day, location danger, party size, survivor state, search-station support and route flags. Exploration uses seeded 2D6 and always offers retreat.
 
-- 标准 2D6
-- 优势 3D6 取高二
-- 劣势 3D6 取低二
-- 修正汇总
-- 双六 / 双一
-- 信任 3 的最低骰重投
+Mortality rules are centralized so exploration, night incidents and missing-rescue resolution update condition, campaign counters and memorials consistently.
 
-所有骰子读取并推进 `rngState`，不得使用 `Math.random()`。
+## Food
 
-`rollPendingCheck()` 对已经具有 `dice` 的判定直接返回原状态，所以存档恢复后不会重新掷骰。UI 在第一次投骰后使用强制保存，动画只展示已确定的结果。
+Meal coverage is computed from total residents, assigned cooks, cook specialty and shelter/kitchen level. Ration availability caps the final meal quality. Meal resolution changes energy, hope, shortage streaks and well-fed state.
 
-## 夜间状态机
+## Night scheduler
 
-夜间逻辑按真实 `elapsedMs` 更新，不依赖固定帧率。
+Normal nights contain 5 main events; horde nights contain 6. Emergency IDs are inserted separately and do not consume main slots. DAY 10 / 20 / 29 force hordes; other nights use seeded risk derived from campaign conditions.
 
-请求完成或错过后进入 cooldown；达到当夜请求上限后只剩尸潮守夜。货架每格保存 `rackStock`，连续取 3 件后才补下一批。
+All decision events expose exactly three choices. Checked choices create `PendingCheck`; deterministic dice resolve them. A v3 save preserves `phase`, `nightState`, `pendingCheck` and `rngState`, so reload cannot reroll an already determined result.
 
-夜间叙事只使用少量动态 Feed 和阶段突发。需要玩家阅读 / 投骰时，核心 tick 会尊重待处理判定并暂停对应叙事阶段，避免读文本时损失操作时间。
+## Endings
 
-## 30 天节奏
+`resolveEnding()` is a pure priority resolver over survivor state, civilian population, rescued count, hope, buildings, radio/contact flags, evacuation routes, main light and the DAY29 grade. Exactly 13 endings are defined. Unlock history is stored separately in `ember-street-meta-v1`.
 
-统一使用 `CHAPTER_FINAL_DAY = 30`，禁止在业务逻辑重新散落 `day === 7` 终局判断。
+## Storage
 
-阶段节点：
+Run key: `ember-street-save-v3`.
 
-- DAY 1–7：立足
-- DAY 8–15：扩张
-- DAY 16–23：失衡
-- DAY 24–30：围城
-- DAY 10 / 20：阶段尸潮
-- DAY 30：最终尸潮
+Load order supports v3 first and legacy v2 fallback. v3 resume preserves active phase and deterministic state. v2 migration salvages legacy resources and moves the run onto the v0.6 model.
 
-## RNG
+## Performance
 
-Seeded PRNG 用于：
-
-- Fair Queue
-- Story Pool 日抽取
-- 2D6 / 3D6
-- 夜间叙事
-- 每日挑战
-- 挑战码
-- Bug 复现
-
-核心规则不得使用 `Math.random()`。
-
-## 生存后果
-
-- 防线降低尸潮压力增速。
-- 低电力提高尸潮压力增速。
-- 药品提供一夜一次医疗请求宽限。
-- 伤病影响生产效率，休息可以恢复。
-- 口粮按居民数量真实消耗。
-- Story Flags 改变后续事件与关键判定。
-
-## 存档
-
-- 继续兼容既有 v2 key。
-- `normalizeV2` 给旧存档补齐 Story Flags、Pending Check、Night Feed 等字段。
-- v1 仍可迁移。
-- 夜间普通写盘节流。
-- `visibilitychange` / `pagehide` 强制保存。
-- 投骰等不可重放操作立即强制保存。
-- 存储失败静默降级，不阻止新游戏启动。
-
-## 性能约束
-
-- React 不进行每帧动画状态更新。
-- 七格点击不等待动画结束。
-- 尸潮使用单一压力状态，尸影不是独立 AI。
-- 骰子动画只使用 CSS / DOM，不引入 Three.js。
-- 白天主要依赖静态 DOM/CSS。
-- 分享 Canvas 只在主动生成时创建。
-- 不加载 3D 引擎、大视频、在线字体或后端 SDK。
-
-## 安全阀
-
-- 七格满：紧急清台，第三次才提前结束当夜。
-- 固定章节事件至少保留一条可继续路径。
-- Story Pool 失败只产生资源、状态、伤病或路线代价，不永久死亡。
-- DAY 30 失败回到最终准备状态，不进入 DAY 31。
-- 第一章不做永久角色死亡。
+- pure frontend; no backend/login dependency
+- no frame-by-frame simulation loop
+- no zombie pathfinding or 3D engine
+- DOM/CSS UI and dice presentation
+- localStorage state only
+- Cloudflare Workers Static Assets compatible
 
 ## CI
 
-`.github/workflows/ci.yml` 对 `main`、`dev`、`feat/**` 与 PR 执行：
+`.github/workflows/ci.yml` runs on `main`, `dev`, `feat/**` and relevant PRs:
 
-1. Codespaces devcontainer JSON 校验
-2. `npm install`
-3. `npm run typecheck`
-4. `npm test`
-5. `npm run build`
-6. Cloudflare `wrangler deploy --dry-run`
+1. devcontainer validation
+2. dependency install
+3. TypeScript typecheck
+4. Vitest
+5. production build
+6. Wrangler deploy dry-run
 
-关键自动化：
-
-- `tests/living-street.test.ts`：30 天事件覆盖、内容节点、骰子确定性与不可刷新重掷。
-- `tests/chapter-flow.test.ts`：NIGHT 1 → DAY 30 完整状态链。
+Release requires feature HEAD green and then a second green run on the clean `main` release commit.
