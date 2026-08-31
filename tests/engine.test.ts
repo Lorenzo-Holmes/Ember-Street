@@ -1,18 +1,26 @@
 import { describe, expect, it } from 'vitest';
-import { createInitialState, repairSearchStation, revealStreet, takeRack, tick } from '../src/game/engine';
+import { assignSurvivor, createInitialState, repairBuilding, revealStreet, startNextNight, takeRack, tick } from '../src/game/engine';
+import { forecastFor } from '../src/game/progression';
 
-describe('First Light game core', () => {
-  it('is deterministic for the same seed', () => {
+function firstDawn() {
+  let state = createInitialState(12345);
+  state = takeRack(state, 0);
+  state = takeRack(state, 1);
+  state = takeRack(state, 2);
+  expect(state.stats.served).toBe(1);
+  return tick(state, 80_000);
+}
+
+describe('Ember Street first chapter', () => {
+  it('keeps the core board at exactly seven slots', () => {
+    expect(createInitialState(1).slots).toHaveLength(7);
+  });
+
+  it('starts with a friendly deterministic ration merge', () => {
     const a = createInitialState(42);
     const b = createInitialState(42);
     expect(a.racks).toEqual(b.racks);
-    expect(a.queue).toEqual(b.queue);
-    expect(a.rngState).toBe(b.rngState);
-  });
-
-  it('merges three starting rations and serves the first order', () => {
-    let state = createInitialState(42);
-    state = takeRack(state, 0);
+    let state = takeRack(a, 0);
     state = takeRack(state, 1);
     state = takeRack(state, 2);
     expect(state.stats.merges).toBe(1);
@@ -20,16 +28,34 @@ describe('First Light game core', () => {
     expect(state.hope).toBeGreaterThan(8);
   });
 
-  it('ends the night when time runs out', () => {
-    expect(tick(createInitialState(42), 80_000).phase).toBe('summary');
+  it('repairs the search station and recruits Lin Xia', () => {
+    let state = revealStreet(firstDawn());
+    state = { ...state, parts: 10 };
+    state = repairBuilding(state, 'searchStation');
+    expect(state.searchStationRepaired).toBe(true);
+    expect(state.buildings.searchStation).toBe(1);
+    expect(state.survivors.some((item) => item.id === 'lin-xia')).toBe(true);
   });
 
-  it('reveals street and repairs search station when enough parts exist', () => {
-    const summary = { ...createInitialState(42), phase: 'summary' as const, parts: 7 };
-    const repaired = repairSearchStation(revealStreet(summary));
-    expect(repaired.searchStationRepaired).toBe(true);
-    expect(repaired.survivorJoined).toBe(true);
-    expect(repaired.firstLightLevel).toBe(2);
-    expect(repaired.parts).toBe(1);
+  it('turns a search assignment into immediate next-night supplies', () => {
+    let state = revealStreet(firstDawn());
+    state = repairBuilding({ ...state, parts: 10 }, 'searchStation');
+    state = assignSurvivor(state, 'lin-xia', 'search');
+    const before = state.supplies;
+    const night2 = startNextNight(state);
+    expect(night2.day).toBe(2);
+    expect(night2.supplies).toBeGreaterThan(before);
+  });
+
+  it('does not allow buildings before their unlock day', () => {
+    let state = revealStreet(firstDawn());
+    state = { ...state, parts: 99 };
+    const blocked = repairBuilding(state, 'clinic');
+    expect(blocked.buildings.clinic).toBe(0);
+  });
+
+  it('ramps forecasts into a day-seven horde climax', () => {
+    expect(forecastFor(2).intensity).toBeLessThan(forecastFor(7).intensity);
+    expect(forecastFor(7).title).toBe('尸潮之夜');
   });
 });

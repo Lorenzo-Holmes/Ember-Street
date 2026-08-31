@@ -1,6 +1,8 @@
 export type SupplyKind = 'ration' | 'medical' | 'battery';
 export type OrderKind = 'survivor' | 'defense';
 export type Phase = 'night' | 'summary' | 'street';
+export type Role = 'search' | 'repair' | 'medical' | 'watch' | 'cook' | 'radio' | 'rest';
+export type BuildingId = 'searchStation' | 'workshop' | 'clinic' | 'watchPost' | 'shelter' | 'radio';
 
 export interface SupplyItem {
   id: string;
@@ -30,8 +32,33 @@ export interface NightStats {
   startedAt: number;
 }
 
+export interface Survivor {
+  id: string;
+  name: string;
+  specialty: Role;
+  energy: number;
+  mood: 'low' | 'steady' | 'bright';
+  perk: string;
+}
+
+export interface Buildings {
+  searchStation: number;
+  workshop: number;
+  clinic: number;
+  watchPost: number;
+  shelter: number;
+  radio: number;
+}
+
+export interface DayForecast {
+  title: string;
+  detail: string;
+  intensity: number;
+  bonusKind?: SupplyKind;
+}
+
 export interface GameState {
-  version: 1;
+  version: 2;
   seed: number;
   rngState: number;
   phase: Phase;
@@ -46,9 +73,15 @@ export interface GameState {
   hope: number;
   parts: number;
   supplies: number;
+  medicine: number;
   firstLightLevel: number;
   searchStationRepaired: boolean;
   survivorJoined: boolean;
+  survivors: Survivor[];
+  assignments: Record<string, Role>;
+  buildings: Buildings;
+  forecast: DayForecast;
+  chapterComplete: boolean;
   stats: NightStats;
   lastMessage: string;
 }

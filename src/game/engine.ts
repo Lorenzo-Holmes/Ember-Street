@@ -1,15 +1,19 @@
 import { makeOrder, NIGHT_DURATION_MS, RACK_COUNT, SLOT_COUNT } from './config';
+import { BUILDING_META, forecastFor, survivorUnlockFor } from './progression';
 import { nextRandom, normalizeSeed } from './rng';
-import type { GameState, SupplyItem, SupplyKind } from './types';
+import type { BuildingId, GameState, Order, Role, SupplyItem, SupplyKind, Survivor } from './types';
 
 const KINDS: SupplyKind[] = ['ration', 'medical', 'battery'];
+const ROLE_BUILDING: Partial<Record<Role, BuildingId>> = {
+  search: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio', rest: 'shelter',
+};
 
 function nextKind(rngState: number): [SupplyKind, number] {
   const [value, next] = nextRandom(rngState);
   return [KINDS[Math.floor(value * KINDS.length) % KINDS.length], next];
 }
 
-function createFairQueue(rngState: number, groups = 9): [SupplyKind[], number] {
+function createFairQueue(rngState: number, groups = 12): [SupplyKind[], number] {
   const queue: SupplyKind[] = [];
   let state = rngState;
   for (let i = 0; i < groups; i += 1) {
@@ -26,23 +30,27 @@ function createFairQueue(rngState: number, groups = 9): [SupplyKind[], number] {
   return [queue, state];
 }
 
-function pullFromQueue(state: GameState): [SupplyKind, GameState] {
-  let queue = [...state.queue];
-  let rngState = state.rngState;
-  if (queue.length === 0) [queue, rngState] = createFairQueue(rngState);
-  const kind = queue.shift()!;
-  return [kind, { ...state, queue, rngState }];
+function countRole(state: GameState, role: Role): number {
+  return Object.values(state.assignments).filter((item) => item === role).length;
 }
 
-function newItem(kind: SupplyKind, tier: 1 | 2 | 3, serial: string): SupplyItem {
-  return { id: `${kind}-${tier}-${serial}`, kind, tier };
+function prepareOrder(state: GameState, index: number, kind: SupplyKind, orderKind?: 'survivor' | 'defense'): Order {
+  const base = makeOrder(index, kind, orderKind);
+  const cookBonus = countRole(state, 'cook') * 1_500;
+  const dayPenalty = Math.max(0, state.forecast.intensity - 1) * 700;
+  const patience = Math.max(9_000, base.patienceMs + cookBonus - dayPenalty);
+  return { ...base, patienceMs: patience, maxPatienceMs: patience };
+}
+
+function emptyBuildings() {
+  return { searchStation: 0, workshop: 0, clinic: 0, watchPost: 0, shelter: 0, radio: 0 };
 }
 
 export function createInitialState(seed = Date.now()): GameState {
   const normalized = normalizeSeed(seed);
   const [queue, rngState] = createFairQueue(normalized);
-  return {
-    version: 1,
+  const base: GameState = {
+    version: 2,
     seed: normalized,
     rngState,
     phase: 'night',
@@ -57,12 +65,31 @@ export function createInitialState(seed = Date.now()): GameState {
     hope: 8,
     parts: 0,
     supplies: 0,
+    medicine: 0,
     firstLightLevel: 1,
     searchStationRepaired: false,
     survivorJoined: false,
+    survivors: [],
+    assignments: {},
+    buildings: emptyBuildings(),
+    forecast: forecastFor(1),
+    chapterComplete: false,
     stats: { served: 0, missed: 0, merges: 0, peakPressure: 12, startedAt: Date.now() },
     lastMessage: 'NIGHT 1 · 最后一盏灯还亮着',
   };
+  return { ...base, currentOrder: prepareOrder(base, 0, 'ration', 'survivor') };
+}
+
+function pullFromQueue(state: GameState): [SupplyKind, GameState] {
+  let queue = [...state.queue];
+  let rngState = state.rngState;
+  if (queue.length === 0) [queue, rngState] = createFairQueue(rngState);
+  const kind = queue.shift()!;
+  return [kind, { ...state, queue, rngState }];
+}
+
+function newItem(kind: SupplyKind, tier: 1 | 2 | 3, serial: string): SupplyItem {
+  return { id: `${kind}-${tier}-${serial}`, kind, tier };
 }
 
 function mergeSlots(input: GameState): GameState {
@@ -97,14 +124,14 @@ function serveOrderIfPossible(input: GameState): GameState {
   slots[matchIndex] = null;
   const order = input.currentOrder;
   const nextIndex = input.orderIndex + 1;
-  const nextTarget = KINDS[nextIndex % KINDS.length];
+  const nextTarget = input.forecast.bonusKind && nextIndex % 4 === 0 ? input.forecast.bonusKind : KINDS[nextIndex % KINDS.length];
   const pressure = Math.max(0, input.hordePressure - order.pressureRelief);
   return {
     ...input,
     slots,
     orderIndex: nextIndex,
-    currentOrder: makeOrder(nextIndex, nextTarget),
-    hope: input.hope + order.rewardHope,
+    currentOrder: prepareOrder(input, nextIndex, nextTarget),
+    hope: input.hope + order.rewardHope + (input.buildings.clinic > 0 && order.targetKind === 'medical' ? 1 : 0),
     parts: input.parts + order.rewardParts,
     supplies: input.supplies + (order.kind === 'survivor' ? 1 : 0),
     hordePressure: pressure,
@@ -129,7 +156,9 @@ export function takeRack(state: GameState, rackIndex: number): GameState {
 export function tick(state: GameState, elapsedMs: number): GameState {
   if (state.phase !== 'night') return state;
   const remaining = Math.max(0, state.nightRemainingMs - elapsedMs);
-  const pressureGain = elapsedMs * (0.00032 + state.orderIndex * 0.000008);
+  const watchReduction = Math.min(0.45, countRole(state, 'watch') * 0.13 + state.buildings.watchPost * 0.04);
+  const intensity = 0.82 + state.forecast.intensity * 0.18;
+  const pressureGain = elapsedMs * (0.00032 + state.orderIndex * 0.000008) * intensity * (1 - watchReduction);
   const hordePressure = Math.min(100, state.hordePressure + pressureGain);
   let currentOrder = { ...state.currentOrder, patienceMs: Math.max(0, state.currentOrder.patienceMs - elapsedMs) };
   let missed = state.stats.missed;
@@ -138,7 +167,8 @@ export function tick(state: GameState, elapsedMs: number): GameState {
   if (currentOrder.patienceMs <= 0) {
     missed += 1;
     orderIndex += 1;
-    currentOrder = makeOrder(orderIndex, KINDS[orderIndex % KINDS.length]);
+    const target = state.forecast.bonusKind && orderIndex % 3 === 0 ? state.forecast.bonusKind : KINDS[orderIndex % KINDS.length];
+    currentOrder = prepareOrder(state, orderIndex, target);
     lastMessage = '来客没等到物资 · 还能追回来';
   }
   const next: GameState = {
@@ -150,22 +180,118 @@ export function tick(state: GameState, elapsedMs: number): GameState {
     stats: { ...state.stats, missed, peakPressure: Math.max(state.stats.peakPressure, hordePressure) },
     lastMessage,
   };
-  if (remaining <= 0 || hordePressure >= 100) return { ...next, phase: 'summary', lastMessage: hordePressure >= 100 ? '防线失守前，大家撤回了街内' : '天亮了 · NIGHT 1 结束' };
+  if (remaining <= 0 || hordePressure >= 100) {
+    const chapterComplete = state.day === 7 && hordePressure < 100;
+    return { ...next, phase: 'summary', chapterComplete, lastMessage: hordePressure >= 100 ? '防线失守前，大家撤回了街内' : state.day === 7 ? '尸潮退了 · 第一街段还亮着' : `天亮了 · NIGHT ${state.day} 结束` };
+  }
   return next;
+}
+
+function addSurvivor(state: GameState, survivor: Survivor | null): GameState {
+  if (!survivor || state.survivors.some((item) => item.id === survivor.id)) return state;
+  return {
+    ...state,
+    survivors: [...state.survivors, survivor],
+    assignments: { ...state.assignments, [survivor.id]: survivor.specialty === 'cook' ? 'cook' : 'rest' },
+    survivorJoined: true,
+    lastMessage: `${survivor.name}决定留在余烬长街 · 擅长${survivor.specialty}`,
+  };
 }
 
 export function revealStreet(state: GameState): GameState {
   if (state.phase !== 'summary') return state;
-  return { ...state, phase: 'street', lastMessage: '原来，你守住的不只是一张配给台。' };
+  let next = { ...state, phase: 'street' as const, lastMessage: state.chapterComplete ? '第一街段守住了。晨光正在穿过废墟。' : '白天只有几十秒，但每个安排都会改变今晚。' };
+  if (state.day >= 2) next = addSurvivor(next, survivorUnlockFor(state.day));
+  if (state.chapterComplete) next = { ...next, firstLightLevel: Math.max(next.firstLightLevel, 7), hope: next.hope + 12 };
+  return next;
+}
+
+export function repairBuilding(state: GameState, buildingId: BuildingId): GameState {
+  if (state.phase !== 'street') return state;
+  const meta = BUILDING_META[buildingId];
+  if (state.day < meta.unlockDay || state.buildings[buildingId] > 0 || state.parts < meta.cost) return state;
+  let next: GameState = {
+    ...state,
+    parts: state.parts - meta.cost,
+    buildings: { ...state.buildings, [buildingId]: 1 },
+    searchStationRepaired: buildingId === 'searchStation' ? true : state.searchStationRepaired,
+    firstLightLevel: Math.min(7, state.firstLightLevel + 1),
+    hope: state.hope + 2,
+    lastMessage: `${meta.name}重新亮灯 · 街区又完整了一点`,
+  };
+  if (buildingId === 'searchStation') next = addSurvivor(next, survivorUnlockFor(1));
+  return next;
 }
 
 export function repairSearchStation(state: GameState): GameState {
-  if (state.phase !== 'street' || state.searchStationRepaired || state.parts < 6) return state;
-  return { ...state, parts: state.parts - 6, searchStationRepaired: true, survivorJoined: true, firstLightLevel: 2, lastMessage: '搜索站重新亮灯 · 林夏决定留下帮忙' };
+  return repairBuilding(state, 'searchStation');
+}
+
+function roleAvailable(state: GameState, role: Role): boolean {
+  if (role === 'cook') return true;
+  if (role === 'rest') return state.buildings.shelter > 0 || state.day <= 2;
+  const building = ROLE_BUILDING[role];
+  return building ? state.buildings[building] > 0 : false;
+}
+
+export function assignSurvivor(state: GameState, survivorId: string, role: Role): GameState {
+  if (state.phase !== 'street' || !state.survivors.some((item) => item.id === survivorId) || !roleAvailable(state, role)) return state;
+  return { ...state, assignments: { ...state.assignments, [survivorId]: role }, lastMessage: `${state.survivors.find((item) => item.id === survivorId)?.name ?? '幸存者'}调整到${role}岗位` };
+}
+
+function productionFor(state: GameState) {
+  let supplies = 0;
+  let parts = 0;
+  let medicine = 0;
+  let hope = 0;
+  for (const survivor of state.survivors) {
+    const role = state.assignments[survivor.id] ?? 'rest';
+    const specialty = role === survivor.specialty ? 1 : 0;
+    if (role === 'search' && state.buildings.searchStation > 0) supplies += 2 + state.buildings.searchStation + specialty;
+    if (role === 'repair' && state.buildings.workshop > 0) parts += 1 + state.buildings.workshop + specialty;
+    if (role === 'medical' && state.buildings.clinic > 0) medicine += 1 + state.buildings.clinic + specialty;
+    if (role === 'radio' && state.buildings.radio > 0) hope += 1 + specialty;
+  }
+  return { supplies, parts, medicine, hope };
+}
+
+export function startNextNight(state: GameState): GameState {
+  if (state.phase !== 'street' || !state.searchStationRepaired || state.day >= 7 && state.chapterComplete) return state;
+  const nextDay = state.day + 1;
+  const produced = productionFor(state);
+  const seed = state.seed ^ Math.imul(nextDay, 0x9e3779b9);
+  const refreshed = createInitialState(seed);
+  const watchCount = countRole(state, 'watch');
+  const startingPressure = Math.max(8, 10 + forecastFor(nextDay).intensity * 4 - watchCount * 4);
+  const duration = nextDay === 7 ? 90_000 : NIGHT_DURATION_MS;
+  const survivors = state.survivors.map((survivor) => {
+    const role = state.assignments[survivor.id] ?? 'rest';
+    const energy = role === 'rest' ? Math.min(100, survivor.energy + 12) : Math.max(35, survivor.energy - 5);
+    return { ...survivor, energy };
+  });
+  const next: GameState = {
+    ...refreshed,
+    day: nextDay,
+    nightRemainingMs: duration,
+    hope: state.hope + produced.hope,
+    parts: state.parts + produced.parts,
+    supplies: state.supplies + produced.supplies,
+    medicine: state.medicine + produced.medicine,
+    firstLightLevel: state.firstLightLevel,
+    searchStationRepaired: state.searchStationRepaired,
+    survivorJoined: state.survivorJoined,
+    survivors,
+    assignments: state.assignments,
+    buildings: state.buildings,
+    forecast: forecastFor(nextDay),
+    hordePressure: startingPressure,
+    stats: { ...refreshed.stats, peakPressure: startingPressure },
+    currentOrder: prepareOrder({ ...refreshed, day: nextDay, survivors, assignments: state.assignments, buildings: state.buildings, forecast: forecastFor(nextDay) }, 0, forecastFor(nextDay).bonusKind ?? 'ration', 'survivor'),
+    lastMessage: `NIGHT ${nextDay} · ${forecastFor(nextDay).title}`,
+  };
+  return next;
 }
 
 export function startSecondNight(state: GameState): GameState {
-  if (!state.searchStationRepaired) return state;
-  const refreshed = createInitialState(state.seed ^ 0x9e3779b9);
-  return { ...refreshed, day: 2, hope: state.hope, parts: state.parts, supplies: state.supplies + 3, firstLightLevel: state.firstLightLevel, searchStationRepaired: true, survivorJoined: true, lastMessage: 'NIGHT 2 · 白天的准备开始有用了' };
+  return startNextNight(state);
 }
