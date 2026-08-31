@@ -1,4 +1,5 @@
 import { takeRack, tick } from './engine';
+import { advanceNightNarrative } from './nightStory';
 import type { GameState } from './types';
 
 const COMBO_WINDOW_MS = 8_000;
@@ -29,15 +30,17 @@ export function takeRackWithFeel(state: GameState, rackIndex: number): GameState
 }
 
 export function tickWithFeel(state: GameState, elapsedMs: number): GameState {
-  const next = tick(state, elapsedMs);
+  if (state.pendingCheck || state.nightIncidentId) return state;
+  const ticked = tick(state, elapsedMs);
+  let next = advanceNightNarrative(state, ticked);
   const remaining = Math.max(0, (state.comboRemainingMs ?? 0) - elapsedMs);
-  if (remaining <= 0 && (state.combo ?? 0) > 0) return { ...next, combo: 0, comboRemainingMs: 0 };
-  if (remaining !== (state.comboRemainingMs ?? 0)) return { ...next, comboRemainingMs: remaining };
+  if (remaining <= 0 && (state.combo ?? 0) > 0) next = { ...next, combo: 0, comboRemainingMs: 0 };
+  else if (remaining !== (state.comboRemainingMs ?? 0)) next = { ...next, comboRemainingMs: remaining };
   return next;
 }
 
 export function emergencyClear(state: GameState): GameState {
-  if (state.phase !== 'night' || state.slots.some((slot) => slot === null)) return state;
+  if (state.phase !== 'night' || state.pendingCheck || state.nightIncidentId || state.slots.some((slot) => slot === null)) return state;
   const candidates = state.slots
     .map((item, index) => ({ item, index }))
     .sort((a, b) => (a.item?.tier ?? 9) - (b.item?.tier ?? 9) || a.index - b.index)
