@@ -16,9 +16,9 @@ export interface CampaignFixedEvent {
 }
 
 const BUILDING_EVENTS: CampaignFixedEvent[] = [
-  { id: 'building-search-station', kind: 'building', buildingId: 'searchStation', title: '把地图铺开', body: '搜索站终于能用了。林夏把几张捡来的街区图钉在墙上，所有外出的人都被要求先在这里留下路线。', actionLabel: '启用搜索站' },
-  { id: 'building-shelter', kind: 'building', buildingId: 'shelter', title: '今晚有屋檐', body: '宿营屋清出第一块能真正睡人的地方。阿禾把炉子挪到通风口边，街区第一次有了“回家”的样子。', actionLabel: '开放宿营屋' },
-  { id: 'building-workshop', kind: 'building', buildingId: 'workshop', title: '坏掉的东西还能修', body: '老周把最后一张工作台扶正。扳手、钳子和拆下来的零件终于有了固定位置，防线不必再靠临时补丁撑着。', actionLabel: '启用修理工坊' },
+  { id: 'building-search-station', kind: 'building', buildingId: 'searchStation', title: '把地图铺开', body: '搜索站终于能用了。几张捡来的街区图被钉在墙上，所有外出的人都被要求先在这里留下路线。', actionLabel: '启用搜索站' },
+  { id: 'building-shelter', kind: 'building', buildingId: 'shelter', title: '今晚有屋檐', body: '宿营屋清出第一块能真正睡人的地方。炉子被挪到通风口边，街区第一次有了“回家”的样子。', actionLabel: '开放宿营屋' },
+  { id: 'building-workshop', kind: 'building', buildingId: 'workshop', title: '坏掉的东西还能修', body: '最后一张工作台被扶正。扳手、钳子和拆下来的零件终于有了固定位置，防线不必再靠临时补丁撑着。', actionLabel: '启用修理工坊' },
   { id: 'building-clinic', kind: 'building', buildingId: 'clinic', title: '留一张干净的床', body: '诊疗角被隔出一块干净区域。灯不亮，但药品和绷带终于不用再堆在纸箱里。', actionLabel: '启用诊疗站' },
   { id: 'building-watch-post', kind: 'building', buildingId: 'watchPost', title: '先看见它们', body: '瞭望架超过了围墙高度。从这里能看到两条街外的动静，也意味着尸群靠近前，街区终于有机会先做准备。', actionLabel: '启用守夜岗' },
   { id: 'building-radio', kind: 'building', buildingId: 'radio', title: '噪声里有人吗', body: '广播设备第一次发出稳定底噪。频道里暂时只有杂音，但所有人都知道：从现在开始，这条街可以听见更远的地方。', actionLabel: '启用广播亭' },
@@ -59,14 +59,17 @@ export function collectedSurvivorIsPresent(state: GameState, survivorId: string)
 function eventEligible(state: GameState, event: CampaignFixedEvent): boolean {
   if (state.storyFlags.includes(seenFlag(event.id))) return false;
   if ((event.minDay ?? 1) > state.day) return false;
-  if (event.kind === 'building') return Boolean(event.buildingId && state.storyFlags.includes(buildingPendingFlag(event.buildingId)));
+  if (event.kind === 'building') {
+    const buildingId = event.buildingId;
+    return buildingId ? state.storyFlags.includes(buildingPendingFlag(buildingId)) : false;
+  }
   if (event.kind === 'character') return Boolean(event.survivorId && collectedSurvivorIsPresent(state, event.survivorId));
   if (event.kind === 'location') return Boolean(event.locationId && !isLocationUnlocked(state, event.locationId));
   return false;
 }
 
 export function pendingCampaignEvent(state: GameState): CampaignFixedEvent | null {
-  if (!['street', 'assignment'].includes(state.phase)) return null;
+  if (!['street', 'assignment'].includes(state.phase) || state.expeditionState.departed) return null;
   const priority: CampaignEventKind[] = ['character', 'building', 'location'];
   for (const kind of priority) {
     const event = CAMPAIGN_FIXED_EVENTS.find((candidate) => candidate.kind === kind && eventEligible(state, candidate));
