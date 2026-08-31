@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { challengeScore, createDailyChallenge, encodeChallenge } from './game/challenge';
 import { SUPPLY_META } from './game/config';
 import { continueChapter } from './game/continue';
+import { careForCat, CAT_COPY } from './game/emotion';
 import { assignSurvivor, createInitialState, repairBuilding, revealStreet, takeRack, tick } from './game/engine';
+import { autoAssignBySpecialty, autoAssignForHorde } from './game/management';
 import { BUILDING_META } from './game/progression';
 import { clearSave, loadGame, saveGame } from './game/storage';
 import type { BuildingId, GameState, Role, SupplyItem, SupplyKind } from './game/types';
@@ -80,6 +82,8 @@ function StreetScene({ state, setState, onDaily, onShare }: { state: GameState; 
   const availableRoles = rolesFor(state);
   const unlockedBuildings = BUILDING_IDS.filter((id) => BUILDING_META[id].unlockDay <= state.day);
   const failedHorde = state.day === 7 && !state.chapterComplete;
+  const catStage = state.catStage ?? 0;
+  const cat = CAT_COPY[catStage];
   return <main className={`game-shell street-screen ${state.chapterComplete ? 'street-screen--dawn' : ''}`}>
     <header className="hud hud--street"><div><span className="eyebrow">DAY</span><strong>{state.day}</strong></div><div className="hud__center">避难街 · 第一街段</div><div><span className="eyebrow">HOPE</span><strong>{state.hope}</strong></div></header>
     <section className="day-brief"><div><span className="eyebrow">下一夜预报</span><strong>{state.chapterComplete ? '第一章完成' : failedHorde ? '尸潮夜 · 重整再战' : `DAY ${state.day + 1} · ${state.day === 6 ? '尸潮之夜' : '继续守夜'}`}</strong></div><p>{state.chapterComplete ? '第一街段已经稳定下来。下一阶段将向更深的城区扩张。' : failedHorde ? '昨夜没有完全守住，但没有死档。调整岗位、补修设施，再试一次。' : state.day === 6 ? '大规模尸群就在外围。把人调到最关键的位置。' : '岗位收益会在下一次开夜时立即结算。'}</p></section>
@@ -89,7 +93,8 @@ function StreetScene({ state, setState, onDaily, onShare }: { state: GameState; 
       {unlockedBuildings.map((id) => { const meta = BUILDING_META[id]; const level = state.buildings[id]; const canRepair = level === 0 && state.parts >= meta.cost; return <article key={id} className={`building ${level ? 'building--active' : 'building--ruin'}`}><span className="building__light"/><small>{level ? `ONLINE · LV.${level}` : `LOCK BROKEN · ${meta.cost} 零件`}</small><h3>{meta.name}</h3><p>{meta.description}</p>{!level && <button className="secondary" disabled={!canRepair} onClick={() => { const next = repairBuilding(state, id); if (next !== state) { vibrate(18); beep(780, 0.08); setState(next); } }}>{canRepair ? `修复 · ${meta.cost} 零件` : `还差 ${Math.max(0, meta.cost - state.parts)} 零件`}</button>}</article>; })}
       <article className="building building--supply building--active"><span className="building__light"/><small>SUPPLY COUNTER</small><h3>七格配给站</h3><p>夜里真正决定能否撑住的地方。七格永远不会增加。</p></article>
     </section>
-    <section className="survivor-panel"><div className="section-title"><strong>幸存者分工</strong><span>{state.survivors.length} 人 · 下一夜开张时结算产出</span></div>{state.survivors.length === 0 ? <p className="empty-copy">先修好搜索站，会有人愿意留下。</p> : state.survivors.map((survivor) => <article className="survivor-row" key={survivor.id}><div className="survivor-copy"><strong>{survivor.name}</strong><span>精力 {survivor.energy} · 擅长 {ROLE_LABEL[survivor.specialty]}</span><small>{survivor.perk}</small></div><div className="role-buttons">{availableRoles.map((role) => <button key={role} className={(state.assignments[survivor.id] ?? 'rest') === role ? 'role active' : 'role'} onClick={() => setState(assignSurvivor(state, survivor.id, role))}>{ROLE_LABEL[role]}</button>)}</div></article>)}</section>
+    <section className="survivor-panel"><div className="section-title"><strong>幸存者分工</strong><span>{state.survivors.length} 人 · 下一夜开张时结算产出</span></div>{state.survivors.length >= 3 && <div className="management-tools"><button className="secondary" onClick={() => setState(autoAssignBySpecialty(state))}>一键按专长</button>{state.day >= 6 && <button className="secondary" onClick={() => setState(autoAssignForHorde(state))}>尸潮班表</button>}</div>}{state.survivors.length === 0 ? <p className="empty-copy">先修好搜索站，会有人愿意留下。</p> : state.survivors.map((survivor) => <article className="survivor-row" key={survivor.id}><div className="survivor-copy"><strong>{survivor.name}</strong><span>精力 {survivor.energy} · 擅长 {ROLE_LABEL[survivor.specialty]}</span><small>{survivor.perk}</small></div><div className="role-buttons">{availableRoles.map((role) => <button key={role} className={(state.assignments[survivor.id] ?? 'rest') === role ? 'role active' : 'role'} onClick={() => setState(assignSurvivor(state, survivor.id, role))}>{ROLE_LABEL[role]}</button>)}</div></article>)}</section>
+    {state.day >= 3 && <section className="cat-card"><strong>{cat.title}</strong><span>{cat.detail}</span>{catStage < 3 && !state.catFedToday && <button className="secondary" disabled={state.supplies < 1} onClick={() => setState(careForCat(state))}>{state.supplies >= 1 ? '留 1 份补给给它' : '需要 1 份补给'}</button>}{state.catFedToday && catStage < 3 && <span>今天已经照顾过它了。明天看看它还会不会来。</span>}</section>}
     <section className="street-bottom"><div className="resource-row"><span>零件 <strong>{state.parts}</strong></span><span>补给 <strong>{state.supplies}</strong></span><span>药品 <strong>{state.medicine}</strong></span><span>灯火 <strong>Lv.{state.firstLightLevel}</strong></span></div><p>{state.lastMessage}</p>{state.chapterComplete ? <div className="chapter-card"><strong>第一章 · 守住第一盏灯</strong><span>完成。第二街段将在下一阶段开放。</span></div> : state.searchStationRepaired ? <button className="primary" onClick={() => { const next = continueChapter(state); if (next !== state) { beep(520, 0.06); setState(next); } }}>{failedHorde ? '重整防线 · 再守尸潮夜' : `准备好了 · 进入 NIGHT ${state.day + 1}`}</button> : <div className="chapter-card"><strong>当前目标</strong><span>修复搜索站，让第一名幸存者留下。</span></div>}</section>
   </main>;
 }
@@ -102,6 +107,13 @@ export default function App() {
   const setState = (next: GameState) => { stateRef.current = next; setStateRaw(next); };
   const setChallenge = (next: GameState | null) => { challengeRef.current = next; setChallengeRaw(next); };
   useEffect(() => { stateRef.current = state; saveGame(state); }, [state]);
+  useEffect(() => {
+    const persist = () => saveGame(stateRef.current, true);
+    const onVisibility = () => { if (document.visibilityState === 'hidden') persist(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', persist);
+    return () => { document.removeEventListener('visibilitychange', onVisibility); window.removeEventListener('pagehide', persist); };
+  }, []);
   useEffect(() => {
     if (challenge || state.phase !== 'night') return;
     let previous = performance.now();
