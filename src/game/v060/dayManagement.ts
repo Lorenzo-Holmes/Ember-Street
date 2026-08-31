@@ -10,10 +10,11 @@ export function survivorAvailableForDay(survivor: Survivor): boolean {
 
 export function canTakeDayAssignment(state: GameState, survivorId: string, job: DayAssignment): { allowed: boolean; reason?: string } {
   if (state.dayState.assignmentsLocked) return { allowed: false, reason: '今日调遣已经锁定' };
-  if (state.dayState.committedSurvivorIds.includes(survivorId)) return { allowed: false, reason: '今天已经参加过搜救行动' };
+  if (state.dayState.committedSurvivorIds.includes(survivorId)) return { allowed: false, reason: '今天已经执行过行动' };
   const survivor = state.survivors.find((item) => item.id === survivorId);
   if (!survivor) return { allowed: false, reason: '人物不在街区' };
   if (!survivorAvailableForDay(survivor)) return { allowed: false, reason: survivor.condition === 'missing' ? '人物仍然失踪' : survivor.condition === 'dead' ? '人物已经死亡' : '人物情况危重' };
+  if (job === 'expedition' && state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天的搜索队已经执行过一次' };
   if (job === 'expedition' && (survivor.condition === 'serious' || survivor.energy < 15)) return { allowed: false, reason: survivor.condition === 'serious' ? '重伤人物不能正常外出' : '精力过低，无法出发' };
   const building = JOB_BUILDING[job];
   if (building && state.buildings[building] <= 0) return { allowed: false, reason: '对应设施尚未修复' };
@@ -47,6 +48,21 @@ export function lockDayAssignments(state: GameState): GameState {
     dayAssignments: nextAssignments,
     dayState: { ...state.dayState, assignmentsLocked: true },
     lastMessage: '今日调遣已锁定 · 天黑以后不能临时换岗',
+  };
+}
+
+export function reopenDayAssignments(state: GameState): GameState {
+  const completedExpeditionIds = state.dayState.returnedExpeditions > 0
+    ? Object.entries(state.dayAssignments).filter(([, job]) => job === 'expedition').map(([id]) => id)
+    : [];
+  const committedSurvivorIds = [...new Set([...state.dayState.committedSurvivorIds, ...completedExpeditionIds])];
+  return {
+    ...state,
+    phase: 'street',
+    dayState: { ...state.dayState, assignmentsLocked: false, committedSurvivorIds },
+    lastMessage: completedExpeditionIds.length
+      ? '已返回白天调遣 · 已完成探索的人不能再次改岗'
+      : '已返回白天调遣 · 可以继续调整岗位',
   };
 }
 
