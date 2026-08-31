@@ -12,6 +12,8 @@ const MILESTONES = [
   { count: 10, flag: 'community_milestone_10', hope: 1 },
 ] as const;
 
+export const communityEventPendingFlag = (milestone: number) => `community_event_pending:${milestone}`;
+
 export function createDefaultCommunityState(activeResidents = 0): CommunityState {
   return { pendingResidents: 0, activeResidents: count(activeResidents), supportMode: null };
 }
@@ -46,6 +48,7 @@ export function rescueCommunityResidents(state: GameState, rescued = 1, hopePerR
     civilianResidents: state.civilianResidents + amount,
     communityState: { ...community, pendingResidents: community.pendingResidents + amount },
     hope: clamp(state.hope + hopeGain, 0, 100),
+    lastMessage: `${amount} 名居民被带回街区。今天先安置，明天开始参与社区劳动。`,
   };
 }
 
@@ -54,17 +57,14 @@ export function advanceCommunityDay(state: GameState): GameState {
   const activeResidents = community.activeResidents + community.pendingResidents;
   let hope = state.hope;
   const flags = new Set(state.storyFlags);
-  let dutyRosterUnlocked = false;
+  let newestMilestone: number | null = null;
 
   for (const milestone of MILESTONES) {
     if (activeResidents < milestone.count || flags.has(milestone.flag)) continue;
     flags.add(milestone.flag);
+    flags.add(communityEventPendingFlag(milestone.count));
     hope = clamp(hope + milestone.hope, 0, 100);
-    if (milestone.count === SUPPORT_UNLOCK_COUNT) {
-      flags.add('community_rotation_unlocked');
-      flags.add('community_event_duty_roster');
-      dutyRosterUnlocked = true;
-    }
+    newestMilestone = milestone.count;
   }
 
   return {
@@ -72,22 +72,24 @@ export function advanceCommunityDay(state: GameState): GameState {
     hope,
     storyFlags: [...flags],
     communityState: { pendingResidents: 0, activeResidents, supportMode: null },
-    lastMessage: dutyRosterUnlocked
-      ? '《值班表》：有人把一张纸钉在宿营屋门口。上面第一次不只有那几个核心幸存者的名字。居民轮值已解锁。'
+    lastMessage: newestMilestone
+      ? `街区已有 ${activeResidents} 名已安置居民 · 新的社区成长事件等待确认。`
       : state.lastMessage,
   };
 }
 
 export function communitySupportUnlocked(state: GameState): boolean {
-  return normalized(state).activeResidents >= SUPPORT_UNLOCK_COUNT || state.storyFlags.includes('community_rotation_unlocked');
+  return state.storyFlags.includes('community_rotation_unlocked');
 }
 
 export function selectCommunitySupportMode(state: GameState, supportMode: CommunitySupportMode): GameState {
   const community = normalized(state);
-  if (community.activeResidents < SUPPORT_UNLOCK_COUNT) return { ...state, communityState: community, lastMessage: '至少需要 5 名已安置居民才能组织居民轮值。' };
+  if (!communitySupportUnlocked(state) || community.activeResidents < SUPPORT_UNLOCK_COUNT) {
+    return { ...state, communityState: community, lastMessage: '先完成 5 人社区事件《值班表》，才能组织居民轮值。' };
+  }
+  if (state.dayState.assignmentsLocked) return { ...state, lastMessage: '今日派遣已经锁定，居民轮值也不能再调整。' };
   return {
     ...state,
-    storyFlags: [...new Set([...state.storyFlags, 'community_rotation_unlocked'])],
     communityState: { ...community, supportMode, lastSupportDay: state.day },
     lastMessage: `今日居民轮值：${supportMode === 'logistics' ? '后勤' : supportMode === 'repair' ? '维修' : '守备'}。`,
   };
@@ -128,4 +130,38 @@ export function communityMedicalSupport(state: GameState): number {
   const community = normalized(state);
   if (state.buildings.clinic < 2 || community.activeResidents < 4) return 0;
   return state.buildings.clinic >= 3 && community.activeResidents >= 8 ? 2 : 1;
+}
+
+export interface CommunitySupportSummary {
+  activeResidents: number;
+  pendingResidents: number;
+  supportMode: CommunitySupportMode | null;
+  supportModeLabel: string;
+  unlocked: boolean;
+  cookingCapacity: number;
+  repairDefense: number;
+  nightRiskReduction: number;
+  medicalAssist: number;
+}
+
+export function communitySupportSummary(state: GameState): CommunitySupportSummary {
+  const community = normalized(state);
+  const supportModeLabel = community.supportMode === 'logistics' && community.lastSupportDay === state.day
+    ? '后勤'
+    : community.supportMode === 'repair' && community.lastSupportDay === state.day
+      ? '维修'
+      : community.supportMode === 'defense' && community.lastSupportDay === state.day
+        ? '守备'
+        : '未选择';
+  return {
+    activeResidents: community.activeResidents,
+    pendingResidents: community.pendingResidents,
+    supportMode: community.lastSupportDay === state.day ? community.supportMode : null,
+    supportModeLabel,
+    unlocked: communitySupportUnlocked(state),
+    cookingCapacity: communityCookingSupport(state),
+    repairDefense: communityRepairSupport(state),
+    nightRiskReduction: communityDefenseSupport(state),
+    medicalAssist: communityMedicalSupport(state),
+  };
 }
