@@ -1,4 +1,5 @@
 import type { GameState } from '../types';
+import { shockLivingCore } from './characterPsychology';
 import { adjustPressure } from './socialPressure';
 
 const EPITAPH: Record<string, string> = {
@@ -59,5 +60,5 @@ export function recordDeath(state: GameState, survivorId: string, cause: string)
     hope: Math.max(0, state.hope - 4),
     lastMessage: `${survivor.name}没有回来。纪念墙上多了一个名字。`,
   };
-  return adjustPressure(dead, 2, `core-death-${survivorId}`);
+  return adjustPressure(shockLivingCore(dead, survivorId), 2, `core-death-${survivorId}`);
 }
