@@ -107,7 +107,7 @@ export interface Day29ChoiceResult {
   legalChoiceCount: number;
   score: number;
   endingId: EndingId;
-  endingTier: GameState['ending'] extends infer T ? T : never;
+  endingTier: NonNullable<GameState['ending']>['tier'];
   finalHordeResult: string;
   coreAlive: number;
   residents: number;
