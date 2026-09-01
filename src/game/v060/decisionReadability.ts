@@ -1,5 +1,6 @@
 import type { GameState, Role } from '../types';
-import type { ExpeditionRisk } from './expedition';
+import { currentExpeditionEvent, type ExpeditionRisk } from './expedition';
+import { expeditionSpecialtyBonus } from './expeditionStories';
 import type { NightChoice, NightEffect, V060NightEvent } from './nightEvents';
 
 export type DecisionTone = 'safe' | 'stable' | 'risky' | 'severe';
@@ -173,12 +174,15 @@ export function expeditionDecisionPreview(state: GameState, decision: Expedition
     };
   }
 
+  const event = currentExpeditionEvent(state);
+  const specialtyBonus = expeditionSpecialtyBonus(state, event);
   const tags = decision === 'push'
     ? ['高收益', '2D6 -1', RISK_LABEL[risk]]
     : ['普通收益', '2D6 +1', RISK_LABEL[risk]];
+  if (specialtyBonus && event?.specialty) tags.push(`${ROLE_LABEL[event.specialty]}专长 +1`);
 
   let danger = '失败会消耗更多精力，并可能造成伤势。';
-  let tone: DecisionTone = risk === 'safe' ? 'stable' : risk === 'cautious' ? 'risky' : 'severe';
+  const tone: DecisionTone = risk === 'safe' ? 'stable' : risk === 'cautious' ? 'risky' : 'severe';
   if (risk === 'dangerous') danger = '失败可能造成重伤；灾难结果会让后续医疗压力明显上升。';
   if (risk === 'extreme' && state.day <= 5) danger = '这是极险路线。前 5 天仍有永久死亡保护，但失败依然可能造成严重伤势。';
   if (risk === 'extreme' && state.day >= 6 && state.day <= 10) {
@@ -190,11 +194,12 @@ export function expeditionDecisionPreview(state: GameState, decision: Expedition
     danger = '极险探索在 DAY 11 起，严重失败可能失踪；双一且队员状态较差时可能直接死亡。';
   }
 
+  const specialtyText = specialtyBonus && event?.specialty ? ` 当前事件匹配${ROLE_LABEL[event.specialty]}专长，搜索队额外获得 +1。` : '';
   return {
     tags,
     summary: decision === 'push'
-      ? `成功或大成功会额外获得主要物资；代价是判定 -1。${danger}`
-      : `判定获得 +1，不追求额外的“继续深入”奖励。${danger}`,
+      ? `成功或大成功会额外获得主要物资；代价是判定 -1。${specialtyText}${danger}`
+      : `判定获得 +1，不追求额外的“继续深入”奖励。${specialtyText}${danger}`,
     tone,
   };
 }
