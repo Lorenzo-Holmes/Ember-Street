@@ -194,8 +194,6 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
       }, 1, 1);
     }
   }
-  if (state.expeditionState.locationId === 'subway' && outcome !== 'failure') next = { ...next, storyFlags: [...new Set([...next.storyFlags, 'subway_exit_known', 'evacuation_route_known'])] };
-  if (state.expeditionState.locationId === 'bus-station' && outcome !== 'failure') next = { ...next, storyFlags: [...new Set([...next.storyFlags, 'evacuation_route_known'])] };
   return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}` };
 }
 
