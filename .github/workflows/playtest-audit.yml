@@ -1,0 +1,49 @@
+name: Playtest Audit
+
+on:
+  push:
+    branches: ["feat/v06x-playtest-audit"]
+  workflow_dispatch:
+    inputs:
+      policy_runs:
+        description: Baseline runs per policy
+        required: false
+        default: "200"
+      principle_runs:
+        description: Runs per isolated principle
+        required: false
+        default: "80"
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      WRITE_PLAYTEST_AUDIT: "1"
+      PLAYTEST_POLICY_RUNS: ${{ inputs.policy_runs || '200' }}
+      PLAYTEST_PRINCIPLE_RUNS: ${{ inputs.principle_runs || '80' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run DAY1→30 audit matrix
+        run: npx vitest run qa/playtest/playtest-audit-report.test.ts --reporter=verbose
+
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember-street-playtest-audit
+          path: qa/playtest/out/
+          if-no-files-found: error
+          retention-days: 14
