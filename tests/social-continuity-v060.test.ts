@@ -20,11 +20,13 @@ import { loseCommunityResidents } from '../src/game/v060/mortality';
 import type { GameState } from '../src/game/types';
 import { nightEventWeight } from '../src/game/v060/causalNight';
 import { adjustPressure, applyMealPressure, pressureBand, socialStateOf } from '../src/game/v060/socialPressure';
-import type { V060NightEvent as NightEvent } from '../src/game/v060/nightEvents';
+import type { NightChoice, V060NightEvent as NightEvent } from '../src/game/v060/nightEvents';
 
 function withDay(state: GameState, day: number): GameState {
   return { ...state, day, phase: 'street' };
 }
+
+const dummyChoice = (id: string): NightChoice => ({ id, label: id, detail: 'test', strategy: 'consequence', direct: {} });
 
 describe('v0.6 social pressure', () => {
   it('normalizes old saves without a social state', () => {
@@ -63,7 +65,7 @@ describe('v0.6 social pressure', () => {
     const base = withDay(createV060InitialState(701005), 12);
     const event: NightEvent = {
       id: 'argument-rations', category: 'survivor', minDay: 1, maxDay: 29,
-      title: '争执', body: 'test', choices: [],
+      title: '争执', body: 'test', choices: [dummyChoice('a'), dummyChoice('b'), dummyChoice('c')],
     };
     const calm = nightEventWeight(base, event);
     const breaking = nightEventWeight(adjustPressure(base, 6, 'test'), event);
