@@ -108,12 +108,15 @@ describe('v0.6 location-specific expedition stories', () => {
 
   it('lets location-relevant specialties reduce risk', () => {
     const base = activeExpedition('hospital', 910009, 17);
-    const withoutMedical = expeditionRiskScore(base, ['lin-xia'], 'hospital');
+    const neutral: GameState = {
+      ...base,
+      survivors: base.survivors.map((survivor) => survivor.id === 'lin-xia' ? { ...survivor, specialty: 'cook' as const } : survivor),
+    };
     const withMedical: GameState = {
       ...base,
       survivors: base.survivors.map((survivor) => survivor.id === 'lin-xia' ? { ...survivor, specialty: 'medical' as const } : survivor),
     };
-    expect(expeditionRiskScore(withMedical, ['lin-xia'], 'hospital')).toBeLessThan(withoutMedical);
+    expect(expeditionRiskScore(withMedical, ['lin-xia'], 'hospital')).toBeLessThan(expeditionRiskScore(neutral, ['lin-xia'], 'hospital'));
   });
 
   it('keeps permanent expedition death blocked before DAY 11 even at extreme risk', () => {
