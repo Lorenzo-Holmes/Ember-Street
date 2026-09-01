@@ -7,6 +7,13 @@ import {
   type V060NightEvent,
 } from './nightEvents';
 
+const pressureCalibrated = (effect: NightEffect): NightEffect => ({
+  ...effect,
+  ...(effect.hope !== undefined ? { hope: Math.min(effect.hope, 1) } : {}),
+  ...(effect.defense !== undefined ? { defense: Math.min(effect.defense, 1) } : {}),
+  ...(effect.power !== undefined ? { power: Math.min(effect.power, 2) } : {}),
+});
+
 const checked = (
   id: string,
   label: string,
@@ -15,19 +22,22 @@ const checked = (
   success: NightEffect,
   failure: NightEffect,
   partial: NightEffect = failure,
-): NightChoice => ({
-  id,
-  label,
-  detail,
-  strategy: 'person',
-  check: { label, role },
-  outcomes: {
-    failure,
-    partial,
-    success,
-    critical: { ...success, hope: (success.hope ?? 0) + 1 },
-  },
-});
+): NightChoice => {
+  const calibratedSuccess = pressureCalibrated(success);
+  return {
+    id,
+    label,
+    detail,
+    strategy: 'person',
+    check: { label, role },
+    outcomes: {
+      failure,
+      partial,
+      success: calibratedSuccess,
+      critical: { ...calibratedSuccess, hope: (calibratedSuccess.hope ?? 0) + 1 },
+    },
+  };
+};
 
 const resource = (
   id: string,
@@ -35,7 +45,7 @@ const resource = (
   detail: string,
   cost: NightChoice['cost'],
   effect: NightEffect,
-): NightChoice => ({ id, label, detail, strategy: 'resource', cost, direct: effect });
+): NightChoice => ({ id, label, detail, strategy: 'resource', cost, direct: pressureCalibrated(effect) });
 
 const consequence = (
   id: string,
