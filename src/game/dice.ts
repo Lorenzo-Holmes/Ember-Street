@@ -32,9 +32,12 @@ export function createPendingCheck(
 ): GameState {
   const actor = input.actorId ? state.survivors.find((survivor) => survivor.id === input.actorId) : undefined;
   const psychology = psychologyCheckModifier(actor);
-  const modifiers = psychology && !input.modifiers.some((modifier) => modifier.label === psychology.label)
+  let modifiers = psychology && !input.modifiers.some((modifier) => modifier.label === psychology.label)
     ? [...input.modifiers, psychology]
-    : input.modifiers;
+    : [...input.modifiers];
+  if (actor && state.socialState?.principles?.includes('core-leads') && !modifiers.some((modifier) => modifier.label === '原则·核心带头')) {
+    modifiers = [...modifiers, { label: '原则·核心带头', value: 1 }];
+  }
   const pending: PendingCheck = {
     ...input,
     id: `${state.day}-${input.source}-${input.eventId}-${input.choiceId}-${state.rngState}`,
