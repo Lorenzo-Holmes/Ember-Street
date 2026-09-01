@@ -1,4 +1,5 @@
 import type { GameState } from '../types';
+import { applyDeathPsychology } from './psychology';
 import { adjustPressure } from './socialPressure';
 
 const EPITAPH: Record<string, string> = {
@@ -48,7 +49,7 @@ export function recordDeath(state: GameState, survivorId: string, cause: string)
   }];
   const dead: GameState = {
     ...state,
-    survivors: state.survivors.map((item) => item.id === survivorId ? { ...item, condition: 'dead' as const, energy: 0 } : item),
+    survivors: state.survivors.map((item) => item.id === survivorId ? { ...item, condition: 'dead' as const, energy: 0, psychology: undefined } : item),
     campaignStats: {
       ...state.campaignStats,
       deaths: state.campaignStats.deaths + 1,
@@ -59,5 +60,6 @@ export function recordDeath(state: GameState, survivorId: string, cause: string)
     hope: Math.max(0, state.hope - 4),
     lastMessage: `${survivor.name}没有回来。纪念墙上多了一个名字。`,
   };
-  return adjustPressure(dead, 2, `core-death-${survivorId}`);
+  const pressured = adjustPressure(dead, 2, `core-death-${survivorId}`);
+  return applyDeathPsychology(pressured, survivorId, survivor.name);
 }
