@@ -27,14 +27,14 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
     .filter(({ mental }) => mental !== 'steady');
 
   return (
-    <section className="v6-section v6-social-panel" aria-label="街区社会状态、原则与心理记录">
+    <section className="v6-section v6-social-panel" aria-label="街区近况、承诺与人物状态">
       <div className="v6-section__head">
         <div>
-          <span className="v6-section__tag">街区社会与心理记录</span>
-          <h2>生存压力、信任与长期原则</h2>
+          <span className="v6-section__tag">街区近况</span>
+          <h2>有些东西不会写进仓房的清单</h2>
         </div>
-        <div className="v6-promise-tally" aria-label="承诺履约统计">
-          <span>兑现 <b>{social.fulfilledPromises}</b></span>
+        <div className="v6-promise-tally" aria-label="承诺记录">
+          <span>守约 <b>{social.fulfilledPromises}</b></span>
           <span className="v6-tally-sep">·</span>
           <span>食言 <b>{social.brokenPromises}</b></span>
         </div>
@@ -43,44 +43,44 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
       <div className="v6-preview v6-social-metrics">
         <div className="v6-metric-card v6-metric-card--hope">
           <div className="v6-metric-header">
-            <span>街区希望</span>
-            <span className="v6-metric-chip">{state.hope >= 40 ? '充裕' : state.hope >= 20 ? '警戒' : '濒临绝望'}</span>
+            <span>火还亮不亮</span>
+            <span className="v6-metric-chip">{state.hope >= 40 ? '还亮着' : state.hope >= 20 ? '有些发虚' : '快灭了'}</span>
           </div>
           <strong>{state.hope}</strong>
-          <small>长期支柱：大家是否还相信这条街能够守到天亮。</small>
+          <small>还有人愿意为明天多做一件事，这就是现在剩下的希望。</small>
         </div>
 
         <div className={`v6-metric-card v6-metric-card--pressure v6-metric-card--pressure-${social.pressure >= 3 ? 'extreme' : social.pressure >= 2 ? 'high' : social.pressure >= 1 ? 'moderate' : 'calm'}`}>
           <div className="v6-metric-header">
-            <span>街区压力</span>
+            <span>这条街绷得多紧</span>
             <span className="v6-metric-chip">{pressureLabel(state)}</span>
           </div>
           <strong>{pressureLabel(state)}</strong>
-          <small>短期负担：冷食、伤亡、无人医疗和防线受损会持续累积压力。</small>
+          <small>冷饭、伤亡、没人照看的伤口和松掉的门，都会一点点压在人身上。</small>
         </div>
 
         <div className="v6-metric-card v6-metric-card--mental">
           <div className="v6-metric-header">
-            <span>核心心理</span>
-            <span className="v6-metric-chip">{mentalNotes.length ? `${mentalNotes.length} 人波动` : '平稳'}</span>
+            <span>谁已经快撑不住了</span>
+            <span className="v6-metric-chip">{mentalNotes.length ? `${mentalNotes.length} 人不太对劲` : '暂时平静'}</span>
           </div>
-          <strong>{mentalNotes.length ? `${mentalNotes.length} 人出现波动` : '平稳'}</strong>
+          <strong>{mentalNotes.length ? `${mentalNotes.length} 人最近有些不对劲` : '暂时没人掉队'}</strong>
           <small>
             {mentalNotes.length
               ? mentalNotes
                   .map(
                     ({ survivor, mental }) =>
-                      `${survivor.name} · ${MENTAL_LABEL[mental]}${survivor.mentalUntilDay ? ` (至 DAY ${survivor.mentalUntilDay})` : ''}`,
+                      `${survivor.name} · ${MENTAL_LABEL[mental]}${survivor.mentalUntilDay ? `（到 DAY ${survivor.mentalUntilDay} 左右）` : ''}`,
                   )
                   .join('；')
-              : '专注判定 +1，动摇判定 -1；状态会随时间自然消退。'}
+              : '至少今天早上，没人把难受写在脸上。'}
           </small>
         </div>
       </div>
 
       {!!social.principles.length && (
-        <div className="v6-principle-ledger" aria-label="已确立街区原则">
-          <span className="v6-principle-ledger__label">已确立原则</span>
+        <div className="v6-principle-ledger" aria-label="街区已经说定的规矩">
+          <span className="v6-principle-ledger__label">我们说过的话</span>
           <div className="v6-principle-ledger__items">
             {social.principles.map((id) => (
               <span className="v6-stamp-badge v6-stamp--principle" key={id}>
@@ -97,11 +97,11 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
             <div className="v6-survivor__profile">
               <span className="v6-survivor__avatar-tag">⚖</span>
               <div>
-                <h3>街区原则 · DAY {principle.day}</h3>
+                <h3>街上得有个说法 · DAY {principle.day}</h3>
                 <div className="v6-survivor__trait">{principle.title}</div>
               </div>
             </div>
-            <span className="v6-principle-stamp">不可撤回</span>
+            <span className="v6-principle-stamp">说出口就算数</span>
           </div>
           <p className="v6-principle-body">{principle.body}</p>
           <div className="v6-principle-choice-grid">
@@ -113,11 +113,11 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
               >
                 <strong>{choice.title}</strong>
                 <span>{choice.detail}</span>
-                <small>长期效果：{choice.effect}</small>
+                <small>这句话会留下：{choice.effect}</small>
               </button>
             ))}
           </div>
-          <small className="v6-principle-hint">每个阶段只能确定一个原则；选定后本局不可撤销，并会影响后续事件与最终尸潮。</small>
+          <small className="v6-principle-hint">一旦定下来，往后的事都会记着它。</small>
         </article>
       )}
 
@@ -127,18 +127,18 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
             <div className="v6-survivor__profile">
               <span className="v6-survivor__avatar-tag">📜</span>
               <div>
-                <h3>已生效承诺 · 《{active.title}》</h3>
+                <h3>我们答应过的 · 《{active.title}》</h3>
                 <div className="v6-survivor__trait">{active.detail}</div>
               </div>
             </div>
             <div className="v6-survivor__energy">
               <div className="v6-energy-header">
-                <span className="v6-survivor__energy-label">剩余期限</span>
+                <span className="v6-survivor__energy-label">还剩</span>
                 <span className="v6-survivor__energy-val">{active.remainingDays} 天</span>
               </div>
             </div>
           </div>
-          <p className="v6-promise-note">承诺只检验你能够主动安排的行动，不会因单次判定失误而判定食言。</p>
+          <p className="v6-promise-note">答应过的事，看的是我们有没有去做。一次失手，不算食言。</p>
         </article>
       )}
 
@@ -148,13 +148,13 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
             <div className="v6-survivor__profile">
               <span className="v6-survivor__avatar-tag">📢</span>
               <div>
-                <h3>居民诉求 · 《{request.title}》</h3>
+                <h3>有人来问 · 《{request.title}》</h3>
                 <div className="v6-survivor__trait">{request.body}</div>
               </div>
             </div>
           </div>
           <div className="v6-request-promise-box">
-            <strong>如果应允承诺：</strong>
+            <strong>要是答应：</strong>
             <span>{request.promiseText}</span>
           </div>
           <div className="v6-job-grid" style={{ marginTop: 10 }}>
@@ -162,10 +162,10 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
               ✍ 答应这件事
             </button>
             <button className="v6-btn-decline" onClick={() => onCommit(declineCommunityRequest(state, request.id))}>
-              ✕ 不作承诺
+              ✕ 现在不答应
             </button>
           </div>
-          <small className="v6-request-hint">拒绝不会产生隐藏任务，但会让希望值略降、街区短期压力上升。</small>
+          <small className="v6-request-hint">不答应，就是现在把话说清楚。有人会失望，但不会凭空多出一笔旧账。</small>
         </article>
       )}
 
