@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createPendingCheck } from '../src/game/dice';
-import { createV060InitialState } from '../src/game/v060/campaign';
+import { createV060InitialState, finalHordeResultFor, finalizeDay } from '../src/game/v060/campaign';
 import { nightEventWeight } from '../src/game/v060/causalNight';
 import { communityCookingSupport, communityDefenseSupport, communityRepairSupport } from '../src/game/v060/community';
 import { expeditionRiskScore } from '../src/game/v060/expedition';
@@ -9,7 +9,11 @@ import { mortalityEventById } from '../src/game/v060/mortalityEvents';
 import { EMERGENCY_EVENTS, NORMAL_NIGHT_EVENTS } from '../src/game/v060/nightEvents';
 import { choosePrinciple, pendingPrincipleDecision } from '../src/game/v060/principles';
 import { normalizeSocialState } from '../src/game/v060/socialPressure';
-import type { GameState } from '../src/game/types';
+import type { GameState, StreetPrincipleId } from '../src/game/types';
+
+function withPrinciples(state: GameState, principles: StreetPrincipleId[]): GameState {
+  return { ...state, socialState: { ...normalizeSocialState(state.socialState), principles } };
+}
 
 function withResidents(state: GameState): GameState {
   return {
@@ -53,7 +57,8 @@ describe('v0.6 street principles', () => {
 
   it('community-shares-risk strengthens repair and defense labor', () => {
     let base: GameState = withResidents({ ...createV060InitialState(99104), day: 14 });
-    base = { ...base, socialState: { ...normalizeSocialState(base.socialState), principles: ['everyone-shares'] }, communityState: { ...base.communityState, supportMode: 'repair', lastSupportDay: 14 } };
+    base = withPrinciples(base, ['everyone-shares']);
+    base = { ...base, communityState: { ...base.communityState, supportMode: 'repair', lastSupportDay: 14 } };
     const repairBefore = communityRepairSupport(base);
     const defenseBefore = communityDefenseSupport({ ...base, communityState: { ...base.communityState, supportMode: 'defense' } });
     const chosen = choosePrinciple(base, 'community-shares-risk');
@@ -82,11 +87,50 @@ describe('v0.6 street principles', () => {
     expect(event?.choices.find((choice) => choice.id === 'mortality-medicine')?.cost?.medicine).toBe(1);
   });
 
-  it('core-leads adds +1 to actor-based night checks', () => {
-    let state: GameState = { ...createV060InitialState(99107), day: 14, socialState: { ...normalizeSocialState(undefined), principles: ['everyone-shares'] } };
+  it('core-leads stacks with the hardened mental modifier system', () => {
+    let state: GameState = withPrinciples({ ...createV060InitialState(99107), day: 14 }, ['everyone-shares']);
     state = choosePrinciple(state, 'core-leads');
+    state = { ...state, survivors: state.survivors.map((survivor) => survivor.id === 'lin-xia' ? { ...survivor, mentalState: 'focused' as const, mentalUntilDay: 16 } : survivor) };
     const checked = createPendingCheck(state, { source: 'night', eventId: 'test', choiceId: 'act', label: '测试', actorId: 'lin-xia', mode: 'normal', modifiers: [] });
-    expect(checked.pendingCheck?.modifiers).toContainEqual({ label: '原则·核心带头', value: 1 });
+    expect(checked.pendingCheck?.modifiers).toEqual(expect.arrayContaining([
+      { label: '原则·核心带头', value: 1 },
+      { label: '心理 · 专注', value: 1 },
+    ]));
+  });
+
+  it('preserve-strength adds six extra energy to a resting survivor', () => {
+    const seed = { ...createV060InitialState(99108), day: 14, dayAssignments: { 'lin-xia': 'rest' as const } };
+    const baseline = withPrinciples(seed, ['everyone-shares']);
+    const protectedState = choosePrinciple(baseline, 'preserve-strength');
+    const baseResolved = finalizeDay(baseline);
+    const protectedResolved = finalizeDay(protectedState);
+    const baseEnergy = baseResolved.survivors.find((survivor) => survivor.id === 'lin-xia')!.energy;
+    const protectedEnergy = protectedResolved.survivors.find((survivor) => survivor.id === 'lin-xia')!.energy;
+    expect(protectedEnergy).toBe(Math.min(100, baseEnergy + 6));
+  });
+
+  it('hold-the-street can turn a damaged DAY29 defense into a held result', () => {
+    const base = withPrinciples({ ...createV060InitialState(99109), day: 29, defense: 46, hope: 35 }, ['everyone-shares', 'core-leads']);
+    expect(finalHordeResultFor(base)).toBe('damaged');
+    const committed = withPrinciples(base, ['everyone-shares', 'core-leads', 'hold-the-street']);
+    expect(finalHordeResultFor(committed)).toBe('held');
+  });
+
+  it('prepare-evacuation only adds final value when an evacuation route is actually known', () => {
+    const base = withPrinciples({ ...createV060InitialState(99110), day: 29, defense: 48, hope: 35 }, ['everyone-shares', 'core-leads', 'prepare-evacuation']);
+    expect(finalHordeResultFor(base)).toBe('damaged');
+    expect(finalHordeResultFor({ ...base, storyFlags: [...base.storyFlags, 'evacuation_route_known'] })).toBe('held');
+  });
+
+  it('await-aid rewards staffed radio only after outside contact exists', () => {
+    const original = createV060InitialState(99111);
+    const seed = { ...original, day: 22, hope: 50, buildings: { ...original.buildings, radio: 2 }, dayAssignments: { 'lin-xia': 'radio' as const } };
+    const baseline = withPrinciples({ ...seed, storyFlags: [...seed.storyFlags, 'external_contact'] }, ['everyone-shares', 'core-leads']);
+    const waiting = withPrinciples(baseline, ['everyone-shares', 'core-leads', 'await-aid']);
+    const baselineResolved = finalizeDay(baseline);
+    const waitingResolved = finalizeDay(waiting);
+    expect(waitingResolved.hope).toBe(baselineResolved.hope + 1);
+    expect(waitingResolved.dawnBrief).toContain('街区原则《等待外援》：广播仍与外界保持联系，希望 +1。');
   });
 });
 
