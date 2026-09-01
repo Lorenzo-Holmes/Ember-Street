@@ -88,6 +88,8 @@ interface LocationBucket {
   missing: number[];
   workerCost: number[];
   netValue: number[];
+  firstNetValue: number[];
+  repeatNetValue: number[];
   uniqueEvent: number[];
   storyUnlock: number[];
 }
@@ -130,7 +132,7 @@ function makeCommunityObservedBucket(): CommunityObservedBucket {
 }
 
 function makeLocationBucket(): LocationBucket {
-  return { visits: 0, firstVisits: 0, repeatVisits: 0, food: [], materials: [], medicine: [], special: [], injury: [], death: [], missing: [], workerCost: [], netValue: [], uniqueEvent: [], storyUnlock: [] };
+  return { visits: 0, firstVisits: 0, repeatVisits: 0, food: [], materials: [], medicine: [], special: [], injury: [], death: [], missing: [], workerCost: [], netValue: [], firstNetValue: [], repeatNetValue: [], uniqueEvent: [], storyUnlock: [] };
 }
 
 function makeRepetitionBucket(): RepetitionBucket {
@@ -215,7 +217,7 @@ function hasConsecutiveFamily(events: readonly AuditEventRecord[], length: numbe
   return false;
 }
 
-function repetitionFor(events: readonly AuditEventRecord[]): Omit<RepetitionBucket, keyof never> {
+function repetitionFor(events: readonly AuditEventRecord[]): RepetitionBucket {
   const unique = new Set(events.map((event) => event.id)).size;
   return {
     exact: [duplicateRate(events, (event) => event.id)],
@@ -328,6 +330,8 @@ export class AuditAccumulator {
         bucket.missing.push(expedition.missing);
         bucket.workerCost.push(expedition.workerEnergyCost);
         bucket.netValue.push(expedition.netValue);
+        if (expedition.firstVisit) bucket.firstNetValue.push(expedition.netValue);
+        else bucket.repeatNetValue.push(expedition.netValue);
         bucket.uniqueEvent.push(expedition.uniqueEventValue);
         bucket.storyUnlock.push(expedition.storyUnlockValue);
         this.locations.set(key, bucket);
@@ -362,6 +366,7 @@ export class AuditAccumulator {
       const denominator = this.policyRuns.get(policy) ?? 0;
       for (const principle of PRINCIPLES) {
         const bucket = this.principles.get(`${policy}|${principle}`) ?? makePrincipleBucket();
+        const scoreSummary = summarize(bucket.endingScores);
         rows.push({
           policy,
           stageDay: STAGE[principle],
@@ -378,9 +383,9 @@ export class AuditAccumulator {
           badEndingRate: mean(bucket.bad),
           resourceDeltaAfterPick: mean(bucket.resourceDelta),
           expectedValue30Day: mean(bucket.endingScores),
-          scoreMedian: summarize(bucket.endingScores).median,
-          scoreP10: summarize(bucket.endingScores).p10,
-          scoreP90: summarize(bucket.endingScores).p90,
+          scoreMedian: scoreSummary.median,
+          scoreP10: scoreSummary.p10,
+          scoreP90: scoreSummary.p90,
         });
       }
     }
@@ -476,10 +481,11 @@ export class AuditAccumulator {
           averageMissingRisk: mean(bucket.missing),
           averageWorkerCost: mean(bucket.workerCost),
           averageNetValue: mean(bucket.netValue),
+          averageFirstVisitNetValue: mean(bucket.firstNetValue),
+          averageRepeatVisitNetValue: mean(bucket.repeatNetValue),
           uniqueEventValue: mean(bucket.uniqueEvent),
           storyUnlockValue: mean(bucket.storyUnlock),
           selectionRate: totalVisits ? bucket.visits / totalVisits : 0,
-          firstVisitNetValue: mean(bucket.netValue.filter((_, index) => index < bucket.firstVisits)),
         });
       }
     }
@@ -677,9 +683,8 @@ function detectCommunityAnomalies(stress: CommunityStressRow[]): Anomaly[] {
     if (!current || row.communityLabor > current.communityLabor) bestByResidents.set(row.residentPopulation, row);
   }
   const twenty = bestByResidents.get(20);
-  const twentyFive = bestByResidents.get(25);
   const thirty = bestByResidents.get(30);
-  if (!twenty || !twentyFive || !thirty) return [];
+  if (!twenty || !thirty) return [];
   const lateGrowth = thirty.communityLabor - twenty.communityLabor;
   const marginalLate = [...bestByResidents.entries()].filter(([residents]) => residents >= 25).map(([, row]) => row.marginalLaborContribution);
   if (lateGrowth > Math.max(1, twenty.communityLabor * 0.15) && mean(marginalLate) > 0.15) {
@@ -793,8 +798,8 @@ function communityMarkdown(stress: CommunityStressRow[], observed: Record<string
 
 function locationMarkdown(rows: Record<string, unknown>[]): string {
   const natural = naturalRows(rows);
-  const table = markdownTable(['地点', '选择率', '访问', '首次', '重复', '净值', '伤', '死', '失踪'], natural.map((row) => [String(row.locationId), pct(rowNumber(row, 'selectionRate')), String(row.visits), String(row.firstVisitCount), String(row.repeatVisitCount), n(row.averageNetValue), n(row.averageInjuryRisk), n(row.averageDeathRisk), n(row.averageMissingRisk)]));
-  return `# Location value audit\n\n选择率按所有探索访问次数归一化；首次探索与重复探索分开计数。低使用地点不自动判定为“奖励太少”：可能是解锁太晚、风险过高、信息表达失败，或只在少数资源状态下有价值。\n\n${table}\n`;
+  const table = markdownTable(['地点', '选择率', '访问', '首次净值', '重复净值', '总净值', '伤', '死', '失踪'], natural.map((row) => [String(row.locationId), pct(rowNumber(row, 'selectionRate')), String(row.visits), n(row.averageFirstVisitNetValue), n(row.averageRepeatVisitNetValue), n(row.averageNetValue), n(row.averageInjuryRisk), n(row.averageDeathRisk), n(row.averageMissingRisk)]));
+  return `# Location value audit\n\n选择率按所有探索访问次数归一化；首次探索与重复探索分别输出平均净值。低使用地点不自动判定为“奖励太少”：可能是解锁太晚、风险过高、信息表达失败，或只在少数资源状态下有价值。\n\n${table}\n`;
 }
 
 function day29Markdown(rows: Record<string, unknown>[]): string {
@@ -848,7 +853,7 @@ export function buildReportBundle(config: AuditConfig, accumulator: AuditAccumul
 
   const principleHeaders = ['policy', 'stageDay', 'principle', 'pickCount', 'pickRate', 'survivalRate', 'deathRate', 'averageFinalPopulation', 'averageFood', 'averageMoraleEquivalent', 'averageEndingScore', 'goodEndingRate', 'badEndingRate', 'resourceDeltaAfterPick', 'expectedValue30Day', 'scoreMedian', 'scoreP10', 'scoreP90'];
   const communityHeaders = ['source', 'policy', 'scenario', 'day', 'residentBand', 'samples', 'residentPopulation', 'marginalCost', 'foodProduction', 'foodConsumption', 'communityLabor', 'communityContribution', 'coreLaborReleased', 'totalEffectiveLabor', 'dailyNetFood', 'dailyNetResources', 'marginalLaborContribution', 'marginalResourceProduction', 'cookingCapacity', 'repairSupport', 'medicalSupport', 'defenseRiskReduction', 'rationNeeded'];
-  const locationHeaders = ['policy', 'locationId', 'locationName', 'danger', 'visits', 'firstVisitCount', 'repeatVisitCount', 'averageReward', 'averageFoodReward', 'averageMaterialReward', 'averageMedicineReward', 'averageSpecialReward', 'averageInjuryRisk', 'averageDeathRisk', 'averageMissingRisk', 'averageWorkerCost', 'averageNetValue', 'uniqueEventValue', 'storyUnlockValue', 'selectionRate', 'firstVisitNetValue'];
+  const locationHeaders = ['policy', 'locationId', 'locationName', 'danger', 'visits', 'firstVisitCount', 'repeatVisitCount', 'averageReward', 'averageFoodReward', 'averageMaterialReward', 'averageMedicineReward', 'averageSpecialReward', 'averageInjuryRisk', 'averageDeathRisk', 'averageMissingRisk', 'averageWorkerCost', 'averageNetValue', 'averageFirstVisitNetValue', 'averageRepeatVisitNetValue', 'uniqueEventValue', 'storyUnlockValue', 'selectionRate'];
   const day29Headers = ['stageEventId', 'choiceId', 'samples', 'bestChoiceRate', 'worstChoiceRate', 'averageOutcome', 'medianOutcome', 'p10Outcome', 'p90Outcome', 'variance', 'standardDeviation', 'averageCoreAlive', 'averageResidents', 'averageHope', 'averageDefense', 'averageResourceValue', 'stateConditionalValue'];
   const repetitionHeaders = ['policy', 'phase', 'exactEventRepeatRate', 'eventFamilyRepeatRate', 'mechanicalPatternRepeatRate', 'consecutiveRepeat2Rate', 'consecutiveRepeat3Rate', 'consecutiveRepeat4Rate', 'characterEventConcentration', 'locationEventConcentration', 'uniqueEventRatio'];
   const dailyHeaders = ['policy', 'day', 'averageFood', 'medianFood', 'foodP10', 'foodP25', 'foodP75', 'foodP90', 'averagePopulation', 'medianPopulation', 'populationP10', 'populationP90', 'averageResidentPopulation', 'residentMedian', 'residentP10', 'residentP90', 'averageHealthySurvivors', 'injuryRate', 'missingRate', 'deathRate', 'averageProduction', 'productionMedian', 'averageConsumption', 'consumptionMedian', 'averageCommunityLabor', 'communityLaborMedian', 'averageExplorationProgress', 'failureProbability', 'averageDailyNetFood', 'averageDailyNetResources'];
