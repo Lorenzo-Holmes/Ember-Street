@@ -1,0 +1,45 @@
+name: UI Smoke
+
+on:
+  push:
+    branches: [main, feat/v060-ui-overhaul-integration]
+    paths:
+      - 'src/**'
+      - 'qa/ui-overhaul/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/ui-smoke.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'qa/ui-overhaul/**'
+      - 'playwright.config.ts'
+      - 'package.json'
+      - '.github/workflows/ui-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  ui-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run visual smoke
+        run: npm run test:ui-smoke
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-overhaul-screenshots
+          path: qa/ui-overhaul/screenshots
+          if-no-files-found: error
