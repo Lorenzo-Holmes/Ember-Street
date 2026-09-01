@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:ui-smoke": "playwright test",
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
     "cf:dry-run": "npm run build && wrangler deploy --dry-run",
@@ -19,6 +20,7 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@playwright/test": "1.55.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.1",
