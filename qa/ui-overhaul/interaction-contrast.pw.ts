@@ -17,10 +17,10 @@ test('assignment controls remain visually discoverable', async ({ page }) => {
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto('/');
-  await page.evaluate(({ gameState }) => {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
-    localStorage.setItem(ACTIVE_KEY, String(Date.now()));
-  }, { gameState: state });
+  await page.evaluate(({ gameState, saveKey, activeKey }) => {
+    localStorage.setItem(saveKey, JSON.stringify(gameState));
+    localStorage.setItem(activeKey, String(Date.now()));
+  }, { gameState: state, saveKey: SAVE_KEY, activeKey: ACTIVE_KEY });
   await page.reload();
 
   const firstJob = page.locator('.v6-job-grid > button:enabled').first();
