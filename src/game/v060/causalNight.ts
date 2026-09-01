@@ -1,4 +1,5 @@
 import type { GameState, Role } from '../types';
+import { buildingEventWeightModifier } from './buildingEcology';
 import { communitySupportSummary } from './community';
 import { previewMeal } from './food';
 import { hopeBand } from './mortality';
@@ -8,7 +9,7 @@ import { pressureBand } from './socialPressure';
 const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = {
   search: 'expedition', repair: 'repair', medical: 'medical', watch: 'watch', cook: 'cook', radio: 'radio', rest: 'rest',
 };
-const clamp = (value: number, min = 1, max = 9) => Math.min(max, Math.max(min, value));
+const clamp = (value: number, min = 0.25, max = 9) => Math.min(max, Math.max(min, value));
 
 function assignedCount(state: GameState, role: Role): number {
   const assignment = ROLE_ASSIGNMENT[role];
@@ -82,7 +83,7 @@ export function nightEventWeight(state: GameState, event: V060NightEvent): numbe
   if (injured > 0 && !medical && ['fever-resident', 'medicine-count', 'horde-clinic'].includes(event.id)) weight += 3;
   if (state.civilianResidents >= 4 && ['nightmare-child', 'emergency-panic', 'emergency-missing-child'].includes(event.id)) weight += 2;
   if (hope === 'collapse' && ['argument-rations', 'missing-name', 'emergency-panic'].includes(event.id)) weight += 2;
-  if (radio && ['water-on-radio'].includes(event.id)) weight += 1;
+  if (radio && event.id === 'water-on-radio') weight += 1;
 
   const socialCrisis = ['argument-rations', 'missing-name', 'nightmare-child', 'emergency-panic', 'emergency-missing-child'].includes(event.id);
   if (pressure === 'near-breaking' && socialCrisis) weight += 2;
@@ -92,5 +93,6 @@ export function nightEventWeight(state: GameState, event: V060NightEvent): numbe
   if (state.storyFlags.includes('generator_backup') && ['generator-drop', 'clinic-blackout', 'water-on-radio'].includes(event.id)) weight -= 2;
   if (state.storyFlags.includes('working_vehicle_parts') && event.category === 'infrastructure') weight -= 1;
 
+  weight += buildingEventWeightModifier(state, event);
   return clamp(weight);
 }
