@@ -1,6 +1,13 @@
 import type { GameState, Role } from '../types';
 import { currentExpeditionEvent, type ExpeditionRisk } from './expedition';
 import { expeditionSpecialtyBonus } from './expeditionStories';
+import {
+  effectiveFinalHordeChoice,
+  finalHordeCheckModifiers,
+  finalHordeLegacyNotes,
+  finalHordeStageNumber,
+  isFinalHordeEventId,
+} from './finalHorde';
 import { locationMemorySummary } from './locationMemory';
 import type { NightChoice, NightEffect, V060NightEvent } from './nightEvents';
 
@@ -71,10 +78,13 @@ function civilianIncidentTag(eventId: string, choiceId: string): string | null {
     'horde-north-gate:hold-gate',
     'horde-breakthrough:counter',
     'horde-clinic:triage',
+    'final-horde-community:final-community-calm',
+    'final-horde-last-line:final-last-hold',
   ]);
   const guaranteed = new Set([
     'emergency-missing-child:wait-child',
     'horde-clinic:combat-first',
+    'final-horde-community:final-community-ignore',
   ]);
   const key = `${eventId}:${choiceId}`;
   if (guaranteed.has(key)) return '居民必减员';
@@ -130,20 +140,21 @@ function mortalityPreview(state: GameState, event: V060NightEvent, choice: Night
 }
 
 export function nightChoicePreview(state: GameState, event: V060NightEvent, choice: NightChoice): DecisionPreview {
-  const special = mortalityPreview(state, event, choice);
+  const effectiveChoice = effectiveFinalHordeChoice(state, choice);
+  const special = mortalityPreview(state, event, effectiveChoice);
   const tags: string[] = [];
-  let tone: DecisionTone = choice.strategy === 'resource' ? 'stable' : choice.strategy === 'person' ? 'risky' : 'safe';
+  let tone: DecisionTone = effectiveChoice.strategy === 'resource' ? 'stable' : effectiveChoice.strategy === 'person' ? 'risky' : 'safe';
 
-  if (choice.strategy === 'person') tags.push('人物判定');
-  if (choice.strategy === 'resource') tags.push('稳定');
-  if (choice.strategy === 'consequence') tags.push('保守/接受后果');
-  if (choice.check?.role) tags.push(`${ROLE_LABEL[choice.check.role]}岗位`);
-  if (choice.check?.mode === 'advantage') tags.push('优势');
-  if (choice.check?.mode === 'disadvantage') tags.push('劣势');
-  tags.push(...costTags(choice));
-  tags.push(...genericRiskTags(choice));
+  if (effectiveChoice.strategy === 'person') tags.push('人物判定');
+  if (effectiveChoice.strategy === 'resource') tags.push('稳定');
+  if (effectiveChoice.strategy === 'consequence') tags.push('保守/接受后果');
+  if (effectiveChoice.check?.role) tags.push(`${ROLE_LABEL[effectiveChoice.check.role]}岗位`);
+  if (effectiveChoice.check?.mode === 'advantage') tags.push('优势');
+  if (effectiveChoice.check?.mode === 'disadvantage') tags.push('劣势');
+  tags.push(...costTags(effectiveChoice));
+  tags.push(...genericRiskTags(effectiveChoice));
 
-  const civilian = civilianIncidentTag(event.id, choice.id);
+  const civilian = civilianIncidentTag(event.id, effectiveChoice.id);
   if (civilian) {
     tags.push(civilian);
     tone = civilian === '居民必减员' ? 'severe' : 'risky';
@@ -154,10 +165,22 @@ export function nightChoicePreview(state: GameState, event: V060NightEvent, choi
     tone = special.tone ?? tone;
   }
 
+  let finalHordeSummary: string | null = null;
+  if (isFinalHordeEventId(event.id)) {
+    const stage = finalHordeStageNumber(event.id);
+    tags.push(`最终尸潮 ${stage ?? '?'}/6`);
+    for (const modifier of finalHordeCheckModifiers(state, effectiveChoice.id)) {
+      tags.push(`${modifier.label} ${modifier.value >= 0 ? '+' : ''}${modifier.value}`);
+    }
+    const legacy = finalHordeLegacyNotes(state);
+    finalHordeSummary = `这是 DAY29 固定终局阶段。${legacy.length ? `过去的选择正在生效：${legacy.slice(0, 3).join('；')}。` : '当前没有额外的长期成果加成。'}${effectiveChoice.check ? ' 判定仍会继续叠加人物专长、状态与设施。' : ''}`;
+  }
+
   const summary = special?.summary
-    ?? (choice.check
-      ? `需要投骰。${choice.check.role ? `${ROLE_LABEL[choice.check.role]}岗位、对应人物状态与设施会影响判定。` : '人物状态与现场条件会影响判定。'}失败时会承担上方标出的风险。`
-      : choice.strategy === 'resource'
+    ?? finalHordeSummary
+    ?? (effectiveChoice.check
+      ? `需要投骰。${effectiveChoice.check.role ? `${ROLE_LABEL[effectiveChoice.check.role]}岗位、对应人物状态与设施会影响判定。` : '人物状态与现场条件会影响判定。'}失败时会承担上方标出的风险。`
+      : effectiveChoice.strategy === 'resource'
         ? '不需要投骰。支付标出的资源后直接得到稳定结果。'
         : '不需要投骰，也通常不消耗关键资源，但会直接接受这个选择的长期或状态后果。');
 

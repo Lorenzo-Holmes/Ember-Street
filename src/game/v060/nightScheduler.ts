@@ -4,8 +4,16 @@ import { nextRandom } from '../rng';
 import type { BuildingId, CheckModifier, CheckOutcome, GameState, Role, Survivor, SurvivorCondition } from '../types';
 import { nightEventWeight } from './causalNight';
 import { communityDefenseSupport, communitySupportSummary } from './community';
+import {
+  FINAL_HORDE_EVENT_IDS,
+  applyFinalHordeResolution,
+  effectiveFinalHordeChoice,
+  finalHordeCheckModifiers,
+  finalHordeEventById,
+  isFinalHordeEventId,
+} from './finalHorde';
 import { markMissing, recordDeath } from './memorial';
-import { advanceUntreatedRisk, clearUntreatedRisk, loseCommunityResidents, medicalCrisisFlag } from './mortality';
+import { advanceUntreatedRisk, clearUntreatedRisk, loseCommunityResidents } from './mortality';
 import { mortalityEventById, pendingMortalityEventIds } from './mortalityEvents';
 import { appendDawnBrief } from './morningBrief';
 import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
@@ -46,7 +54,7 @@ function pickWeightedWithoutReplacement(pool: V060NightEvent[], count: number, r
 }
 
 function eventById(state: GameState, id: string): V060NightEvent | undefined {
-  return nightEventById(id) ?? mortalityEventById(state, id);
+  return finalHordeEventById(id) ?? nightEventById(id) ?? mortalityEventById(state, id);
 }
 
 export function eligibleEvent(state: GameState, event: V060NightEvent): boolean {
@@ -97,15 +105,13 @@ export function emergencyRisk(state: GameState): number {
 }
 
 function emergencyCountFor(state: GameState, roll: number): number {
-  if (state.day === 29) return roll < 0.55 ? 3 : 2;
   if (state.day === 20) return roll < 0.45 ? 2 : 1;
   if (state.day === 10) return 1;
   return roll < emergencyRisk(state) ? 1 : 0;
 }
 
 function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
-  const poolState = state.day === 29 ? { ...state, day: 28 } : state;
-  const pool = eligible(NORMAL_NIGHT_EVENTS, poolState);
+  const pool = eligible(NORMAL_NIGHT_EVENTS, state);
   const selected: V060NightEvent[] = []; let nextState = rngState;
   for (const category of ['threat', 'infrastructure', 'survivor'] as const) {
     const candidates = pool.filter((event) => event.category === category && !selected.some((item) => item.id === event.id));
@@ -120,17 +126,36 @@ function normalComposition(state: GameState, count: number, rngState: number): [
 export function scheduleNight(input: GameState): GameState {
   if (input.day >= 30) return { ...input, phase: 'ending', nightState: { ...input.nightState, eventIndex: 0, eventTotal: 0, scheduledEventIds: [], emergencyEventIds: [], currentEventId: null, hordeActive: false, hordeStage: null, resolutions: [] }, lastMessage: 'DAY 30 · 天亮以后，只剩结算。' };
   const state = advanceUntreatedRisk({ ...input, dawnBrief: [] });
+
+  if (state.day === 29) {
+    const scheduledEventIds = [...FINAL_HORDE_EVENT_IDS];
+    return {
+      ...state,
+      phase: 'night',
+      nightState: {
+        eventIndex: 0,
+        eventTotal: scheduledEventIds.length,
+        scheduledEventIds,
+        emergencyEventIds: [],
+        currentEventId: scheduledEventIds[0],
+        hordeActive: true,
+        hordeStage: 'approach',
+        resolutions: [],
+      },
+      lastMessage: 'NIGHT 29 · 最终尸潮第一阶段：北门。过去二十八天正在决定今晚。',
+    };
+  }
+
   let rngState = state.rngState;
   const [hordeRoll, afterHordeRoll] = nextRandom(rngState); rngState = afterHordeRoll;
   const hordeActive = hordeRoll < hordeChance(state);
   const eventTotal = hordeActive ? 6 : 5;
-  const hordeSlots = hordeActive ? (state.day === 29 ? 3 : 2) : 0;
+  const hordeSlots = hordeActive ? 2 : 0;
   const [normalEvents, afterNormal] = normalComposition(state, eventTotal - hordeSlots, rngState); rngState = afterNormal;
   const [hordeEvents, afterHorde] = pickWithoutReplacement(eligible(HORDE_EVENTS, state), hordeSlots, rngState); rngState = afterHorde;
   const scheduled = [...normalEvents];
   if (hordeEvents[0]) scheduled.splice(Math.min(2, scheduled.length), 0, hordeEvents[0]);
   if (hordeEvents[1]) scheduled.splice(Math.min(4, scheduled.length), 0, hordeEvents[1]);
-  if (hordeEvents[2]) scheduled.splice(Math.min(5, scheduled.length), 0, hordeEvents[2]);
   const [emergencyRoll, afterEmergencyRoll] = nextRandom(rngState); rngState = afterEmergencyRoll;
   const [emergencies, afterEmergency] = pickWeightedWithoutReplacement(eligible(EMERGENCY_EVENTS, state), emergencyCountFor(state, emergencyRoll), rngState, state); rngState = afterEmergency;
   const scheduledEventIds = scheduled.slice(0, eventTotal).map((event) => event.id);
@@ -152,8 +177,7 @@ function availableScheduledIds(state: GameState, ids: string[]): string[] {
   return ids.filter((id) => {
     const event = eventById(state, id);
     if (!event) return false;
-    const dayState = state.day === 29 && event.category !== 'horde' && event.category !== 'emergency' ? { ...state, day: 28 } : state;
-    return eligibleEvent(dayState, event);
+    return eligibleEvent(state, event);
   });
 }
 
@@ -171,10 +195,7 @@ export function nextNightEventId(state: GameState): string | null {
 
 export function currentNightEvent(state: GameState): V060NightEvent | null {
   const current = state.nightState.currentEventId ? eventById(state, state.nightState.currentEventId) : undefined;
-  if (current) {
-    const dayState = state.day === 29 && current.category !== 'horde' && current.category !== 'emergency' ? { ...state, day: 28 } : state;
-    if (eligibleEvent(dayState, current)) return current;
-  }
+  if (current && eligibleEvent(state, current)) return current;
   const id = nextNightEventId({ ...state, nightState: { ...state.nightState, currentEventId: null } });
   return id ? eventById(state, id) ?? null : null;
 }
@@ -208,15 +229,18 @@ export function nightCheckContext(state: GameState, choice: NightChoice): { acto
   const community = actor ? null : communityRoleSupport(state, role);
   if (community) modifiers.push(community);
   if (!actor && !community) modifiers.push({ label: '无人值守', value: -2 });
+  modifiers.push(...finalHordeCheckModifiers(state, choice.id));
   return { actor, modifiers, mode: !actor && !community ? 'disadvantage' : choice.check?.mode ?? 'normal' };
 }
 
-export function canAffordNightChoice(state: GameState, choice: NightChoice): boolean {
+export function canAffordNightChoice(state: GameState, rawChoice: NightChoice): boolean {
+  const choice = effectiveFinalHordeChoice(state, rawChoice);
   const cost = choice.cost; if (!cost) return true;
   return (cost.ration ?? 0) <= state.inventory.ration && (cost.medicine ?? 0) <= state.inventory.medicine && (cost.materials ?? 0) <= state.inventory.materials && (cost.parts ?? 0) <= state.inventory.parts && (cost.power ?? 0) <= state.inventory.power;
 }
 
-function applyCost(state: GameState, choice: NightChoice): GameState {
+function applyCost(state: GameState, rawChoice: NightChoice): GameState {
+  const choice = effectiveFinalHordeChoice(state, rawChoice);
   const cost = choice.cost; if (!cost) return state;
   return { ...state, inventory: {
     ration: Math.max(0, state.inventory.ration - (cost.ration ?? 0)), medicine: Math.max(0, state.inventory.medicine - (cost.medicine ?? 0)),
@@ -323,6 +347,9 @@ function applyCivilianIncident(state: GameState, eventId: string, choiceId: stri
   if (eventId === 'horde-breakthrough' && choiceId === 'counter' && failed) return loseCommunityResidents(state, state.day >= 24 ? 2 : 1, '尸群突破外围');
   if (eventId === 'horde-clinic' && choiceId === 'triage' && failed) return loseCommunityResidents(state, 1, '伤员没能等到救治');
   if (eventId === 'horde-clinic' && choiceId === 'combat-first' && outcome === undefined) return loseCommunityResidents(state, 1, '医疗被延后');
+  if (eventId === 'final-horde-community' && choiceId === 'final-community-calm' && failed) return loseCommunityResidents(state, 1, '最终尸潮中的恐慌');
+  if (eventId === 'final-horde-community' && choiceId === 'final-community-ignore' && outcome === undefined) return loseCommunityResidents(state, 1, '最终尸潮中无人照看居民');
+  if (eventId === 'final-horde-last-line' && choiceId === 'final-last-hold' && failed) return loseCommunityResidents(state, 1, '最后防线失守');
   return state;
 }
 
@@ -344,7 +371,9 @@ function completeCurrentEvent(state: GameState, eventId: string): GameState {
       nightEventsResolved: temporary.campaignStats.nightEventsResolved + 1,
       emergencyEventsResolved: temporary.campaignStats.emergencyEventsResolved + (eventId.startsWith('emergency-') || eventId.startsWith('mortality-') ? 1 : 0),
     },
-    lastMessage: complete ? `NIGHT ${state.day} · 今晚的决定已经落下` : '下一个声音从黑暗里传来。',
+    lastMessage: complete
+      ? (state.day === 29 ? 'NIGHT 29 · 最后一波尸群终于开始退去。' : `NIGHT ${state.day} · 今晚的决定已经落下`)
+      : (state.day === 29 ? `最终尸潮 · 第 ${mainResolved + 1}/6 阶段` : '下一个声音从黑暗里传来。'),
   };
 }
 
@@ -360,6 +389,7 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
   let next = applyEffect(paid, choice.direct, undefined, event.title);
   if (event.id.startsWith('mortality-medical:')) next = resolveMedicalDirect(next, event.id, choice.id);
   if (event.id.startsWith('mortality-hope:')) next = resolveHopeDirect(next, event.id, choice.id);
+  if (isFinalHordeEventId(event.id)) next = applyFinalHordeResolution(next, event.id, choice.id);
   next = applyCivilianIncident(next, event.id, choice.id);
   next = appendDawnBrief(before, next, event.title);
   return completeCurrentEvent(next, event.id);
@@ -373,6 +403,7 @@ export function acceptNightCheckResult(state: GameState): GameState {
   let next = applyEffect({ ...state, pendingCheck: null }, choice.outcomes?.[check.outcome], check.actorId, event.title);
   if (event.id.startsWith('mortality-medical:')) next = resolveMedicalCheck(next, event.id, check.outcome);
   if (event.id.startsWith('mortality-hope:')) next = resolveHopeCheck(next, event.id, check.outcome);
+  if (isFinalHordeEventId(event.id)) next = applyFinalHordeResolution(next, event.id, choice.id, check.outcome);
   next = applyCivilianIncident(next, event.id, choice.id, check.outcome);
   const actor = check.actorId ? next.survivors.find((item) => item.id === check.actorId) : undefined;
   if (state.day >= 11 && check.twist === 'double-one' && (event.category === 'horde' || event.category === 'emergency') && actor && (actor.condition === 'serious' || actor.condition === 'critical')) next = recordDeath(next, actor.id, `${event.title} · 双一`);
