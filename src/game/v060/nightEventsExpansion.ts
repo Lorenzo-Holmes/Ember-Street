@@ -9,9 +9,9 @@ import {
 
 const pressureCalibrated = (effect: NightEffect): NightEffect => ({
   ...effect,
-  ...(effect.hope !== undefined ? { hope: Math.min(effect.hope, 1) } : {}),
-  ...(effect.defense !== undefined ? { defense: Math.min(effect.defense, 1) } : {}),
-  ...(effect.power !== undefined ? { power: Math.min(effect.power, 2) } : {}),
+  ...(effect.hope !== undefined ? { hope: Math.min(effect.hope, 0) } : {}),
+  ...(effect.defense !== undefined ? { defense: Math.min(effect.defense, 0) } : {}),
+  ...(effect.power !== undefined ? { power: Math.min(effect.power, 1) } : {}),
 });
 
 const checked = (
