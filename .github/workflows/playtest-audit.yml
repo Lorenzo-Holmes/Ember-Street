@@ -2,7 +2,7 @@ name: Playtest Audit
 
 on:
   push:
-    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown"]
+    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown", "feat/v06x-night-cadence-v2"]
   workflow_dispatch:
     inputs:
       policy_runs:
@@ -26,7 +26,7 @@ on:
         required: false
         default: "40"
       repeat_runs:
-        description: Cooldown diversity runs per V2 policy
+        description: Night diversity runs per V2 policy
         required: false
         default: "150"
 
