@@ -23,6 +23,23 @@ const ROLE_BUILDING: Partial<Record<Role, BuildingId>> = { search: 'searchStatio
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const playable = (survivor: Survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing';
 
+type AnchorCategory = 'threat' | 'infrastructure' | 'survivor';
+
+export function normalNightEventBudget(day: number): number {
+  if (day <= 5) return 2;
+  if (day <= 23) return 3;
+  return 4;
+}
+
+export function nightAnchorCategories(day: number): readonly [AnchorCategory, AnchorCategory] {
+  const cycle: ReadonlyArray<readonly [AnchorCategory, AnchorCategory]> = [
+    ['threat', 'survivor'],
+    ['infrastructure', 'threat'],
+    ['survivor', 'infrastructure'],
+  ];
+  return cycle[Math.max(0, day - 1) % cycle.length];
+}
+
 function drawIndex(rngState: number, size: number): [number, number] {
   const [value, next] = nextRandom(rngState);
   return [Math.min(size - 1, Math.floor(value * size)), next];
@@ -113,7 +130,7 @@ function emergencyCountFor(state: GameState, roll: number): number {
 function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
   const pool = eligible(NORMAL_NIGHT_EVENTS, state);
   const selected: V060NightEvent[] = []; let nextState = rngState;
-  for (const category of ['threat', 'infrastructure', 'survivor'] as const) {
+  for (const category of nightAnchorCategories(state.day)) {
     const candidates = pool.filter((event) => event.category === category && !selected.some((item) => item.id === event.id));
     if (!candidates.length || selected.length >= count) continue;
     const [picked, next] = pickWeightedWithoutReplacement(candidates, 1, nextState, state); nextState = next; selected.push(...picked);
@@ -149,13 +166,14 @@ export function scheduleNight(input: GameState): GameState {
   let rngState = state.rngState;
   const [hordeRoll, afterHordeRoll] = nextRandom(rngState); rngState = afterHordeRoll;
   const hordeActive = hordeRoll < hordeChance(state);
-  const eventTotal = hordeActive ? 6 : 5;
+  const normalEventBudget = normalNightEventBudget(state.day);
   const hordeSlots = hordeActive ? 2 : 0;
-  const [normalEvents, afterNormal] = normalComposition(state, eventTotal - hordeSlots, rngState); rngState = afterNormal;
+  const eventTotal = normalEventBudget + hordeSlots;
+  const [normalEvents, afterNormal] = normalComposition(state, normalEventBudget, rngState); rngState = afterNormal;
   const [hordeEvents, afterHorde] = pickWithoutReplacement(eligible(HORDE_EVENTS, state), hordeSlots, rngState); rngState = afterHorde;
   const scheduled = [...normalEvents];
-  if (hordeEvents[0]) scheduled.splice(Math.min(2, scheduled.length), 0, hordeEvents[0]);
-  if (hordeEvents[1]) scheduled.splice(Math.min(4, scheduled.length), 0, hordeEvents[1]);
+  if (hordeEvents[0]) scheduled.splice(Math.min(1, scheduled.length), 0, hordeEvents[0]);
+  if (hordeEvents[1]) scheduled.splice(Math.min(3, scheduled.length), 0, hordeEvents[1]);
   const [emergencyRoll, afterEmergencyRoll] = nextRandom(rngState); rngState = afterEmergencyRoll;
   const [emergencies, afterEmergency] = pickWeightedWithoutReplacement(eligible(EMERGENCY_EVENTS, state), emergencyCountFor(state, emergencyRoll), rngState, state); rngState = afterEmergency;
   const scheduledEventIds = scheduled.slice(0, eventTotal).map((event) => event.id);
