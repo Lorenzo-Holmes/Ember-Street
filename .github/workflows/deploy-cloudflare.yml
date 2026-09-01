@@ -38,7 +38,14 @@ jobs:
         run: npm run build
 
       - name: Deploy to Cloudflare Workers
-        run: npx wrangler deploy
+        shell: bash
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CF_API_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT_ID_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN="$(printf '%s' "$CF_API_TOKEN_RAW" | tr -d '\r\n')"
+          CLOUDFLARE_ACCOUNT_ID_CLEAN="$(printf '%s' "$CF_ACCOUNT_ID_RAW" | tr -d '\r\n')"
+          if [ -n "$CLOUDFLARE_ACCOUNT_ID_CLEAN" ]; then
+            export CLOUDFLARE_ACCOUNT_ID="$CLOUDFLARE_ACCOUNT_ID_CLEAN"
+          fi
+          npx wrangler deploy
