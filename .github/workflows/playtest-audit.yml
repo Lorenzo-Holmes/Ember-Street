@@ -2,7 +2,7 @@ name: Playtest Audit
 
 on:
   push:
-    branches: ["feat/v06x-playtest-audit"]
+    branches: ["feat/v06x-playtest-audit", "feat/v06x-food-sustainability-pass"]
   workflow_dispatch:
     inputs:
       policy_runs:
