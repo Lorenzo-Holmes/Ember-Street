@@ -3,6 +3,13 @@ import { SURVIVOR_ROSTER, forecastFor } from '../progression';
 import { nextRandom, normalizeSeed } from '../rng';
 import type { CheckOutcome, FinalHordeResult, GameState, Survivor, SurvivorCondition } from '../types';
 import { advanceCommunityDay, communityMedicalSupport, communityRepairSupport, createDefaultCommunityState, normalizeCommunityState, rescueCommunityResidents } from './community';
+import {
+  evaluatePromiseProgress,
+  fulfillPromiseForMeal,
+  fulfillPromiseForMedicalAssignment,
+  fulfillPromiseForSearch,
+  settlePromiseDeadline,
+} from './communityPromises';
 import { lockDayAssignments, survivorAvailableForDay, unlockNextDayAssignments } from './dayManagement';
 import { currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, locationForId, resolveExpeditionOutcome, retreatExpedition } from './expedition';
 import { applyExpeditionStoryOutcome, expeditionSpecialtyBonus } from './expeditionStories';
@@ -10,6 +17,7 @@ import { resolveMeal } from './food';
 import { resolveEnding } from './endings';
 import { recordDeath, recoverMissing } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from './mortality';
+import { applyDailySocialPressure, applyMealPressure, createDefaultSocialState, normalizeSocialState } from './socialPressure';
 
 const STARTERS = ['lin-xia', 'zhou', 'ahe'];
 const JOIN_DAYS: Record<number, string> = { 6: 'cheng', 12: 'aliang', 18: 'xiaoman' };
@@ -38,6 +46,7 @@ export function createV060InitialState(seed = Date.now()): GameState {
     mainLightStage: 1,
     civilianResidents: 0,
     communityState: createDefaultCommunityState(),
+    socialState: createDefaultSocialState(),
     dayAssignments: {},
     dayState: createDefaultDayState(),
     expeditionState: createDefaultExpeditionState(),
@@ -58,7 +67,12 @@ export function createV060InitialState(seed = Date.now()): GameState {
 }
 
 export function upgradeSaveToV060(input: GameState): GameState {
-  if (input.storyFlags.includes('v060_started')) return { ...input, communityState: normalizeCommunityState(input.communityState, input.civilianResidents), survivors: input.survivors.map(normalizeSurvivor) };
+  if (input.storyFlags.includes('v060_started')) return {
+    ...input,
+    communityState: normalizeCommunityState(input.communityState, input.civilianResidents),
+    socialState: normalizeSocialState(input.socialState),
+    survivors: input.survivors.map(normalizeSurvivor),
+  };
   const survivors = input.survivors.length ? input.survivors.map(normalizeSurvivor) : starterRoster();
   return {
     ...input,
@@ -71,6 +85,7 @@ export function upgradeSaveToV060(input: GameState): GameState {
       watchPost: Math.min(3, input.buildings.watchPost), radio: Math.min(3, input.buildings.radio),
     },
     communityState: normalizeCommunityState(input.communityState, input.civilianResidents),
+    socialState: normalizeSocialState(input.socialState),
     dayAssignments: {},
     dayState: createDefaultDayState(),
     expeditionState: createDefaultExpeditionState(),
@@ -154,9 +169,15 @@ export function finalizeDay(state: GameState): GameState {
   const watch = Object.values(next.dayAssignments).filter((job) => job === 'watch').length;
   const repair = Object.values(next.dayAssignments).filter((job) => job === 'repair').length;
   next = { ...next, defense: clamp(next.defense + watch * 4 + repair * 2 + communityRepairSupport(next)) };
+  next = evaluatePromiseProgress(next);
   next = resolveMedicalWork(next);
+  next = fulfillPromiseForMedicalAssignment(next);
   next = resolveRadioWork(next);
   next = resolveMeal(next);
+  next = applyMealPressure(next);
+  next = fulfillPromiseForMeal(next);
+  next = applyDailySocialPressure(next);
+  next = evaluatePromiseProgress(next);
   next = advanceUntreatedRisk(next);
   return { ...next, phase: 'night', nightState: createDefaultNightState(), pendingCheck: null, lastMessage: `NIGHT ${next.day} · 今日岗位已经锁定。` };
 }
@@ -220,6 +241,8 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
     next = { ...state, inventory: { ...state.inventory, power: state.inventory.power - 5 } };
   }
 
+  next = fulfillPromiseForSearch(next, survivorId);
+
   let rngState = next.rngState;
   const [a, n1] = nextRandom(rngState); rngState = n1;
   const [b, n2] = nextRandom(rngState); rngState = n2;
@@ -255,7 +278,8 @@ function recruitForDay(state: GameState, day: number): GameState {
   return member ? { ...state, survivors: [...state.survivors, member], hope: clamp(state.hope + 3), lastMessage: `${member.name}加入了余烬长街。` } : state;
 }
 
-export function advanceCampaignDay(state: GameState): GameState {
+export function advanceCampaignDay(input: GameState): GameState {
+  const state = settlePromiseDeadline(input);
   if (state.day >= 29) {
     const finalHordeResult = finalHordeResultFor(state);
     const endingState: GameState = { ...state, day: 30, finalHordeResult, phase: 'ending', chapterComplete: true, nightState: createDefaultNightState(0), pendingCheck: null };
@@ -265,6 +289,7 @@ export function advanceCampaignDay(state: GameState): GameState {
   const day = state.day + 1;
   let next: GameState = {
     ...state,
+    socialState: normalizeSocialState(state.socialState),
     day,
     phase: 'street',
     forecast: forecastFor(day),
