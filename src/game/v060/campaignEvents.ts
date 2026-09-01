@@ -64,6 +64,7 @@ export const CAMPAIGN_FIXED_EVENTS: CampaignFixedEvent[] = [...BUILDING_EVENTS, 
 
 const seenFlag = (eventId: string) => `fixed_event_seen:${eventId}`;
 const buildingPendingFlag = (buildingId: BuildingId) => `building_event_pending:${buildingId}`;
+const initiativeDayFlag = (day: number) => `initiative_event_day:${day}`;
 export const locationUnlockFlag = (locationId: string) => `location_unlocked:${locationId}`;
 
 export function isLocationUnlocked(state: GameState, locationId: string): boolean {
@@ -74,8 +75,17 @@ export function collectedSurvivorIsPresent(state: GameState, survivorId: string)
   return state.survivors.some((survivor) => survivor.id === survivorId && survivor.condition !== 'dead' && survivor.condition !== 'missing');
 }
 
+function initiativeActorReady(state: GameState, survivorId: string): boolean {
+  return state.survivors.some((survivor) => survivor.id === survivorId
+    && survivor.condition !== 'dead'
+    && survivor.condition !== 'missing'
+    && survivor.condition !== 'critical'
+    && survivor.energy >= 20);
+}
+
 function initiativeEligible(state: GameState, event: CampaignFixedEvent): boolean {
   if (!event.initiative) return true;
+  if (!event.survivorId || state.storyFlags.includes(initiativeDayFlag(state.day)) || !initiativeActorReady(state, event.survivorId)) return false;
   if (event.id === 'initiative-linxia-route') return state.buildings.searchStation >= 1 && !state.storyFlags.includes('scouted:convenience-store');
   if (event.id === 'initiative-zhou-fence') return state.defense <= 60;
   if (event.id === 'initiative-ahe-pot') return state.inventory.ration >= 1 && (state.hope <= 35 || state.mealState.consecutiveShortageDays >= 1);
@@ -119,7 +129,7 @@ function spendInitiativeEnergy(state: GameState, survivorId: string, amount: num
 
 function applyInitiativeEffect(state: GameState, event: CampaignFixedEvent): GameState {
   if (!event.initiative || !event.survivorId) return state;
-  let next = state;
+  let next: GameState = { ...state, storyFlags: [...new Set([...state.storyFlags, initiativeDayFlag(state.day)])] };
   if (event.id === 'initiative-linxia-route') {
     next = spendInitiativeEnergy(next, event.survivorId, 5);
     next = { ...next, storyFlags: [...new Set([...next.storyFlags, 'scouted:convenience-store'])] };
