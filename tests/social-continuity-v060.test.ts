@@ -96,7 +96,7 @@ describe('v0.6 community promises', () => {
     expect(socialStateOf(resolved).activePromise).toBeNull();
     expect(socialStateOf(resolved).fulfilledPromises).toBe(1);
     expect(resolved.hope).toBeGreaterThanOrEqual(hopeBefore + 2);
-    expect(resolved.dawnBrief?.some((entry) => entry.includes('承诺') && entry.includes('已兑现'))).toBe(true);
+    expect(resolved.dawnBrief?.some((entry) => entry.includes('没有白答应') && entry.includes('冒了热气'))).toBe(true);
   });
 
   it('counts a missing-person promise as fulfilled when a search is attempted, regardless of the roll', () => {
