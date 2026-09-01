@@ -14,6 +14,7 @@ import {
 } from './game/v060/campaign';
 import { nightCausalSignals } from './game/v060/causalNight';
 import { communitySupportSummary, selectCommunitySupportMode } from './game/v060/community';
+import { expeditionDecisionPreview, missingSearchPreview } from './game/v060/decisionReadability';
 import {
   assignDayJob,
   canTakeDayAssignment,
@@ -63,6 +64,10 @@ function initialRun(): GameState {
 function commit(next: GameState, setState: (state: GameState) => void) {
   saveGame(next, true);
   setState(next);
+}
+
+function DecisionTags({ tags }: { tags: string[] }) {
+  return <div className="v6-survivor__status" style={{ margin: '7px 0 2px' }}>{tags.map((tag) => <span key={tag}>{tag}</span>)}</div>;
 }
 
 function InventoryBar({ state }: { state: GameState }) {
@@ -175,14 +180,24 @@ function MissingPanel({ state, setState }: { state: GameState; setState: (state:
   if (!missing.length) return null;
   return (
     <section className="v6-section">
-      <div className="v6-section__head"><div><span>失踪者</span><h2>今天要不要去找他们？</h2></div><small>连续两次搜救失败可能确认死亡</small></div>
+      <div className="v6-section__head"><div><span>失踪者</span><h2>今天要不要去找他们？</h2></div><small>搜救失败会累积，第二次失败可能确认死亡</small></div>
       <div className="v6-survivors">{missing.map((s) => {
         const attempted = state.storyFlags.includes(`missing_search:${s.id}:${state.day}`);
+        const teamPreview = missingSearchPreview(state, s.id, 'team');
+        const radioPreview = missingSearchPreview(state, s.id, 'radio');
+        const teamUnavailable = teamPreview.tags.includes('人员不足');
         return (
           <article className="v6-survivor" key={s.id}>
             <div className="v6-survivor__top"><div><h3>{s.name}</h3><span>昨晚以前，他/她还在这条街上。</span></div><div><b>?</b><small>状态</small></div></div>
-            <p>{attempted ? '今天已经寻找过一次。' : '派两人寻找会占用他们今天的行动；广播搜救消耗 5 点电力。'}</p>
-            <div className="v6-job-grid"><button disabled={attempted} onClick={() => commit(searchForMissing(state, s.id, 'team'), setState)}>派两人找</button><button disabled={attempted || state.buildings.radio <= 0 || state.inventory.power < 5} onClick={() => commit(searchForMissing(state, s.id, 'radio'), setState)}>广播搜救</button></div>
+            <p>{attempted ? '今天已经寻找过一次。' : '先看清代价再决定：地面搜救占用人员，广播搜救消耗电力。'}</p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              <button className="v6-link" style={{ width: '100%', textAlign: 'left', margin: 0 }} disabled={attempted || teamUnavailable} onClick={() => commit(searchForMissing(state, s.id, 'team'), setState)}>
+                <strong>派两人找</strong><DecisionTags tags={teamPreview.tags}/><small>{teamPreview.summary}</small>
+              </button>
+              <button className="v6-link" style={{ width: '100%', textAlign: 'left', margin: 0 }} disabled={attempted || state.buildings.radio <= 0 || state.inventory.power < 5} onClick={() => commit(searchForMissing(state, s.id, 'radio'), setState)}>
+                <strong>广播搜救</strong><DecisionTags tags={radioPreview.tags}/><small>{radioPreview.summary}</small>
+              </button>
+            </div>
           </article>
         );
       })}</div>
@@ -284,6 +299,12 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
   const [locationId, setLocationId] = useState(availableLocations[availableLocations.length - 1]?.id ?? 'convenience-store');
   const event = currentExpeditionEvent(state);
   const risk = expeditionRiskLabel(expeditionRiskScore(state, party, locationId));
+  const activeRisk = state.expeditionState.departed
+    ? expeditionRiskLabel(expeditionRiskScore(state, state.expeditionState.activePartyIds, state.expeditionState.locationId ?? locationId))
+    : risk;
+  const pushPreview = expeditionDecisionPreview(state, 'push', activeRisk);
+  const carefulPreview = expeditionDecisionPreview(state, 'careful', activeRisk);
+  const retreatPreview = expeditionDecisionPreview(state, 'retreat', activeRisk);
 
   const begin = () => {
     if (!isLocationUnlocked(state, locationId)) return;
@@ -327,11 +348,11 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
 
   return (
     <main className="v6-shell">
-      <header className="v6-page-head"><span>探索途中</span><h1>{event?.title ?? '搜索队进入了建筑'}</h1><p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p></header>
+      <header className="v6-page-head"><span>探索途中 · {activeRisk === 'safe' ? '安全' : activeRisk === 'cautious' ? '谨慎' : activeRisk === 'dangerous' ? '危险' : '极险'}</span><h1>{event?.title ?? '搜索队进入了建筑'}</h1><p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p></header>
       <section className="v6-expedition-choices">
-        <button onClick={() => finish('push')}><b>A</b><strong>继续深入</strong><span>更高风险；成功时额外带回主要物资。</span></button>
-        <button onClick={() => finish('careful')}><b>B</b><strong>谨慎绕行</strong><span>2D6 获得 +1，但不追求额外收益。</span></button>
-        <button onClick={retreat}><b>C</b><strong>立刻撤回</strong><span>今天什么都拿不到，但人会回来。</span></button>
+        <button onClick={() => finish('push')}><b>A</b><strong>继续深入</strong><span>更高收益，但判定更难。</span><div style={{ gridColumn: 2 }}><DecisionTags tags={pushPreview.tags}/><small>{pushPreview.summary}</small></div></button>
+        <button onClick={() => finish('careful')}><b>B</b><strong>谨慎绕行</strong><span>降低判定压力，不追求额外收益。</span><div style={{ gridColumn: 2 }}><DecisionTags tags={carefulPreview.tags}/><small>{carefulPreview.summary}</small></div></button>
+        <button onClick={retreat}><b>C</b><strong>立刻撤回</strong><span>放弃今天的物资收益，把人带回来。</span><div style={{ gridColumn: 2 }}><DecisionTags tags={retreatPreview.tags}/><small>{retreatPreview.summary}</small></div></button>
       </section>
       <p className="v6-message">{state.lastMessage}</p>
     </main>
