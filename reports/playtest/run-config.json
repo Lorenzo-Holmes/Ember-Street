@@ -1,0 +1,9 @@
+{
+  "runs": 10000,
+  "day29States": 3000,
+  "seed": 606000,
+  "outDir": "reports/playtest",
+  "docsDir": "docs/playtest",
+  "policyCount": 14,
+  "pairedSeedCount": 715
+}
