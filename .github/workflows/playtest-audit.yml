@@ -58,7 +58,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Run DAY1→30 audit matrix
-        run: npx vitest run qa/playtest/playtest-audit-report.test.ts qa/playtest/pressure-curves.test.ts qa/playtest/audit-v2-methodology.test.ts qa/playtest/repeat-cooldown-evaluation.test.ts --reporter=verbose
+        run: npx vitest run qa/playtest/playtest-audit-report.test.ts qa/playtest/pressure-curves.test.ts qa/playtest/audit-v2-methodology.test.ts qa/playtest/repeat-cooldown-evaluation.test.ts qa/playtest/day29-scenario-matrix.test.ts --reporter=verbose
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4
