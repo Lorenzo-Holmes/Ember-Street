@@ -97,7 +97,10 @@ function TopBar({ state }: { state: GameState }) {
   return (
     <header className="v6-topbar">
       <div className="v6-topbar__brand">
-        <span className="v6-game-title">EMBER STREET</span>
+        <div className="v6-brand-meta">
+          <span className="v6-game-title">EMBER STREET</span>
+          <span className="v6-game-subtitle">余烬长街 · 极夜生存</span>
+        </div>
         <div className="v6-day-display">
           <span className="v6-day-label">DAY</span>
           <span className="v6-day-number">{String(state.day).padStart(2, '0')}</span>
@@ -106,23 +109,23 @@ function TopBar({ state }: { state: GameState }) {
       </div>
 
       <div className="v6-topbar__status">
-        <span className="v6-status-chip v6-status-chip--safe">
-          <span className="chip-icon">◉</span>
+        <span className="v6-status-chip v6-status-chip--safe" title="当前总人口">
+          <span className="chip-icon">👥</span>
           <span>人口</span>
           <span className="chip-value">{pop}</span>
         </span>
-        <span className="v6-status-chip v6-status-chip--hope">
-          <span className="chip-icon">◆</span>
+        <span className="v6-status-chip v6-status-chip--hope" title="希望值，过低将引发街区崩溃">
+          <span className="chip-icon">🔥</span>
           <span>希望</span>
           <span className="chip-value">{state.hope}</span>
         </span>
-        <span className="v6-status-chip v6-status-chip--defense">
-          <span className="chip-icon">⬡</span>
+        <span className="v6-status-chip v6-status-chip--defense" title="防御强度，抵抗夜间袭击">
+          <span className="chip-icon">🛡️</span>
           <span>防线</span>
           <span className="chip-value">{Math.round(state.defense)}</span>
         </span>
-        <span className={`v6-status-chip ${state.mainLightStage >= 2 ? 'v6-status-chip--safe' : 'v6-status-chip--danger'}`}>
-          <span className="chip-icon">◑</span>
+        <span className={`v6-status-chip ${state.mainLightStage >= 2 ? 'v6-status-chip--safe' : 'v6-status-chip--danger'}`} title="街区核心主路灯">
+          <span className="chip-icon">💡</span>
           <span>主灯</span>
           <span className="chip-value">阶段 {state.mainLightStage}</span>
         </span>
@@ -152,9 +155,14 @@ function StreetVisual({ state }: { state: GameState }) {
 
   return (
     <section className={`v6-street v6-street--stage-${stage}`} aria-label="街区视觉">
-      <div className="v6-street__sky" />
+      <div className="v6-street__sky">
+        <div className="v6-stars" />
+        <div className="v6-fog" />
+      </div>
 
       {/* Buildings silhouettes */}
+      <div className="v6-bldg v6-bldg--back-1" />
+      <div className="v6-bldg v6-bldg--back-2" />
       <div className="v6-bldg v6-bldg--left" />
       <div className="v6-bldg v6-bldg--center-l" />
       <div className="v6-bldg v6-bldg--center-r" />
@@ -170,17 +178,21 @@ function StreetVisual({ state }: { state: GameState }) {
           <div className="v6-main-light__head" />
           <div className="v6-main-light__cone" />
         </div>
-        <span className="v6-main-light__label">{stageDesc}</span>
       </div>
 
       <div className="v6-street__road" />
 
-      {/* Meta strip */}
-      <div className="v6-street__meta">
-        <span>居民 {population(state)}</span>
-        <span>核心 {corePresent(state)}</span>
-        <span>DAY {state.day} / 30</span>
-        <span>{state.day === 29 ? '最终日' : state.forecast.title}</span>
+      {/* Meta HUD strip */}
+      <div className="v6-street__hud">
+        <div className="v6-hud-tags">
+          <span className="v6-hud-tag">居民 {population(state)}</span>
+          <span className="v6-hud-tag">核心 {corePresent(state)}</span>
+          <span className="v6-hud-tag">DAY {state.day} / 30</span>
+        </div>
+        <div className="v6-hud-status">
+          <span className="v6-hud-dot" />
+          <span>{stageDesc}</span>
+        </div>
       </div>
     </section>
   );
@@ -190,15 +202,21 @@ function StreetVisual({ state }: { state: GameState }) {
 // INVENTORY BAR
 // ─────────────────────────────────────────────
 function ResItem({
-  label, value, critAt, warnAt,
-}: { label: string; value: number; critAt: number; warnAt: number }) {
+  label, value, icon, critAt, warnAt, unit,
+}: { label: string; value: number; icon: string; critAt: number; warnAt: number; unit?: string }) {
   const status = resStatus(value, critAt, warnAt);
-  const statusLabel = status === 'critical' ? '危险' : status === 'warning' ? '偏低' : '正常';
+  const statusLabel = status === 'critical' ? '危急' : status === 'warning' ? '偏低' : '充裕';
   return (
     <div className={`v6-res v6-res--${status}`}>
-      <span className="v6-res__label">{label}</span>
-      <span className="v6-res__value">{value}</span>
-      <span className="v6-res__status">{statusLabel}</span>
+      <div className="v6-res__top">
+        <span className="v6-res__icon">{icon}</span>
+        <span className="v6-res__label">{label}</span>
+        <span className={`v6-res__status v6-res__status--${status}`}>{statusLabel}</span>
+      </div>
+      <div className="v6-res__bottom">
+        <span className="v6-res__value">{value}</span>
+        {unit && <span className="v6-res__unit">{unit}</span>}
+      </div>
     </div>
   );
 }
@@ -208,18 +226,36 @@ function InventoryBar({ state }: { state: GameState }) {
   return (
     <section className="v6-inventory" aria-label="物资概览">
       <div className="v6-inventory__title">
-        <span>▪ 物资箱</span>
-        <small>救回的人也需要吃饭</small>
+        <div className="v6-inventory__title-left">
+          <span className="v6-inventory__icon">📦</span>
+          <span>街区物资与生存指标</span>
+        </div>
+        <small className="v6-inventory__note">救回的居民也需要消耗口粮 · 维持防线与电力才能撑过黑夜</small>
       </div>
       <div className="v6-resource-groups">
-        <ResItem label="口粮" value={inv.ration}    critAt={4}  warnAt={12} />
-        <ResItem label="药品" value={inv.medicine}  critAt={2}  warnAt={6}  />
-        <ResItem label="电力" value={inv.power}     critAt={3}  warnAt={10} />
-        <ResItem label="材料" value={inv.materials} critAt={3}  warnAt={8}  />
-        <ResItem label="零件" value={inv.parts}     critAt={2}  warnAt={5}  />
-        <ResItem label="希望" value={state.hope}    critAt={10} warnAt={25} />
-        <ResItem label="防线" value={Math.round(state.defense)} critAt={20} warnAt={40} />
-        <ResItem label="居民" value={population(state)} critAt={0} warnAt={1} />
+        <div className="v6-res-group">
+          <div className="v6-res-group__label">生存保障</div>
+          <div className="v6-res-group__grid">
+            <ResItem label="口粮" icon="🍞" value={inv.ration} critAt={4} warnAt={12} unit="份" />
+            <ResItem label="药品" icon="💊" value={inv.medicine} critAt={2} warnAt={6} unit="件" />
+          </div>
+        </div>
+        <div className="v6-res-group">
+          <div className="v6-res-group__label">工程资源</div>
+          <div className="v6-res-group__grid">
+            <ResItem label="电力" icon="⚡" value={inv.power} critAt={3} warnAt={10} unit="kw" />
+            <ResItem label="材料" icon="🪵" value={inv.materials} critAt={3} warnAt={8} unit="捆" />
+            <ResItem label="零件" icon="🔩" value={inv.parts} critAt={2} warnAt={5} unit="组" />
+          </div>
+        </div>
+        <div className="v6-res-group">
+          <div className="v6-res-group__label">街区状态</div>
+          <div className="v6-res-group__grid">
+            <ResItem label="希望" icon="🔥" value={state.hope} critAt={10} warnAt={25} />
+            <ResItem label="防线" icon="🛡️" value={Math.round(state.defense)} critAt={20} warnAt={40} />
+            <ResItem label="居民" icon="👥" value={population(state)} critAt={0} warnAt={1} unit="人" />
+          </div>
+        </div>
       </div>
       {!!state.storyItems.length && (
         <div className="v6-story-items">
@@ -514,15 +550,28 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
             return (
               <article className={cardClass} key={survivor.id}>
                 <div className="v6-survivor__top">
-                  <div>
-                    <h3>{survivor.name}</h3>
-                    <div className="v6-survivor__trait">
-                      {survivor.trait ?? survivor.perk ?? '—'}
+                  <div className="v6-survivor__profile">
+                    <div className="v6-survivor__avatar-tag">
+                      {condition === 'healthy' ? '🟢' : condition === 'fatigued' ? '🟡' : condition === 'minor' ? '🟠' : condition === 'serious' ? '🔴' : '⚠️'}
+                    </div>
+                    <div>
+                      <h3>{survivor.name}</h3>
+                      <div className="v6-survivor__trait">
+                        {survivor.trait ?? survivor.perk ?? '—'}
+                      </div>
                     </div>
                   </div>
                   <div className="v6-survivor__energy">
-                    <span className="v6-survivor__energy-val">{survivor.energy}</span>
-                    <span className="v6-survivor__energy-label">精力</span>
+                    <div className="v6-energy-header">
+                      <span className="v6-survivor__energy-label">精力</span>
+                      <span className="v6-survivor__energy-val">{survivor.energy}</span>
+                    </div>
+                    <div className="v6-energy-bar" title={`当前精力: ${survivor.energy}/100`}>
+                      <div
+                        className={`v6-energy-fill v6-energy-fill--${survivor.energy > 60 ? 'high' : survivor.energy > 30 ? 'mid' : 'low'}`}
+                        style={{ width: `${Math.min(100, Math.max(0, survivor.energy))}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -531,6 +580,11 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
                   <span className="v6-badge--trust">信任 {survivor.trust ?? 0}</span>
                   {survivor.specialty && (
                     <span className="v6-badge--specialty">{survivor.specialty}</span>
+                  )}
+                  {current && (
+                    <span className="v6-badge--active-job">
+                      当前：{JOBS.find(j => j.id === current)?.icon} {JOBS.find(j => j.id === current)?.label}
+                    </span>
                   )}
                 </div>
 
@@ -922,7 +976,10 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
           </div>
           <div className="v6-causal-signals">
             {causalSignals.map((signal) => (
-              <p key={signal}>{signal}</p>
+              <div className="v6-causal-item" key={signal}>
+                <span className="v6-causal-icon">⚠️</span>
+                <p>{signal}</p>
+              </div>
             ))}
           </div>
         </section>
@@ -930,6 +987,7 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
 
       <button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>
         进入夜晚
+        <small>天黑以后所有派遣生效，夜间事件随即开始</small>
       </button>
       {!committed ? (
         <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>
@@ -992,7 +1050,10 @@ function DawnScreen({ state, setState }: { state: GameState; setState: (state: G
           </div>
           <div className="v6-brief">
             {brief.map((entry, index) => (
-              <p key={`${entry}-${index}`}>{entry}</p>
+              <div className="v6-brief-item" key={`${entry}-${index}`}>
+                <span className="v6-brief-bullet">◆</span>
+                <p>{entry}</p>
+              </div>
             ))}
           </div>
         </section>
