@@ -17,6 +17,7 @@ import { resolveMeal } from './food';
 import { resolveEnding } from './endings';
 import { recordDeath, recoverMissing } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from './mortality';
+import { hasPrinciple } from './principles';
 import { applyDailySocialPressure, applyMealPressure, createDefaultSocialState, normalizeSocialState } from './socialPressure';
 
 const STARTERS = ['lin-xia', 'zhou', 'ahe'];
@@ -103,7 +104,8 @@ function spendEnergyForJobs(state: GameState): GameState {
     survivors: state.survivors.map((survivor) => {
       if (survivor.condition === 'dead' || survivor.condition === 'missing') return survivor;
       const job = state.dayAssignments[survivor.id] ?? 'rest';
-      const energy = clamp(survivor.energy - (cost[job] ?? 0));
+      const preserveRestBonus = job === 'rest' && hasPrinciple(state, 'preserve-strength') ? 6 : 0;
+      const energy = clamp(survivor.energy - (cost[job] ?? 0) + preserveRestBonus);
       let condition = survivor.condition;
       if (job === 'rest' && condition === 'fatigued' && energy >= 55) condition = 'healthy';
       if (job !== 'rest' && energy < 25 && condition === 'healthy') condition = 'fatigued';
@@ -158,6 +160,16 @@ function resolveRadioWork(state: GameState): GameState {
   if (state.buildings.radio >= 2 && radioDays % 3 === 0 && !flags.has(`radio_rescue:${state.day}`)) {
     flags.add(`radio_rescue:${state.day}`);
     next = rescueCommunityResidents({ ...next, storyFlags: [...flags], campaignStats: { ...state.campaignStats, rescued: state.campaignStats.rescued + 1 } }, 1, 1);
+  }
+  const aidFlag = `await_aid_hope:${state.day}`;
+  const contactEstablished = next.storyFlags.includes('external_contact') || next.storyFlags.includes('military_contact');
+  if (hasPrinciple(next, 'await-aid') && contactEstablished && !next.storyFlags.includes(aidFlag)) {
+    next = {
+      ...next,
+      hope: clamp(next.hope + 1),
+      storyFlags: [...new Set([...next.storyFlags, aidFlag])],
+      dawnBrief: [...(next.dawnBrief ?? []), '街区原则《等待外援》：广播仍与外界保持联系，希望 +1。'],
+    };
   }
   return next;
 }
@@ -264,7 +276,9 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
 export function finalHordeResultFor(state: GameState): FinalHordeResult {
   const coreAlive = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').length;
   const severe = state.survivors.filter((s) => s.condition === 'critical' || s.condition === 'serious').length;
-  const effectiveDefense = clamp(state.defense + (state.storyFlags.includes('final_horde_supplies') ? 8 : 0));
+  const routeKnown = ['evacuation_route_known', 'subway_exit_known', 'southern_route_known'].some((flag) => state.storyFlags.includes(flag));
+  const principleBonus = (hasPrinciple(state, 'hold-the-street') ? 6 : 0) + (hasPrinciple(state, 'prepare-evacuation') && routeKnown ? 4 : 0);
+  const effectiveDefense = clamp(state.defense + (state.storyFlags.includes('final_horde_supplies') ? 8 : 0) + principleBonus);
   if (effectiveDefense >= 78 && state.hope >= 55 && severe === 0 && coreAlive >= 4) return 'perfect';
   if (effectiveDefense >= 52 && state.hope >= 30 && coreAlive >= 3) return 'held';
   if (effectiveDefense >= 24 && coreAlive >= 2) return 'damaged';
