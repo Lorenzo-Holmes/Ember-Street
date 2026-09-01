@@ -32,6 +32,46 @@ function quietState(seed = 960001): GameState {
   };
 }
 
+function milestoneDayState(day: 7 | 14 | 21, seed: number): GameState {
+  const base = quietState(seed);
+  const level = day >= 21 ? 3 : day >= 14 ? 2 : 1;
+  const residents = day >= 21 ? 8 : day >= 14 ? 5 : 2;
+  return {
+    ...base,
+    day,
+    phase: 'street',
+    hope: day >= 21 ? 48 : day >= 14 ? 42 : 36,
+    defense: day >= 21 ? 68 : day >= 14 ? 58 : 50,
+    inventory: {
+      ration: day >= 21 ? 25 : day >= 14 ? 18 : 12,
+      medicine: day >= 21 ? 7 : day >= 14 ? 5 : 3,
+      power: day >= 21 ? 62 : day >= 14 ? 52 : 46,
+      materials: day >= 21 ? 18 : day >= 14 ? 12 : 8,
+      parts: day >= 21 ? 10 : day >= 14 ? 7 : 4,
+    },
+    buildings: {
+      searchStation: level,
+      workshop: level,
+      clinic: Math.max(1, level - 1),
+      watchPost: level,
+      shelter: level,
+      radio: day >= 14 ? level : 1,
+    },
+    civilianResidents: residents,
+    communityState: {
+      pendingResidents: 0,
+      activeResidents: residents,
+      supportMode: day >= 14 ? 'logistics' : null,
+      lastSupportDay: day,
+    },
+    storyFlags: [
+      ...base.storyFlags,
+      ...(day >= 14 ? ['community_rotation_unlocked'] : []),
+      ...(day >= 21 ? ['evacuation_route_known', 'working_vehicle_parts'] : []),
+    ],
+  };
+}
+
 function communityState(seed = 960002): GameState {
   const base = quietState(seed);
   return {
@@ -133,6 +173,16 @@ test('DAY1 shell remains usable at all target viewports', async ({ page }) => {
     await expect(page.getByText('EMBER STREET', { exact: true })).toBeVisible();
     await expect(page.getByText('仓房', { exact: true })).toBeVisible();
     await capture(page, `day1-main-${name}`);
+  }
+});
+
+test('milestone DAY7 DAY14 DAY21 screens stay readable as the street grows', async ({ page }) => {
+  for (const [day, seed] of [[7, 963007], [14, 963014], [21, 963021]] as const) {
+    await renderState(page, milestoneDayState(day, seed));
+    await expect(page.getByText(`DAY ${day}`, { exact: true })).toBeVisible();
+    await expect(page.getByText('仓房', { exact: true })).toBeVisible();
+    await expect(page.getByText('今日派遣', { exact: true })).toBeVisible();
+    await capture(page, `narrative-audit-day${day}-1440x900`);
   }
 });
 
