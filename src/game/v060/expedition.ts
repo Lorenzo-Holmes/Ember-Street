@@ -1,6 +1,7 @@
 import { nextRandom } from '../rng';
 import type { CheckOutcome, GameState, Survivor } from '../types';
 import { isLocationUnlocked } from './campaignEvents';
+import { locationMemoryRiskModifier } from './locationMemory';
 import { markMissing, recordDeath } from './memorial';
 import {
   EXPEDITION_LOCATIONS,
@@ -21,6 +22,10 @@ export type ExpeditionRisk = 'safe' | 'cautious' | 'dangerous' | 'extreme';
 
 function aliveForExpedition(survivor: Survivor): boolean {
   return survivor.condition !== 'dead' && survivor.condition !== 'missing' && survivor.condition !== 'critical' && survivor.condition !== 'serious';
+}
+
+function hasPrinciple(state: GameState, id: string): boolean {
+  return Boolean(state.socialState?.principles?.includes(id as never));
 }
 
 export function locationForId(id: string): ExpeditionLocation | undefined {
@@ -50,11 +55,11 @@ export function expeditionRiskScore(state: GameState, partyIds: string[], locati
     if (survivor.specialty === 'search') score -= 1;
     if (survivor.specialty === 'watch' && partyIds.length > 1) score -= 1;
   }
-  if (state.storyFlags.includes(`scouted:${locationId}`)) score -= 2;
-  if (state.storyFlags.includes(`danger:${locationId}`)) score += 2;
+  score += locationMemoryRiskModifier(state, locationId);
   if (locationId === 'convenience-store' && state.storyFlags.includes('convenience_backdoor_known')) score -= 1;
   if (locationId === 'subway' && state.storyFlags.includes('subway_maintenance_map')) score -= 1;
   if (locationId === 'hospital' && state.storyFlags.includes('hospital_route_observed')) score -= 1;
+  if (hasPrinciple(state, 'outward-search')) score += 1;
   return Math.max(0, score);
 }
 
@@ -148,7 +153,11 @@ function lootFor(state: GameState, multiplier: number): Partial<Record<Expeditio
   const location = state.expeditionState.locationId ? locationForId(state.expeditionState.locationId) : undefined;
   if (!location) return {};
   const base = Math.max(1, Math.round((2 + location.danger) * multiplier));
-  return { [location.primary]: base, [location.secondary]: Math.max(1, Math.floor(base / 2)) };
+  const principleDelta = (hasPrinciple(state, 'outward-search') ? 1 : 0) - (hasPrinciple(state, 'preserve-strength') ? 1 : 0);
+  return {
+    [location.primary]: Math.max(1, base + principleDelta),
+    [location.secondary]: Math.max(1, Math.floor(base / 2)),
+  };
 }
 
 function addLoot(state: GameState, loot: Partial<Record<ExpeditionResource, number>>): GameState {
