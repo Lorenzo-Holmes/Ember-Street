@@ -23,56 +23,99 @@ The preceding DAY29 comprehension pass is considered finished and should not be 
 - v3 reload now preserves `socialState`, so principles, promises and social pressure no longer disappear after save/load;
 - DAY7 / DAY14 / DAY21 milestone screens now survive a real reload and show the correct stage decision.
 
-## P1 — High-frequency dashboard language still visible
+## Closed in the first full-play UX pass
 
-### Community contribution panel
+### Community contribution panel — CLOSED
 
-Current player-facing examples still read like a calculation panel:
+The first pass removed the dashboard-first presentation:
 
-- `炊事 +2.8`
-- `防线 +1`
-- `夜间风险 -11%`
-- `医疗辅助 +1`
+- `炊事 +2.8` is now led by “能多顾到约 X 人份”;
+- repair support is led by “今晚能多补一轮薄弱处”;
+- watch support is led by “夜里的岗能轮得更开”;
+- medical support is led by “能多照看 X 个轻伤的人”.
 
-The underlying values are useful, but the presentation should describe **what the extra hands can actually do**. The next copy pass should preserve decision clarity while changing the surface language toward concrete consequences, for example “饭馆能多顾到几个人”“今晚能多补牢一段”“街口轮得开夜里的岗”“诊所能多照看一个轻伤的人”.
+Exact mechanical values such as defense gain or night-risk reduction remain available in the smaller hard-information line. The player therefore still has enough information to make a decision without the panel reading like an analytics dashboard.
 
-Do not hide a cost or irreversible risk merely for atmosphere; this item is about replacing formula labels, not removing useful information.
+### Building progression language — CLOSED
 
-### Building cards
+Routine building cards no longer expose `Lv1 / Lv2 / Lv3` as the player-facing progression language.
 
-The day screen still exposes `Lv1 / Lv2 / Lv3`, including upgrade buttons with `· LvN`. This makes repaired civilian spaces read like an RTS tech tree even though the building content itself has already been rewritten as route desk / workshop / clinic / watch post / shelter / radio spaces.
+The visible states are now:
 
-Next pass should replace visible level numbers with condition language such as “刚能用 / 收拾得像样 / 已经很稳”, while keeping material and part costs explicit.
+- 还没收拾
+- 刚能用
+- 收拾得像样
+- 已经很稳
 
-### Survivor specialty enum leak
+Material and part costs remain explicit. Upgrade buttons also describe the target physical state rather than `LvN`.
 
-Assignment cards still render the raw specialty value (`search`, `repair`, `cook`, etc.). These are implementation enums and should never be visible to the player.
+### Survivor specialty enum leak — CLOSED
 
-Replace them with lived labels such as “熟路 / 维修熟手 / 懂医 / 守夜熟手 / 会做饭 / 懂广播”. The mechanical specialty remains unchanged internally.
+Assignment cards no longer render raw implementation enums such as `search`, `repair`, or `cook`.
 
-## P1 — Decision information is correct but too compressed
+The player sees lived labels instead:
 
-The pre-dispatch preview currently compresses several values into one line, e.g. cooking coverage, population, next-morning energy and hope delta. These values are decision-critical, so they should **not** be deleted. The problem is hierarchy: the player has to parse a formula-like sentence to understand whether tonight's meal is good enough.
+- 熟路
+- 维修熟手
+- 懂医
+- 守夜熟手
+- 会做饭
+- 懂广播
+- 能补位
 
-Next pass should keep the numbers but split them into a human first sentence and a smaller hard-info line. Example structure:
+The underlying specialty mechanics are unchanged.
 
-- first: “今晚这锅能顾到大多数人。”
-- second layer: `约 6.9 人份 / 街里 8 人 · 明早精力 +8 · 希望 -1`
+### Meal / night-preparation hierarchy — CLOSED
 
-The same rule should apply to night preparation.
+The pre-dispatch and dusk previews now use two layers:
 
-## P1 — Mobile action distance
+1. a human-first sentence such as “今晚这锅能顾到大多数人” or “门能撑，但夜里还得盯紧”;
+2. the exact capacity / population / recovery / hope / preparation values underneath.
 
-The 390×844 DAY1 capture has no horizontal clipping, but the main day screen is long. Before the final “安排好了” commitment, the player can pass through inventory, community, social state, missing people, buildings, assignments, previews and memorial content.
+No decision-critical number was removed.
 
-The next audit should measure **action distance**, not simply page height:
+## Mobile action distance — first gate closed
 
-- how many screens of vertical scroll from top to first meaningful assignment control;
-- how many screens from the last edited assignment to “安排好了”;
-- whether non-urgent panels can collapse after the player has already read them once that day;
-- whether urgent information (missing people, critical wounds, unresolved promise) stays above routine building management.
+The first 390×844 measurement showed:
 
-Do not solve this by hiding high-stakes information.
+- assignment section from top: **1.38 screens**;
+- assignment section top → `安排好了`: **2.98 screens**.
+
+The long second value was mostly caused by routine building management sitting between the primary assignment controls and the daily commitment.
+
+The pass now orders the routine flow as:
+
+`Missing / urgent search → 今日派遣 → meal/night preview → 安排好了 → 街区建设 → memorial / message`
+
+The browser audit was then changed to measure the distance that actually matters during interaction: **last assignment control → `安排好了`**.
+
+Final 390×844 result:
+
+- assignment section from top: **1.38 screens**;
+- last assignment control → `安排好了`: **0.21 screens**.
+
+The test enforces a `< 1.5 screen` gate and also asserts that the daily commit button appears before routine building management.
+
+The remaining 1.38-screen distance from the top to the start of assignment is now an observation, not a P1 failure. Much of that space is the street/world anchor, inventory and social state. Do not shorten it by simply deleting narrative context. Revisit only if real-play evidence shows that returning players repeatedly skip or resent the upper sections.
+
+## Browser validation
+
+Final code head for this pass: `2def6578161069b1e9856a5bdf5a1a842a8417e4`.
+
+Validation:
+
+- Typecheck ✅
+- Unit tests ✅
+- Production build ✅
+- Cloudflare validation ✅
+- CI run 673 ✅
+- UI Smoke run 37 ✅
+- Playwright: 5 / 5 ✅
+- desktop and 390×844 horizontal clipping checks ✅
+- DAY7 / DAY14 / DAY21 principle continuity screenshots ✅
+- DAY29 stage 6 commitment + discounted-cost screenshot ✅
+
+Representative screenshots were visually inspected after the automated checks. The first-pass changes did not introduce visible clipping or turn the player-facing screens back into a technical dashboard.
 
 ## P2 — Visual hierarchy / illustration gap
 
@@ -91,7 +134,19 @@ The simulation audit already measured event repetition. The remaining repetition
 
 Future changes should prefer progressive emphasis (urgent first, routine quieter) over adding more panels.
 
-## Audit gates for the next implementation pass
+## P2 — Returning-player attention
+
+The next useful UX experiment should not be another broad reordering. It should test whether a returning player on DAY14–28 still notices:
+
+- an unresolved promise;
+- a missing person or critical wound;
+- the meal warning;
+- the primary assignment controls;
+- a genuinely new building opportunity.
+
+If routine sections are becoming invisible, prefer conditional emphasis / compact summaries rather than hiding high-stakes information.
+
+## Audit gates going forward
 
 A player-facing change should be accepted only if:
 
@@ -102,14 +157,14 @@ A player-facing change should be accepted only if:
 - DAY7 / DAY14 / DAY21 principle continuity still survives reload;
 - DAY29 stage 6 still displays all three commitments and the effective discounted cost;
 - desktop and 390×844 layouts remain horizontally safe;
+- last assignment control → daily commitment stays below 1.5 mobile viewports;
 - the change does not alter the frozen balance values.
 
-## Recommended implementation order
+## Next implementation order
 
-1. Remove internal enum and `LvN` leaks.
-2. Rewrite the community contribution summary into concrete consequences.
-3. Split meal/night-preparation previews into story sentence + hard-info layer.
-4. Measure mobile action distance and only then decide whether routine panels need collapse/reordering.
-5. Integrate canonical street/location illustrations once approved assets are available.
+1. Audit returning-player attention on representative DAY14 / DAY21 / DAY27 states.
+2. Identify repeated panels that can become quieter after the player has already seen them that day, without hiding urgent state.
+3. Keep illustration integration separate and replace the empty street hero with approved canonical art when available.
+4. Only reopen balance if the playtest audit produces new evidence.
 
-This order deliberately avoids another broad redesign. Each step can be browser-audited against the same DAY1 / DAY7 / DAY14 / DAY21 / DAY29 states before moving to the next one.
+The first full-play P1 pass is complete. The next pass should be about **attention and repetition**, not another layer of systems or another DAY29 rebalance.
