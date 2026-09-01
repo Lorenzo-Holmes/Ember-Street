@@ -86,8 +86,18 @@ describe('DAY29 six-stage final horde', () => {
     };
     const event = finalHordeEventById('final-horde-clinic')!;
     const choice = event.choices.find((item) => item.id === 'final-clinic-supplies')!;
-    expect(choice.cost?.medicine).toBe(3);
+    expect(choice.cost?.medicine).toBe(2);
     expect(effectiveFinalHordeChoice(state, choice).cost?.medicine).toBe(1);
+  });
+
+  it('lets prior scavenging reduce several reserve-plan costs, not only the last line', () => {
+    const state = finalReady(880051);
+    const gate = finalHordeEventById('final-horde-north-gate')!.choices.find((item) => item.id === 'final-gate-reinforce')!;
+    const grid = finalHordeEventById('final-horde-power-grid')!.choices.find((item) => item.id === 'final-grid-parts')!;
+    const route = finalHordeEventById('final-horde-reroute')!.choices.find((item) => item.id === 'final-route-barricade')!;
+    expect(effectiveFinalHordeChoice(state, gate).cost).toEqual(expect.objectContaining({ materials: 3, parts: 0 }));
+    expect(effectiveFinalHordeChoice(state, grid).cost?.parts).toBe(2);
+    expect(effectiveFinalHordeChoice(state, route).cost?.materials).toBe(2);
   });
 
   it('uses the emergency medical stockpile to improve actual survivor conditions', () => {
@@ -114,6 +124,17 @@ describe('DAY29 six-stage final horde', () => {
       { label: '社区劳动力', value: 1 },
       { label: '街区仍然相信承诺', value: 1 },
     ]));
+  });
+
+  it('keeps the third option as a real concession instead of a disguised catastrophic failure', () => {
+    const effects = FINAL_HORDE_EVENT_IDS.map((eventId) => {
+      const choice = finalHordeEventById(eventId)!.choices.find((item) => item.strategy === 'consequence')!;
+      return choice.direct!;
+    });
+    expect(effects.every((effect) => (effect.defense ?? 0) >= -5)).toBe(true);
+    expect(effects.some((effect) => (effect.defense ?? 0) > 0)).toBe(true);
+    expect(effects.some((effect) => (effect.hope ?? 0) > 0)).toBe(true);
+    expect(effects.some((effect) => (effect.power ?? 0) > 0)).toBe(true);
   });
 
   it('shows which old preparations are still helping on the final night', () => {
