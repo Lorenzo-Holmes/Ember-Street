@@ -6,6 +6,7 @@ import {
   declineCommunityRequest,
   pendingCommunityRequest,
 } from '../../game/v060/communityPromises';
+import { choosePrinciple, pendingPrincipleDecision, PRINCIPLE_DECISIONS } from '../../game/v060/principles';
 import { pressureLabel, socialStateOf } from '../../game/v060/socialPressure';
 
 interface SocialStatusPanelProps {
@@ -18,6 +19,8 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
   const social = socialStateOf(state);
   const active = activePromiseSummary(state);
   const request = pendingCommunityRequest(state);
+  const principle = pendingPrincipleDecision(state);
+  const principleChoices = PRINCIPLE_DECISIONS.flatMap((decision) => decision.choices);
   const mentalNotes = state.survivors
     .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing')
     .map((survivor) => ({ survivor, mental: activeMentalState(state, survivor) }))
@@ -41,12 +44,29 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
         </div>
       </section>
 
+      {!!social.principles.length && <div className="v6-survivor__status" style={{ marginTop: 10 }}>
+        {social.principles.map((id) => <span key={id}>原则 · {principleChoices.find((choice) => choice.id === id)?.title ?? id}</span>)}
+      </div>}
+
+      {principle && !compact && <article className="v6-survivor" style={{ marginTop: 10 }}>
+        <div className="v6-survivor__top"><div><h3>街区原则 · DAY {principle.day}</h3><span>{principle.title}</span></div></div>
+        <p>{principle.body}</p>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {principle.choices.map((choice) => <button key={choice.id} className="v6-link" style={{ width: '100%', textAlign: 'left', margin: 0 }} onClick={() => onCommit(choosePrinciple(state, choice.id))}>
+            <strong>{choice.title}</strong>
+            <small style={{ display: 'block' }}>{choice.detail}</small>
+            <small style={{ display: 'block' }}>长期效果：{choice.effect}</small>
+          </button>)}
+        </div>
+        <small>每个阶段只能确定一个原则；选定后不会在本局中撤回。</small>
+      </article>}
+
       {active && <article className="v6-survivor" style={{ marginTop: 10 }}>
         <div className="v6-survivor__top"><div><h3>当前承诺 · 《{active.title}》</h3><span>{active.detail}</span></div><div><b>{active.remainingDays}</b><small>剩余天数</small></div></div>
         <p>承诺只检查你能控制的行动，不会因为一次坏骰子判你食言。</p>
       </article>}
 
-      {!active && request && !compact && <article className="v6-survivor" style={{ marginTop: 10 }}>
+      {!active && request && !principle && !compact && <article className="v6-survivor" style={{ marginTop: 10 }}>
         <div className="v6-survivor__top"><div><h3>居民诉求 · 《{request.title}》</h3><span>{request.body}</span></div></div>
         <p><strong>如果答应：</strong>{request.promiseText}</p>
         <div className="v6-job-grid">
