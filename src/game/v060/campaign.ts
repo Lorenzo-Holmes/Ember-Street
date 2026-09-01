@@ -2,7 +2,6 @@ import { createDefaultCampaignStats, createDefaultDayState, createDefaultExpedit
 import { SURVIVOR_ROSTER, forecastFor } from '../progression';
 import { nextRandom, normalizeSeed } from '../rng';
 import type { CheckOutcome, FinalHordeResult, GameState, Survivor, SurvivorCondition } from '../types';
-import { applyDailyAgencyEvent } from './agencyEvents';
 import { advanceCommunityDay, communityMedicalSupport, communityRepairSupport, createDefaultCommunityState, normalizeCommunityState, rescueCommunityResidents } from './community';
 import {
   evaluatePromiseProgress,
@@ -18,7 +17,6 @@ import { resolveMeal } from './food';
 import { resolveEnding } from './endings';
 import { recordDeath, recoverMissing } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from './mortality';
-import { advancePsychologyDay, partyPsychologyModifier, psychologyWorkEnergyDelta } from './psychology';
 import { applyDailySocialPressure, applyMealPressure, createDefaultSocialState, normalizeSocialState } from './socialPressure';
 
 const STARTERS = ['lin-xia', 'zhou', 'ahe'];
@@ -105,8 +103,7 @@ function spendEnergyForJobs(state: GameState): GameState {
     survivors: state.survivors.map((survivor) => {
       if (survivor.condition === 'dead' || survivor.condition === 'missing') return survivor;
       const job = state.dayAssignments[survivor.id] ?? 'rest';
-      const psychDelta = psychologyWorkEnergyDelta(survivor, job === 'rest');
-      const energy = clamp(survivor.energy - (cost[job] ?? 0) - psychDelta);
+      const energy = clamp(survivor.energy - (cost[job] ?? 0));
       let condition = survivor.condition;
       if (job === 'rest' && condition === 'fatigued' && energy >= 55) condition = 'healthy';
       if (job !== 'rest' && energy < 25 && condition === 'healthy') condition = 'fatigued';
@@ -181,7 +178,6 @@ export function finalizeDay(state: GameState): GameState {
   next = fulfillPromiseForMeal(next);
   next = applyDailySocialPressure(next);
   next = evaluatePromiseProgress(next);
-  next = applyDailyAgencyEvent(next);
   next = advanceUntreatedRisk(next);
   return { ...next, phase: 'night', nightState: createDefaultNightState(), pendingCheck: null, lastMessage: `NIGHT ${next.day} · 今日岗位已经锁定。` };
 }
@@ -206,16 +202,14 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
   const stanceModifier = stance === 'careful' ? 1 : -1;
   const event = currentExpeditionEvent(state);
   const specialtyModifier = expeditionSpecialtyBonus(state, event);
-  const psychologyModifier = partyPsychologyModifier(state, state.expeditionState.activePartyIds);
-  const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier + specialtyModifier + psychologyModifier;
+  const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier + specialtyModifier;
   const twist = dice[0] === 6 && dice[1] === 6 ? 'double-six' : dice[0] === 1 && dice[1] === 1 ? 'double-one' : undefined;
   const outcome: CheckOutcome = twist === 'double-one' ? 'failure' : twist === 'double-six' ? 'critical' : total <= 6 ? 'failure' : total <= 9 ? 'partial' : total <= 11 ? 'success' : 'critical';
   let withStory = applyExpeditionStoryOutcome({ ...state, rngState }, event, outcome);
   if (stance === 'push' && (outcome === 'success' || outcome === 'critical')) withStory = addBonusLoot(withStory, 2);
   const next = resolveExpeditionOutcome(withStory, outcome, twist);
   const specialtyText = specialtyModifier ? ' · 专长 +1' : '';
-  const psychologyText = psychologyModifier ? ` · 心理 ${psychologyModifier > 0 ? '+1' : '-1'}` : '';
-  return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}${specialtyText}${psychologyText}` };
+  return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}${specialtyText}` };
 }
 
 export function retreatCurrentExpedition(state: GameState): GameState { return retreatExpedition(state); }
@@ -234,7 +228,7 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
     const helpers = state.survivors.filter((s) => s.id !== survivorId && survivorAvailableForDay(s) && !state.dayState.committedSurvivorIds.includes(s.id))
       .sort((a, b) => b.energy - a.energy).slice(0, 2);
     if (helpers.length < 2) return { ...state, lastMessage: '至少需要两名可行动的人去寻找失踪者。' };
-    modifier = state.buildings.searchStation + helpers.filter((s) => s.specialty === 'search' || s.specialty === 'watch').length + partyPsychologyModifier(state, helpers.map((s) => s.id));
+    modifier = state.buildings.searchStation + helpers.filter((s) => s.specialty === 'search' || s.specialty === 'watch').length;
     const helperIds = helpers.map((s) => s.id);
     next = {
       ...state,
@@ -306,7 +300,6 @@ export function advanceCampaignDay(input: GameState): GameState {
     pendingCheck: null,
     lastMessage: `DAY ${day} · 新的一天开始了。`,
   };
-  next = advancePsychologyDay(next);
   next = unlockNextDayAssignments(next);
   next = advanceCommunityDay(next);
   next = queueLowHopeDeparture(next);

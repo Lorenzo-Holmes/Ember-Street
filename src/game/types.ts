@@ -3,7 +3,7 @@ export type Role = 'search' | 'repair' | 'medical' | 'watch' | 'cook' | 'radio' 
 export type DayAssignment = 'expedition' | 'repair' | 'medical' | 'watch' | 'radio' | 'cook' | 'rest';
 export type BuildingId = 'searchStation' | 'workshop' | 'clinic' | 'watchPost' | 'shelter' | 'radio';
 export type SurvivorCondition = 'healthy' | 'fatigued' | 'minor' | 'serious' | 'critical' | 'missing' | 'dead';
-export type PsychologyStateId = 'shaken' | 'grieving' | 'determined';
+export type SurvivorMentalState = 'steady' | 'focused' | 'shaken';
 export type RollMode = 'normal' | 'advantage' | 'disadvantage';
 export type CheckOutcome = 'failure' | 'partial' | 'success' | 'critical';
 export type MealQuality = 'cold' | 'struggling' | 'hot' | 'full' | 'well-fed';
@@ -40,12 +40,6 @@ export interface CommunityState {
   lastSupportDay?: number;
 }
 
-export interface SurvivorPsychology {
-  state: PsychologyStateId;
-  untilDay: number;
-  cause: string;
-}
-
 export interface Survivor {
   id: string;
   name: string;
@@ -57,7 +51,8 @@ export interface Survivor {
   trust?: 0 | 1 | 2 | 3;
   condition?: SurvivorCondition;
   untreatedDays?: number;
-  psychology?: SurvivorPsychology;
+  mentalState?: SurvivorMentalState;
+  mentalUntilDay?: number;
 }
 
 export interface Buildings {

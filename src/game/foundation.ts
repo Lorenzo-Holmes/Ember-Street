@@ -7,6 +7,7 @@ import type {
   NightState,
   Survivor,
   SurvivorCondition,
+  SurvivorMentalState,
 } from './types';
 
 export function createDefaultInventory(input: Partial<Inventory> = {}): Inventory {
@@ -48,21 +49,15 @@ export function createDefaultCampaignStats(): CampaignStats {
 export function normalizeSurvivor(survivor: Survivor): Survivor {
   let condition: SurvivorCondition = survivor.condition ?? (survivor.energy < 40 ? 'fatigued' : 'healthy');
   if (!['healthy', 'fatigued', 'minor', 'serious', 'critical', 'missing', 'dead'].includes(condition)) condition = 'healthy';
-  const psychology = survivor.psychology
-    && ['shaken', 'grieving', 'determined'].includes(survivor.psychology.state)
-    && Number.isFinite(Number(survivor.psychology.untilDay))
-    ? {
-        state: survivor.psychology.state,
-        untilDay: Math.max(0, Math.floor(Number(survivor.psychology.untilDay))),
-        cause: String(survivor.psychology.cause || '未知经历'),
-      }
-    : undefined;
+  let mentalState: SurvivorMentalState = survivor.mentalState ?? 'steady';
+  if (!['steady', 'focused', 'shaken'].includes(mentalState)) mentalState = 'steady';
   return {
     ...survivor,
     trust: survivor.trust ?? 0,
     trait: survivor.trait ?? survivor.perk,
     condition,
     untreatedDays: Math.max(0, Math.floor(Number(survivor.untreatedDays) || 0)),
-    ...(psychology ? { psychology } : { psychology: undefined }),
+    mentalState,
+    mentalUntilDay: mentalState === 'steady' ? undefined : Math.max(0, Math.floor(Number(survivor.mentalUntilDay) || 0)),
   };
 }

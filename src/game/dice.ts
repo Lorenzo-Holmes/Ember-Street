@@ -1,6 +1,6 @@
 import { nextRandom } from './rng';
 import type { CheckModifier, CheckOutcome, GameState, PendingCheck, RollMode } from './types';
-import { psychologyCheckModifier } from './v060/psychology';
+import { mentalCheckModifier } from './v060/characterPsychology';
 
 function rollDie(rngState: number): [number, number] {
   const [value, next] = nextRandom(rngState);
@@ -31,9 +31,9 @@ export function createPendingCheck(
   input: Omit<PendingCheck, 'id' | 'dice' | 'keptDice' | 'total' | 'outcome' | 'twist' | 'rerolled'>,
 ): GameState {
   const actor = input.actorId ? state.survivors.find((survivor) => survivor.id === input.actorId) : undefined;
-  const psychology = psychologyCheckModifier(actor);
-  const modifiers = psychology && !input.modifiers.some((modifier) => modifier.label === psychology.label)
-    ? [...input.modifiers, psychology]
+  const mental = mentalCheckModifier(state, actor);
+  const modifiers = mental && !input.modifiers.some((modifier) => modifier.label.startsWith('心理 ·'))
+    ? [...input.modifiers, mental]
     : input.modifiers;
   const pending: PendingCheck = {
     ...input,
