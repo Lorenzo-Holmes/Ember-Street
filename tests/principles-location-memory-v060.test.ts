@@ -6,7 +6,7 @@ import { communityCookingSupport, communityDefenseSupport, communityRepairSuppor
 import { expeditionRiskScore } from '../src/game/v060/expedition';
 import { locationMemory, locationMemoryRiskModifier, locationMemorySummary } from '../src/game/v060/locationMemory';
 import { mortalityEventById } from '../src/game/v060/mortalityEvents';
-import { NIGHT_EVENTS } from '../src/game/v060/nightEvents';
+import { NORMAL_NIGHT_EVENTS } from '../src/game/v060/nightEvents';
 import { choosePrinciple, pendingPrincipleDecision } from '../src/game/v060/principles';
 import { normalizeSocialState } from '../src/game/v060/socialPressure';
 import type { GameState } from '../src/game/types';
@@ -26,7 +26,7 @@ describe('v0.6 street principles', () => {
   });
 
   it('offers one decision at day 7 and prevents choosing twice in the same stage', () => {
-    const base = { ...createV060InitialState(99101), day: 7 };
+    const base: GameState = { ...createV060InitialState(99101), day: 7 };
     const decision = pendingPrincipleDecision(base);
     expect(decision?.day).toBe(7);
     const chosen = choosePrinciple(base, 'everyone-shares');
@@ -36,7 +36,7 @@ describe('v0.6 street principles', () => {
   });
 
   it('catches up overdue stages in order at day 21', () => {
-    let state = { ...createV060InitialState(99102), day: 21 };
+    let state: GameState = { ...createV060InitialState(99102), day: 21 };
     expect(pendingPrincipleDecision(state)?.day).toBe(7);
     state = choosePrinciple(state, 'triage-first');
     expect(pendingPrincipleDecision(state)?.day).toBe(14);
@@ -52,7 +52,7 @@ describe('v0.6 street principles', () => {
   });
 
   it('community-shares-risk strengthens repair and defense labor', () => {
-    let base = withResidents({ ...createV060InitialState(99104), day: 14 });
+    let base: GameState = withResidents({ ...createV060InitialState(99104), day: 14 });
     base = { ...base, socialState: { ...normalizeSocialState(base.socialState), principles: ['everyone-shares'] }, communityState: { ...base.communityState, supportMode: 'repair', lastSupportDay: 14 } };
     const repairBefore = communityRepairSupport(base);
     const defenseBefore = communityDefenseSupport({ ...base, communityState: { ...base.communityState, supportMode: 'defense' } });
@@ -62,7 +62,7 @@ describe('v0.6 street principles', () => {
   });
 
   it('outward-search raises expedition risk', () => {
-    let base = { ...createV060InitialState(99105), day: 7 };
+    let base: GameState = { ...createV060InitialState(99105), day: 7 };
     base = { ...base, dayAssignments: { 'lin-xia': 'expedition' }, dayState: { ...base.dayState, assignmentsLocked: true } };
     const before = expeditionRiskScore(base, ['lin-xia'], 'convenience-store');
     const chosen = choosePrinciple(base, 'outward-search');
@@ -70,7 +70,7 @@ describe('v0.6 street principles', () => {
   });
 
   it('triage-first reduces a critical stable-treatment cost to one medicine', () => {
-    let state = { ...createV060InitialState(99106), day: 7 };
+    let state: GameState = { ...createV060InitialState(99106), day: 7 };
     state = choosePrinciple(state, 'triage-first');
     state = {
       ...state,
@@ -83,7 +83,7 @@ describe('v0.6 street principles', () => {
   });
 
   it('core-leads adds +1 to actor-based night checks', () => {
-    let state = { ...createV060InitialState(99107), day: 14, socialState: { ...normalizeSocialState(undefined), principles: ['everyone-shares'] } };
+    let state: GameState = { ...createV060InitialState(99107), day: 14, socialState: { ...normalizeSocialState(undefined), principles: ['everyone-shares'] } };
     state = choosePrinciple(state, 'core-leads');
     const checked = createPendingCheck(state, { source: 'night', eventId: 'test', choiceId: 'act', label: '测试', actorId: 'lin-xia', mode: 'normal', modifiers: [] });
     expect(checked.pendingCheck?.modifiers).toContainEqual({ label: '原则·核心带头', value: 1 });
@@ -93,7 +93,7 @@ describe('v0.6 street principles', () => {
 describe('v0.6 location memory and building ecology', () => {
   it('turns prior location actions into a stable memory summary and risk modifier', () => {
     const base = createV060InitialState(99201);
-    const state = { ...base, storyFlags: [...base.storyFlags, 'visited:hospital', 'scouted:hospital', 'disturbed:hospital'] };
+    const state: GameState = { ...base, storyFlags: [...base.storyFlags, 'visited:hospital', 'scouted:hospital', 'disturbed:hospital'] };
     expect(locationMemory(state, 'hospital')).toMatchObject({ visited: true, scouted: true, disturbed: true });
     expect(locationMemoryRiskModifier(state, 'hospital')).toBe(0);
     expect(locationMemorySummary(state, 'hospital')).toEqual(expect.arrayContaining(['已侦察：后续风险降低', '已惊动：下次进入风险上升']));
@@ -101,21 +101,23 @@ describe('v0.6 location memory and building ecology', () => {
 
   it('lets cleared locations become safer', () => {
     const base = createV060InitialState(99202);
-    const cleared = { ...base, storyFlags: [...base.storyFlags, 'cleared:convenience-store'] };
+    const cleared: GameState = { ...base, storyFlags: [...base.storyFlags, 'cleared:convenience-store'] };
     expect(expeditionRiskScore(cleared, ['lin-xia'], 'convenience-store')).toBeLessThan(expeditionRiskScore(base, ['lin-xia'], 'convenience-store'));
   });
 
   it('workshop level 2 suppresses infrastructure failures in the night event ecology', () => {
-    const event = NIGHT_EVENTS.find((item) => item.id === 'generator-drop')!;
-    const base = { ...createV060InitialState(99203), mealState: { ...createV060InitialState(99203).mealState, quality: 'hot' as const }, dayAssignments: { zhou: 'repair' as const } };
-    const upgraded = { ...base, buildings: { ...base.buildings, workshop: 2 } };
+    const event = NORMAL_NIGHT_EVENTS.find((item) => item.id === 'generator-drop')!;
+    const seed = createV060InitialState(99203);
+    const base: GameState = { ...seed, mealState: { ...seed.mealState, quality: 'hot' }, dayAssignments: { zhou: 'repair' } };
+    const upgraded: GameState = { ...base, buildings: { ...base.buildings, workshop: 2 } };
     expect(nightEventWeight(upgraded, event)).toBeLessThan(nightEventWeight(base, event));
   });
 
   it('shelter level 2 suppresses panic-related events', () => {
-    const event = NIGHT_EVENTS.find((item) => item.id === 'emergency-panic')!;
-    const base = { ...createV060InitialState(99204), civilianResidents: 5, buildings: { ...createV060InitialState(99204).buildings, shelter: 1 } };
-    const upgraded = { ...base, buildings: { ...base.buildings, shelter: 2 } };
+    const event = NORMAL_NIGHT_EVENTS.find((item) => item.id === 'emergency-panic')!;
+    const seed = createV060InitialState(99204);
+    const base: GameState = { ...seed, civilianResidents: 5, buildings: { ...seed.buildings, shelter: 1 } };
+    const upgraded: GameState = { ...base, buildings: { ...base.buildings, shelter: 2 } };
     expect(nightEventWeight(upgraded, event)).toBeLessThan(nightEventWeight(base, event));
   });
 });
