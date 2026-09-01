@@ -36,7 +36,9 @@ function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEven
   if (!survivor || (survivor.condition !== 'serious' && survivor.condition !== 'critical')) return undefined;
   if (!state.storyFlags.includes(medicalCrisisFlag(survivorId))) return undefined;
   const critical = survivor.condition === 'critical';
-  const medicineCost = critical ? 2 : 1;
+  const expeditionCache = state.storyFlags.includes('medical_cache') || state.storyFlags.includes('antibiotic_stock');
+  const medicineCost = critical ? (expeditionCache ? 1 : 2) : 1;
+  const cacheText = expeditionCache ? '之前从医院/药店带回的储备让应急用药成本降低。' : '没有额外医疗储备可用。';
   return {
     id: `mortality-medical:${survivorId}`,
     category: 'emergency',
@@ -44,11 +46,11 @@ function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEven
     maxDay: 29,
     title: critical ? `${survivor.name}的伤口开始发黑` : `${survivor.name}的高烧没有退`,
     body: critical
-      ? `${survivor.name}已经${survivor.untreatedDays ?? 0}天没有得到有效治疗。呼吸变得很浅，伤口边缘出现了不正常的颜色。再拖下去，最坏的事情可能就在今晚发生。`
-      : `${survivor.name}的伤势一直没有真正处理。今晚体温突然升高，意识也开始断断续续。现在还来得及，但不能继续当作普通伤口。`,
+      ? `${survivor.name}已经${survivor.untreatedDays ?? 0}天没有得到有效治疗。呼吸变得很浅，伤口边缘出现了不正常的颜色。再拖下去，最坏的事情可能就在今晚发生。${cacheText}`
+      : `${survivor.name}的伤势一直没有真正处理。今晚体温突然升高，意识也开始断断续续。现在还来得及，但不能继续当作普通伤口。${cacheText}`,
     choices: [
       checked('mortality-treat', '立即组织治疗', '让医疗岗位现在处理。成功能把危险拉回来；严重失败可能让伤势彻底失控。', 'medical', { hope: 1 }, { hope: -2 }, { hope: 0 }),
-      resource('mortality-medicine', `使用 ${medicineCost} 份应急药品`, '不赌诊断，直接用最宝贵的药把人先稳定下来。', { medicine: medicineCost }, { hope: 1 }),
+      resource('mortality-medicine', `使用 ${medicineCost} 份应急药品`, expeditionCache ? '使用探索带回的医疗储备，不赌诊断，直接把人先稳定下来。' : '不赌诊断，直接用最宝贵的药把人先稳定下来。', { medicine: medicineCost }, { hope: 1 }),
       consequence('mortality-isolate', '隔离观察到天亮', critical ? '不再消耗药，但对危重伤员来说，这实际上是在赌他还能不能撑过今晚。' : '暂时不消耗资源，但伤势可能继续恶化成危重。', { hope: -2 }),
     ],
   };
