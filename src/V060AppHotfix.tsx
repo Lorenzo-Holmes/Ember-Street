@@ -52,7 +52,7 @@ const JOBS: Array<{ id: DayAssignment; label: string; note: string }> = [
 const CONDITION_LABEL: Record<SurvivorCondition, string> = {
   healthy: '健康', fatigued: '疲劳', minor: '轻伤', serious: '重伤', critical: '危重', missing: '失踪', dead: '死亡',
 };
-const SPECIALTY_LABEL: Record<string, string> = {
+export const SPECIALTY_LABEL: Record<string, string> = {
   search: '熟路',
   repair: '维修熟手',
   medical: '懂医',
@@ -67,21 +67,19 @@ const BUILDING_IDS = Object.keys(V060_BUILDINGS) as BuildingId[];
 const corePresent = (state: GameState) => state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').length;
 const population = (state: GameState) => corePresent(state) + state.civilianResidents;
 const mainLightLabel = (stage: number) => stage <= 0 ? '熄着' : stage === 1 ? '微亮' : stage === 2 ? '亮得很稳' : '照过街口';
-const buildingConditionLabel = (level: number) => BUILDING_CONDITION[Math.max(0, Math.min(3, level))];
-const mealCoverageLine = (coverage: number) => coverage >= 0.98
+export const buildingConditionLabel = (level: number) => BUILDING_CONDITION[Math.max(0, Math.min(3, level))];
+export const mealCoverageLine = (coverage: number) => coverage >= 0.98
   ? '今晚这锅能顾到所有人。'
   : coverage >= 0.8
     ? '今晚这锅能顾到大多数人。'
     : coverage >= 0.6
       ? '今晚会有人得少吃一点。'
       : '今晚这锅明显不够分。';
-const nightPreparationLine = (defense: number) => defense >= 70
+export const nightPreparationLine = (defense: '薄弱' | '一般' | '良好') => defense === '良好'
   ? '街口今晚看着还算稳。'
-  : defense >= 50
+  : defense === '一般'
     ? '门能撑，但夜里还得盯紧。'
-    : defense >= 35
-      ? '街口还有几个让人不放心的空当。'
-      : '今晚的门口太薄了。';
+    : '今晚的门口太薄了。';
 
 function initialRun(): GameState {
   const loaded = loadGame();
@@ -296,7 +294,7 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <ExpeditionStatus state={state} setState={setState}/>
       <CommunityPanel state={state} setState={setState}/>
       <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)}/>
-      {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/></>}
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
       {!state.dayState.assignmentsLocked && reviewingDispatch && <section className="v6-section">
         <div className="v6-section__head"><div><span>天快黑了</span><h2>最后再看一眼，今天每个人去了哪里</h2></div><small>{dispatch.manuallyAssigned} 人有安排 · {dispatch.autoResting} 人留下休息</small></div>
         <div className="v6-survivors">{dispatch.entries.map((entry) => <article className={`v6-survivor ${entry.unavailable || entry.committed ? 'is-unavailable' : ''}`} key={entry.survivorId}>
@@ -307,11 +305,12 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
         <button className="v6-cta" onClick={lock}>就这么定了</button>
         <button className="v6-link" onClick={() => setReviewingDispatch(false)}>← 再改一遍</button>
       </section>}
-      <MemorialPanel state={state}/>
       {!reviewingDispatch && <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>{mealCoverageLine(meal.coverage)}</small><small>约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{nightPreparationLine(prep.defense)}</strong><small>防线 {prep.defense} · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>}
       {!state.expeditionState.departed && !reviewingDispatch && (state.dayState.assignmentsLocked
         ? <button className="v6-cta" onClick={() => commit({ ...state, phase: 'dusk' }, setState)}>等天黑</button>
         : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={() => setReviewingDispatch(true)}>安排好了 <small>{assigned} 人有安排 · 其余人休息</small></button>)}
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && <BuildingsPanel state={state} setState={setState}/>}      
+      <MemorialPanel state={state}/>
       <p className="v6-message">{state.lastMessage}</p>
     </main>
   );
