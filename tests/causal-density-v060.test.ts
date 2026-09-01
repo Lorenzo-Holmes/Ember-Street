@@ -45,7 +45,7 @@ describe('v0.6 causal density', () => {
     const unwatched = nightEventWeight(base, event('gate-knocking'));
     const watched = nightEventWeight({ ...base, dayAssignments: { 'lin-xia': 'watch' } }, event('gate-knocking'));
     expect(unwatched).toBeGreaterThan(watched);
-    expect(nightCausalSignals(base).some((value) => value.includes('无人守备'))).toBe(true);
+    expect(nightCausalSignals(base).some((value) => value.includes('街口今晚没有专人盯着'))).toBe(true);
   });
 
   it('lets defense-focused residents partially cover an unstaffed watch shift', () => {
@@ -57,8 +57,8 @@ describe('v0.6 causal density', () => {
     expect(unsupported).toBeGreaterThan(residentCovered);
     expect(residentCovered).toBeGreaterThan(coreWatch);
     const signals = nightCausalSignals(community);
-    expect(signals.some((value) => value.includes('居民正在守备轮值'))).toBe(true);
-    expect(signals.some((value) => value.includes('无人守备'))).toBe(false);
+    expect(signals.some((value) => value.includes('居民已经排了轮值'))).toBe(true);
+    expect(signals.some((value) => value.includes('街口今晚没有专人盯着'))).toBe(false);
   });
 
   it('lets repair-focused residents partially cover infrastructure risk without replacing a specialist', () => {
@@ -70,8 +70,8 @@ describe('v0.6 causal density', () => {
     expect(unsupported).toBeGreaterThan(residentCovered);
     expect(residentCovered).toBeGreaterThan(coreRepair);
     const signals = nightCausalSignals(community);
-    expect(signals.some((value) => value.includes('居民正在维修轮值'))).toBe(true);
-    expect(signals.some((value) => value.includes('无人维修'))).toBe(false);
+    expect(signals.some((value) => value.includes('有人会帮着递工具'))).toBe(true);
+    expect(signals.some((value) => value.includes('修车铺今晚是空的'))).toBe(false);
   });
 
   it('makes ration conflict more likely after poor meals', () => {
@@ -91,7 +91,7 @@ describe('v0.6 causal density', () => {
       mealState: { ...initial.mealState, quality: 'struggling', consecutiveShortageDays: 2 },
       dayAssignments: { 'lin-xia': 'cook', zhou: 'cook', ahe: 'cook' },
     };
-    expect(nightCausalSignals(yesterdayHungry).some((value) => value.includes('供餐不足'))).toBe(false);
+    expect(nightCausalSignals(yesterdayHungry).some((value) => value.includes('锅里的东西不太够'))).toBe(false);
 
     const tonightHungry: GameState = {
       ...initial,
@@ -99,7 +99,7 @@ describe('v0.6 causal density', () => {
       mealState: { ...initial.mealState, quality: 'well-fed', consecutiveShortageDays: 0 },
       dayAssignments: { 'lin-xia': 'watch', zhou: 'repair', ahe: 'rest' },
     };
-    expect(nightCausalSignals(tonightHungry).some((value) => value.includes('今晚供餐不足'))).toBe(true);
+    expect(nightCausalSignals(tonightHungry).some((value) => value.includes('锅里的东西不太够'))).toBe(true);
   });
 
   it('queues a medical crisis before untreated serious injuries can become fatal', () => {
