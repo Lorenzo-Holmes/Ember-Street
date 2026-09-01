@@ -52,11 +52,36 @@ const JOBS: Array<{ id: DayAssignment; label: string; note: string }> = [
 const CONDITION_LABEL: Record<SurvivorCondition, string> = {
   healthy: '健康', fatigued: '疲劳', minor: '轻伤', serious: '重伤', critical: '危重', missing: '失踪', dead: '死亡',
 };
+const SPECIALTY_LABEL: Record<string, string> = {
+  search: '熟路',
+  repair: '维修熟手',
+  medical: '懂医',
+  watch: '守夜熟手',
+  cook: '会做饭',
+  radio: '懂广播',
+  rest: '能补位',
+};
+const BUILDING_CONDITION = ['还没收拾', '刚能用', '收拾得像样', '已经很稳'] as const;
 const RESULT_LABEL = { perfect: '完美守住', held: '守住', damaged: '严重受损', breached: '街区失守' } as const;
 const BUILDING_IDS = Object.keys(V060_BUILDINGS) as BuildingId[];
 const corePresent = (state: GameState) => state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').length;
 const population = (state: GameState) => corePresent(state) + state.civilianResidents;
 const mainLightLabel = (stage: number) => stage <= 0 ? '熄着' : stage === 1 ? '微亮' : stage === 2 ? '亮得很稳' : '照过街口';
+const buildingConditionLabel = (level: number) => BUILDING_CONDITION[Math.max(0, Math.min(3, level))];
+const mealCoverageLine = (coverage: number) => coverage >= 0.98
+  ? '今晚这锅能顾到所有人。'
+  : coverage >= 0.8
+    ? '今晚这锅能顾到大多数人。'
+    : coverage >= 0.6
+      ? '今晚会有人得少吃一点。'
+      : '今晚这锅明显不够分。';
+const nightPreparationLine = (defense: number) => defense >= 70
+  ? '街口今晚看着还算稳。'
+  : defense >= 50
+    ? '门能撑，但夜里还得盯紧。'
+    : defense >= 35
+      ? '街口还有几个让人不放心的空当。'
+      : '今晚的门口太薄了。';
 
 function initialRun(): GameState {
   const loaded = loadGame();
@@ -143,10 +168,10 @@ function CommunityPanel({ state, setState }: { state: GameState; setState: (stat
     <section className="v6-section">
       <div className="v6-section__head"><div><span>街里的人手</span><h2>{summary.activeResidents} 人已经能搭把手 · {summary.pendingResidents} 人还没缓过来</h2></div><small>{summary.unlocked ? `今天大家在帮：${summary.supportModeLabel}` : '等人手再多一点，才轮得开'}</small></div>
       <section className="v6-preview">
-        <div><span>后勤</span><strong>炊事 +{summary.cookingCapacity.toFixed(1)}</strong><small>饭馆里有人帮着洗、切、分餐。</small></div>
-        <div><span>维修</span><strong>防线 +{summary.repairDefense}</strong><small>搬铁皮、递工具、堵住松开的缝。</small></div>
-        <div><span>守备</span><strong>夜间风险 -{Math.round(summary.nightRiskReduction * 100)}%</strong><small>门口多一双眼睛，夜里就少一点空当。</small></div>
-        <div><span>医疗辅助</span><strong>+{summary.medicalAssist}</strong><small>诊所能腾出手照看轻伤的人。</small></div>
+        <div><span>饭馆</span><strong>{summary.cookingCapacity > 0 ? `能多顾到约 ${summary.cookingCapacity.toFixed(1)} 人份` : '还腾不出额外人手'}</strong><small>有人帮着洗、切、分餐，锅里的东西更容易顾全。</small></div>
+        <div><span>修补</span><strong>{summary.repairDefense > 0 ? '今晚能多补一轮薄弱处' : '今天还轮不开额外修补'}</strong><small>{summary.repairDefense > 0 ? `防线 +${summary.repairDefense} · ` : ''}搬铁皮、递工具、堵住松开的缝。</small></div>
+        <div><span>街口</span><strong>{summary.nightRiskReduction > 0 ? '夜里的岗能轮得更开' : '今晚还是得靠原来的人盯着'}</strong><small>{summary.nightRiskReduction > 0 ? `夜间风险 -${Math.round(summary.nightRiskReduction * 100)}% · ` : ''}门口多一双眼睛，就少一点没人看见的空当。</small></div>
+        <div><span>诊所</span><strong>{summary.medicalAssist > 0 ? `能多照看 ${summary.medicalAssist} 个轻伤的人` : '还腾不出额外照护人手'}</strong><small>有人递药、换水、看着轻伤，懂医的人才能把手留给更重的伤。</small></div>
       </section>
       {summary.unlocked && <div className="v6-job-grid">
         {(['logistics', 'repair', 'defense'] as const).map((mode) => <button key={mode} className={summary.supportMode === mode ? 'active' : ''} disabled={state.dayState.assignmentsLocked} onClick={() => commit(selectCommunitySupportMode(state, mode), setState)}>{mode === 'logistics' ? '去饭馆搭手' : mode === 'repair' ? '帮着修补' : '去街口轮值'}</button>)}
@@ -166,10 +191,10 @@ function BuildingsPanel({ state, setState }: { state: GameState; setState: (stat
         const check = canUpgradeBuilding(state, id);
         return (
           <article className="v6-building-card" key={id}>
-            <div><span>{definition.name}</span><b>Lv{level}</b></div>
+            <div><span>{definition.name}</span><b>{buildingConditionLabel(level)}</b></div>
             <h3>{level ? definition.levels[level - 1].title : '还没收拾'}</h3>
             <p>{level ? definition.levels[level - 1].unlock : '现在只剩一副空架子。收拾出来，天黑前也许能派上用场。'}</p>
-            {next ? <><small>还缺：材料 {next.materials} · 零件 {next.parts}</small><button disabled={!check.allowed || state.dayState.assignmentsLocked} onClick={() => commit(upgradeBuilding(state, id), setState)}>{state.dayState.assignmentsLocked ? '今天的人手已经定了' : check.allowed ? `${level === 0 ? '把这里收拾出来' : '继续加固'} · Lv${next.level}` : check.reason}</button></> : <strong className="v6-max">已经收拾到头了</strong>}
+            {next ? <><small>还缺：材料 {next.materials} · 零件 {next.parts}</small><button disabled={!check.allowed || state.dayState.assignmentsLocked} onClick={() => commit(upgradeBuilding(state, id), setState)}>{state.dayState.assignmentsLocked ? '今天的人手已经定了' : check.allowed ? `${level === 0 ? '把这里收拾出来' : '继续加固'} · ${buildingConditionLabel(next.level)}` : check.reason}</button></> : <strong className="v6-max">已经收拾到头了</strong>}
           </article>
         );
       })}</div>
@@ -220,7 +245,7 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
         return (
           <article className={`v6-survivor ${unavailable || committed ? 'is-unavailable' : ''}`} key={survivor.id}>
             <div className="v6-survivor__top"><div><h3>{survivor.name}</h3><span>{committed ? '今天已经忙过一趟了' : survivor.trait ?? survivor.perk}</span></div><div><b>{survivor.energy}</b><small>精力</small></div></div>
-            <div className="v6-survivor__status"><span>{CONDITION_LABEL[condition]}</span><span>信任 {survivor.trust ?? 0}</span><span>{survivor.specialty}</span></div>
+            <div className="v6-survivor__status"><span>{CONDITION_LABEL[condition]}</span><span>信任 {survivor.trust ?? 0}</span><span>{SPECIALTY_LABEL[survivor.specialty] ?? '能搭把手'}</span></div>
             <div className="v6-job-grid">{JOBS.map((job) => {
               const availability = canTakeDayAssignment(state, survivor.id, job.id);
               const extraLimit = job.id === 'expedition' && current !== 'expedition' && expeditionCount >= 2;
@@ -271,19 +296,19 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <ExpeditionStatus state={state} setState={setState}/>
       <CommunityPanel state={state} setState={setState}/>
       <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)}/>
-      {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/></>}
       {!state.dayState.assignmentsLocked && reviewingDispatch && <section className="v6-section">
         <div className="v6-section__head"><div><span>天快黑了</span><h2>最后再看一眼，今天每个人去了哪里</h2></div><small>{dispatch.manuallyAssigned} 人有安排 · {dispatch.autoResting} 人留下休息</small></div>
         <div className="v6-survivors">{dispatch.entries.map((entry) => <article className={`v6-survivor ${entry.unavailable || entry.committed ? 'is-unavailable' : ''}`} key={entry.survivorId}>
           <div className="v6-survivor__top"><div><h3>{entry.name}</h3><span>{entry.automatic ? '今天没人叫他/她出门' : entry.committed ? '今天已经忙过一趟了' : '今天就去这里'}</span></div><div><b>{entry.label}</b><small>{entry.unavailable ? '去不了' : entry.automatic ? '留下' : '定了'}</small></div></div>
         </article>)}</div>
-        <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>能顾到 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{prep.defense}</strong><small>出门 {dispatch.expeditionCount} 人 · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>
+        <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>{mealCoverageLine(meal.coverage)}</small><small>约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{nightPreparationLine(prep.defense)}</strong><small>防线 {prep.defense} · 出门 {dispatch.expeditionCount} 人 · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>
         <p className="v6-message">没人安排的，就留在屋里歇一歇。出去搜索的人会先去挑今天要走的路；没有人出门，就直接等天黑。</p>
         <button className="v6-cta" onClick={lock}>就这么定了</button>
         <button className="v6-link" onClick={() => setReviewingDispatch(false)}>← 再改一遍</button>
       </section>}
       <MemorialPanel state={state}/>
-      {!reviewingDispatch && <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>能顾到 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{prep.defense}</strong><small>诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>}
+      {!reviewingDispatch && <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>{mealCoverageLine(meal.coverage)}</small><small>约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{nightPreparationLine(prep.defense)}</strong><small>防线 {prep.defense} · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>}
       {!state.expeditionState.departed && !reviewingDispatch && (state.dayState.assignmentsLocked
         ? <button className="v6-cta" onClick={() => commit({ ...state, phase: 'dusk' }, setState)}>等天黑</button>
         : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={() => setReviewingDispatch(true)}>安排好了 <small>{assigned} 人有安排 · 其余人休息</small></button>)}
@@ -371,7 +396,7 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
     <main className="v6-shell v6-shell--dusk">
       <header className="v6-page-head"><span>DUSK · DAY {state.day}</span><h1>太阳快下去了。</h1><p>门已经开始上闩。谁还在街外、哪扇窗没钉死、锅里够不够——现在都看得清了。</p></header>
       <InventoryBar state={state}/>
-      <section className="v6-dusk-grid"><article><span>今晚吃什么</span><h2>{mealLabel(meal.quality)}</h2><p>街里 {meal.residentCount} 人 · 能顾到 {meal.cookingCapacity.toFixed(1)} 人份 · 覆盖 {Math.round(meal.coverage * 100)}%</p><strong>明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong></article><article><span>入夜前</span><h2>{prep.defense}</h2><p>诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</p><strong>门口多一个人，屋里多一盏灯，夜里就少一个空当。</strong></article></section>
+      <section className="v6-dusk-grid"><article><span>今晚吃什么</span><h2>{mealLabel(meal.quality)}</h2><p>{mealCoverageLine(meal.coverage)}</p><small>约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 覆盖 {Math.round(meal.coverage * 100)}%</small><strong>明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong></article><article><span>入夜前</span><h2>{nightPreparationLine(prep.defense)}</h2><p>防线 {prep.defense} · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</p><strong>门口多一个人，屋里多一盏灯，夜里就少一个空当。</strong></article></section>
       {!!causalSignals.length && <section className="v6-section"><div className="v6-section__head"><div><span>入夜前的几句话</span><h2>有些麻烦，白天就已经露了头</h2></div></div>{causalSignals.map((signal) => <p key={signal}>• {signal}</p>)}</section>}
       <button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>天黑了</button>
       {!committed ? <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 还有时间，重新安排</button> : <p className="v6-message">今天已经有人出过街，现在没法把这一天重新来过。</p>}
