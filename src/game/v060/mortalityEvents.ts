@@ -41,10 +41,10 @@ function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEven
   const criticalDiscount = expeditionCache || triageFirst;
   const medicineCost = critical ? (criticalDiscount ? 1 : 2) : 1;
   const supportText = expeditionCache
-    ? '之前从医院/药店带回的储备让应急用药成本降低。'
+    ? '之前从医院和药店搬回来的药还封在诊疗站最里面。'
     : triageFirst
-      ? '街区原则“先救最危险的人”把有限药品优先留给危重伤员。'
-      : '没有额外医疗储备可用。';
+      ? '之前已经说清楚过：药不够时，先留给最危险的人。'
+      : '药柜里没有能额外顶上来的储备。';
   return {
     id: `mortality-medical:${survivorId}`,
     category: 'emergency',
@@ -52,12 +52,12 @@ function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEven
     maxDay: 29,
     title: critical ? `${survivor.name}的伤口开始发黑` : `${survivor.name}的高烧没有退`,
     body: critical
-      ? `${survivor.name}已经${survivor.untreatedDays ?? 0}天没有得到有效治疗。呼吸变得很浅，伤口边缘出现了不正常的颜色。再拖下去，最坏的事情可能就在今晚发生。${supportText}`
-      : `${survivor.name}的伤势一直没有真正处理。今晚体温突然升高，意识也开始断断续续。现在还来得及，但不能继续当作普通伤口。${supportText}`,
+      ? `${survivor.name}已经${survivor.untreatedDays ?? 0}天没有得到有效治疗。呼吸很浅，伤口边缘正在变色。程医生把灯拉近以后没有再说“等到早上”。${supportText}`
+      : `${survivor.name}的伤一直没有真正处理。今晚体温突然升高，回答问题时也开始断断续续。程医生已经把药箱和水放到床边。${supportText}`,
     choices: [
-      checked('mortality-treat', '立即组织治疗', '让医疗岗位现在处理。成功能把危险拉回来；严重失败可能让伤势彻底失控。', 'medical', { hope: 1 }, { hope: -2 }, { hope: 0 }),
-      resource('mortality-medicine', `使用 ${medicineCost} 份应急药品`, criticalDiscount ? '利用已经建立的医疗优先级或储备，不赌诊断，直接把人先稳定下来。' : '不赌诊断，直接用最宝贵的药把人先稳定下来。', { medicine: medicineCost }, { hope: 1 }),
-      consequence('mortality-isolate', '隔离观察到天亮', critical ? '不再消耗药，但对危重伤员来说，这实际上是在赌他还能不能撑过今晚。' : '暂时不消耗资源，但伤势可能继续恶化成危重。', { hope: -2 }),
+      checked('mortality-treat', '立即组织治疗', '让医疗岗位现在动手清创、降温和处理伤口；拖延的时间已经不多。', 'medical', { hope: 1 }, { hope: -2 }, { hope: 0 }),
+      resource('mortality-medicine', `使用 ${medicineCost} 份应急药品`, criticalDiscount ? '把之前留下的应急药拿出来，先压住高烧和伤口恶化。' : '把药柜里最宝贵的那几份拿出来，先压住高烧和伤口恶化。', { medicine: medicineCost }, { hope: 1 }),
+      consequence('mortality-isolate', '隔离观察到天亮', critical ? '今晚不再动药。已经危重的人，很可能等不到天亮。' : '先把人单独安置，不再处理伤口；到天亮前情况还可能继续往坏处走。', { hope: -2 }),
     ],
   };
 }
@@ -71,11 +71,11 @@ function lowHopeEvent(state: GameState, survivorId: string): V060NightEvent | un
     minDay: 6,
     maxDay: 29,
     title: `${survivor.name}把东西装进了包里`,
-    body: `希望已经降得很低。${survivor.name}说自己不是要背叛谁，只是不相信继续留在这里还能等到下一次天亮。门就在旁边，现在必须决定要不要留下这个人。`,
+    body: `${survivor.name}把能带走的东西都塞进包里，说自己已经连续几晚睡不着，也不相信下一次天亮会比今天更好。门就在旁边。`,
     choices: [
-      checked('mortality-talk', '坐下来把话说开', '让最会照顾人的人陪他/她把这一夜谈完。失败的话，对方可能直接离开。', 'cook', { hope: 2 }, { hope: -2 }, { hope: 0 }),
-      resource('mortality-support', '分出食物和休息名额', '给一个看得见的理由，让他/她至少再留下几天。', { ration: 2 }, { hope: 2 }),
-      consequence('mortality-leave', '不阻拦', '不消耗任何资源。天亮前，这个人会离开余烬长街，并进入失踪状态。', { hope: -1 }),
+      checked('mortality-talk', '坐下来把话说开', '让最会照顾人的人陪着坐一会儿，把想走的理由一件件听完。', 'cook', { hope: 2 }, { hope: -2 }, { hope: 0 }),
+      resource('mortality-support', '分出食物和休息名额', '把两份口粮和一个真正能睡觉的位置留出来，告诉对方明天不用再硬撑岗位。', { ration: 2 }, { hope: 2 }),
+      consequence('mortality-leave', '不阻拦', '不给食物，也不拦门。天亮前，这个人会离开余烬长街，之后只能再去找。', { hope: -1 }),
     ],
   };
 }
