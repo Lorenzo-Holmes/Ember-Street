@@ -1,6 +1,7 @@
 import { canTrustReroll, OUTCOME_LABEL, rerollLowestDie, rollPendingCheck } from './game/dice';
 import { saveGame } from './game/storage';
 import type { GameState } from './game/types';
+import { effectiveNightChoiceCostLabel, enhanceFinalHordePreview } from './game/v060/day29Comprehension';
 import { nightChoicePreview } from './game/v060/decisionReadability';
 import {
   canAffordNightChoice,
@@ -24,18 +25,6 @@ const CATEGORY_LABEL = {
 function commit(next: GameState, setState: (state: GameState) => void) {
   saveGame(next, true);
   setState(next);
-}
-
-function costLabel(cost: Parameters<typeof canAffordNightChoice>[1]['cost']): string {
-  if (!cost) return '';
-  const parts = [
-    cost.ration ? `口粮 -${cost.ration}` : '',
-    cost.medicine ? `药品 -${cost.medicine}` : '',
-    cost.materials ? `材料 -${cost.materials}` : '',
-    cost.parts ? `零件 -${cost.parts}` : '',
-    cost.power ? `电力 -${cost.power}` : '',
-  ].filter(Boolean);
-  return parts.join(' · ');
 }
 
 function DicePanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
@@ -231,8 +220,8 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
         <div className="v060-choices">
           {event.choices.map((choice, index) => {
             const affordable = canAffordNightChoice(state, choice);
-            const cost = costLabel(choice.cost);
-            const preview = nightChoicePreview(state, event, choice);
+            const cost = effectiveNightChoiceCostLabel(state, choice);
+            const preview = enhanceFinalHordePreview(state, event, choice, nightChoicePreview(state, event, choice));
 
             return (
               <button
