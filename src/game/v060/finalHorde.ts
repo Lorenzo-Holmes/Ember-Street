@@ -50,79 +50,79 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
   {
     id: 'final-horde-north-gate', category: 'horde', minDay: 29, maxDay: 29,
     title: '第一阶段 · 北门',
-    body: '第一波尸群没有试探。它们直接撞向北门。守夜岗、围栏和居民轮值现在一起接受过去二十八天的第一次检验。',
+    body: '第一波尸群没有试探。它们直接撞向北门。现在要决定的是谁去顶、要不要把库存压上去，还是主动把防线收短。',
     choices: [
-      checked('final-gate-hold', '带人顶住北门', '让守备人物站到最前面。守夜岗、居民守备与人物状态都会进入判定。', 'watch',
-        { defense: 8, hope: 2, addFlags: ['final_gate_held'] },
+      checked('final-gate-hold', '带人顶住北门', '把人放在最前面。守夜岗、居民轮值和人物状态都会进入判定，守住了最省库存，失手也最伤人。', 'watch',
+        { defense: 7, hope: 1, addFlags: ['final_gate_held'] },
         { defense: 2, addFlags: ['final_gate_strained'] },
-        { defense: -12, hope: -2, actorCondition: 'minor', addFlags: ['final_gate_buckled'] }),
-      resource('final-gate-reinforce', '把最后的材料压上去', '不赌人物状态，直接消耗材料和零件把门撑住。', { materials: 5, parts: 2 }, { defense: 6, addFlags: ['final_gate_reinforced'] }),
-      consequence('final-gate-fallback', '放掉北门外沿', '保存人手，但把第一道防线交出去。', { defense: -10, hope: -2, addFlags: ['final_gate_abandoned'] }),
+        { defense: -9, hope: -2, actorCondition: 'minor', addFlags: ['final_gate_buckled'] }),
+      resource('final-gate-reinforce', '把材料压到门上', '用木料、铁件和备件换一个不靠投骰的硬支撑。准备过北仓库物资时，实际消耗会更低。', { materials: 4, parts: 1 }, { defense: 9, addFlags: ['final_gate_reinforced'] }),
+      consequence('final-gate-fallback', '把防线收进第二道障碍', '主动放掉最外面的几米，把人撤进更窄的街口。少守一段墙，也少让一个人暴露在门外。', { defense: -2, hope: 2, addFlags: ['final_gate_abandoned'] }),
     ],
   },
   {
     id: 'final-horde-power-grid', category: 'horde', minDay: 29, maxDay: 29,
     title: '第二阶段 · 主灯熄灭',
-    body: '撞击让主灯线路跳闸。黑暗正在沿街区扩散；工坊、备用零件和你曾经带回来的设备现在比任何口号都重要。',
+    body: '撞击让主灯线路跳闸。工坊里还有备件，老线路也还能抢修；另一种办法，是干脆熄掉外围，把电留给最不能黑的地方。',
     choices: [
-      checked('final-grid-repair', '在黑暗里抢修', '让维修人物处理主线路。工坊等级与过去找到的设备零件会改变判定。', 'repair',
-        { power: 12, defense: 4, addFlags: ['final_grid_restored'] },
-        { power: 5, addFlags: ['final_grid_unstable'] },
-        { power: -12, defense: -6, actorCondition: 'minor', addFlags: ['final_grid_failed'] }),
-      resource('final-grid-parts', '直接换掉烧毁的组件', '支付零件换取稳定恢复，不进行判定。', { parts: 4 }, { power: 12, defense: 2, addFlags: ['final_grid_replaced'] }),
-      consequence('final-grid-dark', '关掉半条街的灯', '不继续抢修，把有限电力留给诊疗和最后防线。', { power: -8, defense: -5, addFlags: ['final_grid_darkened'] }),
+      checked('final-grid-repair', '在黑暗里抢修', '让维修的人摸着发热的线路把主灯重新接回来。成功省零件，失败会把人和线路一起拖进更糟的状态。', 'repair',
+        { power: 10, defense: 3, addFlags: ['final_grid_restored'] },
+        { power: 4, addFlags: ['final_grid_unstable'] },
+        { power: -8, defense: -4, actorCondition: 'minor', addFlags: ['final_grid_failed'] }),
+      resource('final-grid-parts', '整组换掉烧毁组件', '直接拿备件换掉最危险的一段。过去带回发电机或车辆部件时，这一步会少吃一点库存。', { parts: 3 }, { power: 18, defense: 4, addFlags: ['final_grid_replaced'] }),
+      consequence('final-grid-dark', '熄掉外围，只保主灯和诊疗', '不追求把整条街重新点亮。黑处更难守，但省下来的电能继续撑住诊疗和最后一线。', { power: 8, defense: -2, addFlags: ['final_grid_darkened'] }),
     ],
   },
   {
     id: 'final-horde-clinic', category: 'horde', minDay: 29, maxDay: 29,
     title: '第三阶段 · 伤员涌进诊疗站',
-    body: '围栏后的伤员开始挤满诊疗角。医院和药店里带回来的东西、诊疗站等级以及过去选择的医疗原则，现在都会直接决定谁还能站起来。',
+    body: '围栏后的伤员开始挤满诊疗角。今晚没有“都照顾好”这种选项：要靠程医生分诊，要打开药箱，或者先让还能走的人回到防线上。',
     choices: [
-      checked('final-clinic-triage', '让医疗人员连续分诊', '进行医疗判定。医疗缓存会给判定提供额外优势，成功后会真实改善一名最重伤员。', 'medical',
+      checked('final-clinic-triage', '让医疗人员连续分诊', '把最危险的人先挑出来。成功会真实改善一名重伤员，失败则会把最宝贵的时间耗在拥挤里。', 'medical',
         { hope: 4, addFlags: ['final_clinic_triaged'] },
         { hope: 1, addFlags: ['final_clinic_stretched'] },
-        { hope: -4, addFlags: ['final_clinic_overwhelmed'] }),
-      resource('final-clinic-supplies', '打开应急药品储备', '稳定处理一批伤员。医疗原则与探索得到的医疗缓存会降低实际药品消耗。', { medicine: 3 }, { hope: 3, addFlags: ['final_clinic_supplied'] }),
-      consequence('final-clinic-delay', '只处理能马上回到防线的人', '不额外消耗药品，但伤员和居民会记住这个决定。', { hope: -5, defense: 2, addFlags: ['final_clinic_delayed'] }),
+        { hope: -3, addFlags: ['final_clinic_overwhelmed'] }),
+      resource('final-clinic-supplies', '打开应急药箱', '不赌时间窗口，直接用药品压住最危险的两个人。过去找到的医疗储备和分诊原则会降低实际消耗。', { medicine: 2 }, { hope: 4, addFlags: ['final_clinic_supplied'] }),
+      consequence('final-clinic-delay', '先处理能立刻回防线的人', '把还能站起来的人先包扎好送回去。防线会多几双手，但躺着的人会听见这个决定。', { hope: -3, defense: 5, addFlags: ['final_clinic_delayed'] }),
     ],
   },
   {
     id: 'final-horde-community', category: 'horde', minDay: 29, maxDay: 29,
     title: '第四阶段 · 街区开始慌乱',
-    body: '真正让队伍变乱的不是尸群，而是哭声和“门是不是要破了”的传言。你救回来的居民此刻既可能成为负担，也可能成为维持秩序的人。',
+    body: '真正让队伍散掉的不是尸群，而是哭声和“门是不是要破了”的传言。这里可以靠人心、靠储备，也可以把能动的人全部赶去守线。',
     choices: [
-      checked('final-community-calm', '把所有人重新组织起来', '由炊事岗位稳住人群。居民规模、街区压力和过去兑现过的承诺都会影响判定。', 'cook',
-        { hope: 6, defense: 2, addFlags: ['final_community_rallied'] },
+      checked('final-community-calm', '把所有人重新组织起来', '由熟悉大家的人重新排位置、找孩子、点人数。过去兑现的承诺越多，这句话越有人听。', 'cook',
+        { hope: 5, defense: 1, addFlags: ['final_community_rallied'] },
         { hope: 2, addFlags: ['final_community_held'] },
-        { hope: -6, defense: -3, addFlags: ['final_community_panicked'] }),
-      resource('final-community-rations', '把储备口粮分下去', '用口粮换取一个无需投骰的稳定窗口。', { ration: 5 }, { hope: 5, addFlags: ['final_community_fed'] }),
-      consequence('final-community-ignore', '让能行动的人全部去守线', '不消耗口粮，但社区秩序会明显恶化。', { hope: -7, defense: 3, addFlags: ['final_community_ignored'] }),
+        { hope: -4, defense: -2, addFlags: ['final_community_panicked'] }),
+      resource('final-community-rations', '把储备口粮分下去', '让所有人先拿到一点热的和能带在身上的东西。昂贵，但不需要谁在最乱的时候说服所有人。', { ration: 4 }, { hope: 6, addFlags: ['final_community_fed'] }),
+      consequence('final-community-ignore', '让能行动的人全部去守线', '把秩序换成战力。前线立刻多出人手，但有人会在混乱里掉队，街里也会记住这一夜。', { hope: -3, defense: 8, addFlags: ['final_community_ignored'] }),
     ],
   },
   {
     id: 'final-horde-reroute', category: 'horde', minDay: 29, maxDay: 29,
     title: '第五阶段 · 尸群从侧街绕后',
-    body: '正面压力稍退，侧街却传来新的撞击声。地铁维修图、公交路线、医院观察路线和搜索站里积累的情报，现在终于变成一条具体的退路。',
+    body: '正面压力稍退，侧街却传来新的撞击声。过去画下的路线可以拿来赌一次判断，也可以把巷口封死，或者主动开一条口子把人和尸群分开。',
     choices: [
-      checked('final-route-scout', '按旧情报带人改线', '由探索人物判断尸群路线。已知撤离路线和“准备撤离”原则会提供明显加成。', 'search',
-        { defense: 9, hope: 2, addFlags: ['final_route_outmaneuvered'] },
+      checked('final-route-scout', '按旧情报带人改线', '让熟悉路线的人判断尸群真正会从哪里进来。情报准备得越完整，这个选择越强。', 'search',
+        { defense: 8, hope: 1, addFlags: ['final_route_outmaneuvered'] },
         { defense: 3, addFlags: ['final_route_delayed'] },
-        { defense: -10, actorCondition: 'minor', addFlags: ['final_route_missed'] }),
-      resource('final-route-barricade', '封死两条侧巷', '支付材料与零件，把路线问题直接变成一道墙。', { materials: 4, parts: 2 }, { defense: 6, addFlags: ['final_route_barricaded'] }),
-      consequence('final-route-stand', '不再移动阵地', '保存物资，但侧翼必须硬吃尸群压力。', { defense: -11, hope: -2, addFlags: ['final_route_stood_ground'] }),
+        { defense: -8, actorCondition: 'minor', addFlags: ['final_route_missed'] }),
+      resource('final-route-barricade', '封死两条侧巷', '把材料和零件变成两道一次性的墙。没有漂亮的判断，但能买到一段确定的时间。', { materials: 3, parts: 1 }, { defense: 8, addFlags: ['final_route_barricaded'] }),
+      consequence('final-route-stand', '打开东侧通道，把人撤到内街', '不跟尸群争每一米，把居民往内街送，留下一个口子让压力泄出去。外层会丢，但人群不至于全挤在一处。', { defense: -3, hope: 3, addFlags: ['final_route_stood_ground'] }),
     ],
   },
   {
     id: 'final-horde-last-line', category: 'horde', minDay: 29, maxDay: 29,
     title: '第六阶段 · 最后一条线',
-    body: '天边已经有一点发白。所有还能站着的人都知道这是最后一轮：建筑、居民、原则、承诺、探索情报和北仓库带回的东西，会一起决定这条街有没有明天。',
+    body: '天边已经有一点发白。现在的选择不再只是“赢得更多”：要么拿所有还能站的人去赌这条街，要么烧掉最后库存，要么承认外层守不住，先把人带进去。',
     choices: [
-      checked('final-last-hold', '所有还能站的人一起守住', '最终守线判定会读取北仓库物资、守街原则、社区规模与此前承诺记录。', 'watch',
-        { defense: 12, hope: 4, addFlags: ['final_last_line_held'] },
-        { defense: 4, hope: 1, addFlags: ['final_last_line_barely'] },
-        { defense: -16, hope: -5, actorCondition: 'serious', addFlags: ['final_last_line_broken'] }),
-      resource('final-last-stockpile', '把最后的建材和零件全部用掉', '用库存换一个稳定结果；北仓库的最终防护物资会显著降低实际消耗。', { materials: 8, parts: 4 }, { defense: 11, hope: 2, addFlags: ['final_last_line_fortified'] }),
-      consequence('final-last-retreat', '退到街区最里面', '保住一部分人，但主动放弃已经经营了二十九天的外层街区。', { defense: -18, hope: -7, addFlags: ['final_last_line_retreated'] }),
+      checked('final-last-hold', '所有还能站的人一起守住', '这是最强、也最危险的人力方案。过去二十八天积累的人、原则、承诺和北仓库准备都会压到这一次判定上。', 'watch',
+        { defense: 10, hope: 3, addFlags: ['final_last_line_held'] },
+        { defense: 3, hope: 1, addFlags: ['final_last_line_barely'] },
+        { defense: -12, hope: -3, actorCondition: 'serious', addFlags: ['final_last_line_broken'] }),
+      resource('final-last-stockpile', '把最后的建材和零件全部用掉', '不用任何人去赌最后一次失手，把仓房能钉、能焊、能顶住门的东西全部搬出来。', { materials: 6, parts: 3 }, { defense: 13, hope: 2, addFlags: ['final_last_line_fortified'] }),
+      consequence('final-last-retreat', '退进内街，先把人保住', '主动承认外层守不住。少守一段街，也少让一个人去赌最后一次失手。', { defense: -5, hope: 1, addFlags: ['final_last_line_retreated'] }),
     ],
   },
 ];
@@ -144,10 +144,20 @@ export function finalHordeStageNumber(eventId: string | null | undefined): numbe
 export function effectiveFinalHordeChoice(state: GameState, choice: NightChoice): NightChoice {
   if (!choice.cost) return choice;
   const cost = { ...choice.cost };
+  if (choice.id === 'final-gate-reinforce' && state.storyFlags.includes('final_horde_supplies')) {
+    cost.materials = Math.max(1, (cost.materials ?? 0) - 1);
+    cost.parts = Math.max(0, (cost.parts ?? 0) - 1);
+  }
+  if (choice.id === 'final-grid-parts' && (state.storyFlags.includes('generator_backup') || state.storyFlags.includes('working_vehicle_parts'))) {
+    cost.parts = Math.max(1, (cost.parts ?? 0) - 1);
+  }
   if (choice.id === 'final-clinic-supplies') {
     const discount = (hasPrinciple(state, 'triage-first') ? 1 : 0)
       + (state.storyFlags.includes('medical_cache') || state.storyFlags.includes('antibiotic_stock') ? 1 : 0);
     cost.medicine = Math.max(1, (cost.medicine ?? 0) - discount);
+  }
+  if (choice.id === 'final-route-barricade' && state.storyFlags.includes('subway_maintenance_map')) {
+    cost.materials = Math.max(1, (cost.materials ?? 0) - 1);
   }
   if (choice.id === 'final-last-stockpile' && state.storyFlags.includes('final_horde_supplies')) {
     cost.materials = Math.max(0, (cost.materials ?? 0) - 3);
