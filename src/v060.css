@@ -1,5 +1,5 @@
 /* =====================================================
-   EMBER STREET v0.6.0 — VISUAL OVERHAUL 2.1 (ITERATION 2)
+   EMBER STREET v0.6.0 — VISUAL OVERHAUL 2.2
    "黑夜吞没城市，而这条街还有灯亮着。"
    ===================================================== */
 
@@ -895,6 +895,7 @@ button {
 .v6-badge--minor { background: rgba(230,126,34,0.15); color: #e67e22; border-color: rgba(230,126,34,0.3); }
 .v6-badge--serious { background: var(--danger-soft); color: var(--danger-text); border-color: var(--danger-border); }
 .v6-badge--critical { background: rgba(150,45,36,0.25); color: #ff7675; border-color: rgba(150,45,36,0.5); }
+.v6-badge--missing { background: rgba(255,255,255,0.08); color: var(--text-muted); border-color: var(--border); }
 
 .v6-badge--trust {
   font-size: 0.7rem;
@@ -914,6 +915,29 @@ button {
   border: 1px solid var(--ember-border);
 }
 
+.v6-badge--psychology {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+}
+.v6-badge--psychology-shaken {
+  background: var(--warning-soft);
+  color: var(--warning-text);
+  border-color: var(--warning-border);
+}
+.v6-badge--psychology-grieving {
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  border-color: var(--danger-border);
+}
+.v6-badge--psychology-determined {
+  background: var(--safe-soft);
+  color: var(--safe-text);
+  border-color: var(--safe-border);
+}
+
 .v6-badge--active-job {
   font-size: 0.7rem;
   font-weight: 700;
@@ -921,6 +945,148 @@ button {
   border-radius: var(--r-pill);
   background: linear-gradient(90deg, #d4a050 0%, #b88735 100%);
   color: #12100a;
+}
+
+/* ── DECISION TAGS ── */
+.v6-decision-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 6px 0 2px;
+}
+
+.v6-badge--tag {
+  font-size: 0.68rem;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+}
+
+/* ── COMMUNITY GRID & MODES ── */
+.v6-community-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.v6-community-grid > div {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v6-community-grid span {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.v6-community-grid strong {
+  font-size: 1.05rem;
+  color: var(--safe-text);
+  font-weight: 800;
+}
+
+.v6-community-grid small {
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.v6-mode-btn {
+  padding: 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+
+.v6-mode-btn:hover:not(:disabled) {
+  border-color: var(--ember-border);
+  color: var(--ember-bright);
+}
+
+.v6-mode-btn.active {
+  background: var(--ember-soft);
+  border-color: var(--ember-bright);
+  color: var(--ember-bright);
+  box-shadow: 0 0 12px var(--ember-soft);
+}
+
+/* ── MISSING SEARCH LINK CARDS ── */
+.v6-link-card {
+  width: 100%;
+  text-align: left;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+
+.v6-link-card:hover:not(:disabled) {
+  border-color: var(--ember-border);
+  background: var(--bg-hover);
+  transform: translateX(3px);
+}
+
+.v6-link-card strong {
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+}
+
+.v6-link-card small {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.v6-link-card:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── MEMORIAL CARDS ── */
+.v6-memorial-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-muted);
+  border-radius: var(--r-md);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.v6-memorial-card h3 {
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.v6-memorial-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.v6-memorial-card p {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 4px;
 }
 
 /* ── JOB GRID (HARMONIOUS 7-BUTTON LAYOUT) ── */
@@ -1739,6 +1905,9 @@ button {
   .v6-buildings {
     grid-template-columns: repeat(2, 1fr);
   }
+  .v6-community-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 @media (max-width: 600px) {
@@ -1746,6 +1915,9 @@ button {
     grid-template-columns: 1fr;
   }
   .v6-locations {
+    grid-template-columns: 1fr;
+  }
+  .v6-community-grid {
     grid-template-columns: 1fr;
   }
   .v6-job-grid {
