@@ -7,10 +7,10 @@ import {
   type V060NightEvent,
 } from './nightEvents';
 
-const pressureCalibrated = (effect: NightEffect): NightEffect => ({
+const pressureCalibrated = (effect: NightEffect, allowHope = false): NightEffect => ({
   ...effect,
-  ...(effect.hope !== undefined ? { hope: Math.min(effect.hope, 0) } : {}),
-  ...(effect.defense !== undefined ? { defense: Math.min(effect.defense, 1) } : {}),
+  ...(effect.hope !== undefined ? { hope: Math.min(effect.hope, allowHope ? 1 : 0) } : {}),
+  ...(effect.defense !== undefined ? { defense: Math.min(effect.defense, 0) } : {}),
   ...(effect.power !== undefined ? { power: Math.min(effect.power, 1) } : {}),
 });
 
@@ -21,9 +21,10 @@ const checked = (
   role: Role,
   success: NightEffect,
   failure: NightEffect,
+  allowHope = false,
   partial: NightEffect = failure,
 ): NightChoice => {
-  const calibratedSuccess = pressureCalibrated(success);
+  const calibratedSuccess = pressureCalibrated(success, allowHope);
   return {
     id,
     label,
@@ -45,7 +46,8 @@ const resource = (
   detail: string,
   cost: NightChoice['cost'],
   effect: NightEffect,
-): NightChoice => ({ id, label, detail, strategy: 'resource', cost, direct: pressureCalibrated(effect) });
+  allowHope = false,
+): NightChoice => ({ id, label, detail, strategy: 'resource', cost, direct: pressureCalibrated(effect, allowHope) });
 
 const consequence = (
   id: string,
@@ -167,8 +169,8 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     title: '有人为了两床厚毯子僵住了',
     body: '夜里比白天凉。两个人都说自己那间窗户漏风，也都没把手从毯子上松开。',
     choices: [
-      checked('split-bedding', '让阿禾把铺盖重新分一下', '把谁睡哪间、哪边更冷说清楚，再从别处凑一点出来。', 'cook', { hope: 2 }, { hope: -1 }),
-      resource('make-padding', '拿材料再垫一床', '用旧布、纸板和能保温的材料拼一床临时铺盖。', { materials: 1 }, { hope: 2 }),
+      checked('split-bedding', '让阿禾把铺盖重新分一下', '把谁睡哪间、哪边更冷说清楚，再从别处凑一点出来。', 'cook', { hope: 2 }, { hope: -1 }, true),
+      resource('make-padding', '拿材料再垫一床', '用旧布、纸板和能保温的材料拼一床临时铺盖。', { materials: 1 }, { hope: 2 }, true),
       consequence('draw-lots', '让他们自己抽签', '公平得很干脆。抽到薄的那个人今晚也不会高兴。', { hope: -1, addFlags: ['blanket_lottery'] }),
     ],
   },
@@ -180,8 +182,8 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     title: '有人说自己今晚实在守不住了',
     body: '他已经连续打了几次瞌睡，又不肯直接离开街口，只问能不能有人替一会儿。',
     choices: [
-      checked('rearrange', '把今晚的人手重新排一下', '找一个还能撑住的人换过去，让困得睁不开眼的先坐一会儿。', 'cook', { hope: 1, defense: 1 }, { hope: -1 }),
-      resource('hot-drink', '给值夜的人留一份热的', '从口粮里匀一点出来，至少让守夜的人手里有碗热东西。', { ration: 1 }, { hope: 2 }),
+      checked('rearrange', '把今晚的人手重新排一下', '找一个还能撑住的人换过去，让困得睁不开眼的先坐一会儿。', 'cook', { hope: 1, defense: 1 }, { hope: -1 }, true),
+      resource('hot-drink', '给值夜的人留一份热的', '从口粮里匀一点出来，至少让守夜的人手里有碗热东西。', { ration: 1 }, { hope: 2 }, true),
       consequence('stay-post', '让原班继续守', '没人换班。困意不会因为一句“再坚持一下”就消失。', { defense: -1, addFlags: ['watch_shift_exhausted'] }),
     ],
   },
@@ -193,8 +195,8 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     title: '床底下找到了一只藏起来的罐头',
     body: '罐头没有开。真正难处理的是旁边那个人一直低着头，说那是给家里人留的。',
     choices: [
-      checked('talk-can', '先把为什么藏起来问清楚', '不急着拿走。先让人把他担心的事说完，再决定这只罐头放哪。', 'cook', { hope: 2 }, { hope: -1 }),
-      resource('replace-can', '让他留着，再从公粮补回去', '不收走那只罐头，从仓里的份额把账补平。', { ration: 1 }, { hope: 2, addFlags: ['private_ration_tolerated'] }),
+      checked('talk-can', '先把为什么藏起来问清楚', '不急着拿走。先让人把他担心的事说完，再决定这只罐头放哪。', 'cook', { hope: 2 }, { hope: -1 }, true),
+      resource('replace-can', '让他留着，再从公粮补回去', '不收走那只罐头，从仓里的份额把账补平。', { ration: 1 }, { hope: 2, addFlags: ['private_ration_tolerated'] }, true),
       consequence('confiscate', '收回仓房', '罐头重新记进公粮。谁都知道这样最清楚，也都看见那个人的表情。', { inventory: { ration: 1 }, hope: -2, addFlags: ['hidden_food_confiscated'] }),
     ],
   },
@@ -206,8 +208,8 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     title: '有人抱着包睡在门边',
     body: '他没有说要走，只是鞋没脱，包也没有放下。问起来时只说这样“方便一点”。',
     choices: [
-      checked('sit-down', '找个人陪他坐一会儿', '不追问是不是要走，只把这几天发生的事慢慢聊完。', 'radio', { hope: 2 }, { hope: -1 }),
-      resource('give-space', '给他腾一个安静的位置', '拿一点材料隔出一小块不被人来回踩过的地方，让包能真正放下来。', { materials: 1 }, { hope: 2 }),
+      checked('sit-down', '找个人陪他坐一会儿', '不追问是不是要走，只把这几天发生的事慢慢聊完。', 'radio', { hope: 2 }, { hope: -1 }, true),
+      resource('give-space', '给他腾一个安静的位置', '拿一点材料隔出一小块不被人来回踩过的地方，让包能真正放下来。', { materials: 1 }, { hope: 2 }, true),
       consequence('leave-door', '不去问', '门边的位置没人赶。他也一整夜没有把鞋脱下来。', { hope: -1, addFlags: ['doorway_sleeper_unasked'] }),
     ],
   },
