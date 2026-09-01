@@ -168,7 +168,7 @@ function jobScore(base: BasePolicyId, state: GameState, survivor: Survivor, job:
     score += state.buildings.radio >= 2 && !state.storyFlags.includes('external_contact') ? 8 : 3;
     if (base === 'production-greedy') score += 3;
   }
-  if (base === 'production-greedy' && job !== 'rest' && job !== 'cook') score += 2;
+  if (base === 'production-greedy' && job !== 'cook') score += 2;
   if (survivor.energy < 30) score -= 10;
   if (survivor.condition === 'serious') score -= 8;
   return score;
