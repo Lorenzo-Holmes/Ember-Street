@@ -1,7 +1,12 @@
-import type { GameState, SocialState } from '../types';
+import type { GameState, SocialState, StreetPrincipleId } from '../types';
 import { normalizeCommunityState } from './community';
 
 const clamp = (value: number, min = 0, max = 6) => Math.min(max, Math.max(min, Math.floor(value)));
+const PRINCIPLES = new Set<StreetPrincipleId>([
+  'everyone-shares', 'triage-first', 'outward-search',
+  'core-leads', 'community-shares-risk', 'preserve-strength',
+  'hold-the-street', 'prepare-evacuation', 'await-aid',
+]);
 
 export type PressureBand = 'calm' | 'tense' | 'near-breaking' | 'breaking';
 
@@ -11,6 +16,7 @@ export function createDefaultSocialState(): SocialState {
     activePromise: null,
     fulfilledPromises: 0,
     brokenPromises: 0,
+    principles: [],
   };
 }
 
@@ -19,11 +25,15 @@ export function normalizeSocialState(value: unknown): SocialState {
   const active = source.activePromise && typeof source.activePromise === 'object'
     ? source.activePromise
     : null;
+  const principles = Array.isArray(source.principles)
+    ? [...new Set(source.principles.filter((item): item is StreetPrincipleId => PRINCIPLES.has(item as StreetPrincipleId)))]
+    : [];
   return {
     pressure: clamp(Number(source.pressure) || 0),
     activePromise: active,
     fulfilledPromises: Math.max(0, Math.floor(Number(source.fulfilledPromises) || 0)),
     brokenPromises: Math.max(0, Math.floor(Number(source.brokenPromises) || 0)),
+    principles,
     ...(Number.isFinite(Number(source.lastRequestDay)) ? { lastRequestDay: Math.max(0, Math.floor(Number(source.lastRequestDay))) } : {}),
     ...(typeof source.lastOutcome === 'string' && source.lastOutcome ? { lastOutcome: source.lastOutcome } : {}),
   };
