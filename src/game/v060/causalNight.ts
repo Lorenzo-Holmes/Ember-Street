@@ -1,4 +1,5 @@
 import type { GameState, Role } from '../types';
+import { buildingEventWeightModifier } from './buildingEcology';
 import { communitySupportSummary } from './community';
 import { previewMeal } from './food';
 import { hopeBand } from './mortality';
@@ -92,5 +93,6 @@ export function nightEventWeight(state: GameState, event: V060NightEvent): numbe
   if (state.storyFlags.includes('generator_backup') && ['generator-drop', 'clinic-blackout', 'water-on-radio'].includes(event.id)) weight -= 2;
   if (state.storyFlags.includes('working_vehicle_parts') && event.category === 'infrastructure') weight -= 1;
 
+  weight += buildingEventWeightModifier(state, event);
   return clamp(weight);
 }
