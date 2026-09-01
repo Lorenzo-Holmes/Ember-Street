@@ -10,6 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b --pretty false",
+    "audit:playtest": "tsx tools/simulation/cli.ts",
+    "audit:playtest:quick": "tsx tools/simulation/cli.ts --runs 100 --day29 120 --out reports/playtest-quick --docs docs/playtest-quick",
+    "audit:playtest:baseline": "tsx tools/simulation/cli.ts --runs 10000 --day29 3000 --seed 606000 --out reports/playtest --docs docs/playtest",
     "preview": "vite preview",
     "cf:dry-run": "npm run build && wrangler deploy --dry-run",
     "deploy:cf": "npm run build && wrangler deploy"
@@ -19,9 +22,11 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "@types/node": "^22.15.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "@vitejs/plugin-react": "6.1.1",
+    "tsx": "^4.20.0",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "4.1.11",
