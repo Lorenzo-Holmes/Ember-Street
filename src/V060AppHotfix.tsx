@@ -15,6 +15,7 @@ import {
 } from './game/v060/campaign';
 import { nightCausalSignals } from './game/v060/causalNight';
 import { communitySupportSummary, selectCommunitySupportMode } from './game/v060/community';
+import { dayAttentionSummary } from './game/v060/dayAttention';
 import { expeditionDecisionPreview, missingSearchPreview } from './game/v060/decisionReadability';
 import {
   assignDayJob,
@@ -232,9 +233,10 @@ function MissingPanel({ state, setState }: { state: GameState; setState: (state:
 
 function AssignmentPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const expeditionCount = Object.values(state.dayAssignments).filter((job) => job === 'expedition').length;
+  const criticalCount = state.survivors.filter((survivor) => survivor.condition === 'critical').length;
   return (
     <section className="v6-section">
-      <div className="v6-section__head"><div><span>今日派遣</span><h2>天黑以前，每个人都得有个去处</h2></div><small>太阳落下以后，就没人能换班了</small></div>
+      <div className="v6-section__head"><div><span>今日派遣</span><h2>天黑以前，每个人都得有个去处</h2></div><small>{criticalCount ? `${criticalCount} 人伤得太重，今天动不了 · ` : ''}太阳落下以后，就没人能换班了</small></div>
       <div className="v6-survivors">{state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').map((survivor) => {
         const condition = survivor.condition ?? 'healthy';
         const unavailable = condition === 'critical';
@@ -279,6 +281,7 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
   const meal = previewMeal(state);
   const prep = previewNightPreparation(state);
   const dispatch = previewDispatchConfirmation(state);
+  const attention = dayAttentionSummary(state);
   const assigned = Object.keys(state.dayAssignments).length;
   const available = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing' && s.condition !== 'critical' && !state.dayState.committedSurvivorIds.includes(s.id)).length;
   const lock = () => {
@@ -292,24 +295,28 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <header className="v6-topbar"><div><span>EMBER STREET</span><strong>DAY {state.day}</strong></div><div><b>{state.day === 29 ? '最后的白天' : state.forecast.title}</b><small>{state.day === 29 ? '北边从昨晚起就没安静过。天黑前，把该做的都做完。' : state.forecast.detail}</small></div></header>
       <StreetVisual state={state}/><InventoryBar state={state}/>
       <ExpeditionStatus state={state} setState={setState}/>
-      <CommunityPanel state={state} setState={setState}/>
-      <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)}/>
-      {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && attention.missingCount > 0 && <MissingPanel state={state} setState={setState}/>}
+      {!reviewingDispatch && attention.socialNeedsAttention && <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)}/>}      
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && attention.communityNeedsChoice && <CommunityPanel state={state} setState={setState}/>}      
+      {!state.dayState.assignmentsLocked && !reviewingDispatch && <AssignmentPanel state={state} setState={setState}/>}      
       {!state.dayState.assignmentsLocked && reviewingDispatch && <section className="v6-section">
-        <div className="v6-section__head"><div><span>天快黑了</span><h2>最后再看一眼，今天每个人去了哪里</h2></div><small>{dispatch.manuallyAssigned} 人有安排 · {dispatch.autoResting} 人留下休息</small></div>
+        <div className="v6-section__head"><div><span>天快黑了</span><h2>最后再看一眼，今天每个人去了哪里</h2></div><small>{dispatch.manuallyAssigned} 人有安排 · {dispatch.autoResting} 人留下休息{attention.buildableCount ? ` · 还有 ${attention.buildableCount} 处地方今天能收拾` : ''}</small></div>
         <div className="v6-survivors">{dispatch.entries.map((entry) => <article className={`v6-survivor ${entry.unavailable || entry.committed ? 'is-unavailable' : ''}`} key={entry.survivorId}>
           <div className="v6-survivor__top"><div><h3>{entry.name}</h3><span>{entry.automatic ? '今天没人叫他/她出门' : entry.committed ? '今天已经忙过一趟了' : '今天就去这里'}</span></div><div><b>{entry.label}</b><small>{entry.unavailable ? '去不了' : entry.automatic ? '留下' : '定了'}</small></div></div>
         </article>)}</div>
         <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>{mealCoverageLine(meal.coverage)}</small><small>约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{nightPreparationLine(prep.defense)}</strong><small>防线 {prep.defense} · 出门 {dispatch.expeditionCount} 人 · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>
         <p className="v6-message">没人安排的，就留在屋里歇一歇。出去搜索的人会先去挑今天要走的路；没有人出门，就直接等天黑。</p>
+        {attention.buildableCount > 0 && <p className="v6-message">街里还有 {attention.buildableCount} 处地方今天能继续收拾。要先动它们，就现在回去。</p>}
         <button className="v6-cta" onClick={lock}>就这么定了</button>
         <button className="v6-link" onClick={() => setReviewingDispatch(false)}>← 再改一遍</button>
       </section>}
       {!reviewingDispatch && <section className="v6-preview"><div><span>今晚锅里</span><strong>{mealLabel(meal.quality)}</strong><small>{mealCoverageLine(meal.coverage)}</small><small>约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人 · 明早精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</small></div><div><span>夜里靠什么</span><strong>{nightPreparationLine(prep.defense)}</strong><small>防线 {prep.defense} · 诊所 {prep.medical} · 修补 {prep.repair} · 广播 {prep.radio}</small></div></section>}
       {!state.expeditionState.departed && !reviewingDispatch && (state.dayState.assignmentsLocked
         ? <button className="v6-cta" onClick={() => commit({ ...state, phase: 'dusk' }, setState)}>等天黑</button>
-        : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={() => setReviewingDispatch(true)}>安排好了 <small>{assigned} 人有安排 · 其余人休息</small></button>)}
+        : <button className="v6-cta" disabled={!available && !Object.keys(state.dayAssignments).length} onClick={() => setReviewingDispatch(true)}>安排好了 <small>{assigned} 人有安排 · 其余人休息{attention.buildableCount ? ` · 还有 ${attention.buildableCount} 处能收拾` : ''}</small></button>)}
       {!state.dayState.assignmentsLocked && !reviewingDispatch && <BuildingsPanel state={state} setState={setState}/>}      
+      {!reviewingDispatch && !attention.communityNeedsChoice && <CommunityPanel state={state} setState={setState}/>}      
+      {!reviewingDispatch && !attention.socialNeedsAttention && <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)}/>}      
       <MemorialPanel state={state}/>
       <p className="v6-message">{state.lastMessage}</p>
     </main>
