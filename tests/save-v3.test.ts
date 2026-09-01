@@ -75,12 +75,14 @@ describe('v0.6 save resume', () => {
     };
 
     const restored = promoteV2ToV3(JSON.parse(JSON.stringify(state)))!;
-    expect(restored.socialState.pressure).toBe(3);
-    expect(restored.socialState.principles).toEqual(['everyone-shares', 'community-shares-risk']);
-    expect(restored.socialState.activePromise).toEqual(state.socialState.activePromise);
-    expect(restored.socialState.fulfilledPromises).toBe(4);
-    expect(restored.socialState.brokenPromises).toBe(1);
-    expect(restored.socialState.lastRequestDay).toBe(18);
-    expect(restored.socialState.lastOutcome).toBe('这件事还记着。');
+    expect(restored.socialState).toBeDefined();
+    const social = restored.socialState!;
+    expect(social.pressure).toBe(3);
+    expect(social.principles).toEqual(['everyone-shares', 'community-shares-risk']);
+    expect(social.activePromise).toEqual(state.socialState.activePromise);
+    expect(social.fulfilledPromises).toBe(4);
+    expect(social.brokenPromises).toBe(1);
+    expect(social.lastRequestDay).toBe(18);
+    expect(social.lastOutcome).toBe('这件事还记着。');
   });
 });
