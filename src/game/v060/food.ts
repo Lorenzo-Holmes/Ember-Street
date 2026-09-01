@@ -36,8 +36,15 @@ export interface MealPreview extends MealState {
   residentCount: number;
   rationNeeded: number;
   rationConsumed: number;
+  rationStretch: number;
   energyRecovery: number;
   hopeDelta: number;
+}
+
+function rationStretchFor(state: GameState, cooks: Survivor[], residentCount: number, availableRations: number): number {
+  if (!cooks.length || residentCount < 3 || availableRations <= 0) return 0;
+  const matureKitchenBonus = state.buildings.shelter >= 3 && residentCount >= 8 ? 1 : 0;
+  return Math.min(Math.max(0, residentCount - 1), 1 + matureKitchenBonus);
 }
 
 export function previewMeal(state: GameState): MealPreview {
@@ -47,7 +54,7 @@ export function previewMeal(state: GameState): MealPreview {
     return {
       quality: 'cold', coverage: 0, cookingCapacity: 0, residentsFed: 0, rationCoverage: 1,
       consecutiveShortageDays: 0, wellFed: false, wellFedPlus: false,
-      residentCount: 0, rationNeeded: 0, rationConsumed: 0, energyRecovery: 0, hopeDelta: 0,
+      residentCount: 0, rationNeeded: 0, rationConsumed: 0, rationStretch: 0, energyRecovery: 0, hopeDelta: 0,
     };
   }
 
@@ -55,9 +62,11 @@ export function previewMeal(state: GameState): MealPreview {
   const coreCookingCapacity = cooks.reduce((sum, survivor) => sum + effectiveCookingCapacity(state, survivor), 0);
   const cookingCapacity = coreCookingCapacity + communityCookingSupport(state);
   const cookingCoverage = cookingCapacity / residentCount;
-  const rationNeeded = residentCount;
   const availableRations = Math.max(0, state.inventory.ration);
-  const rationCoverage = Math.min(1, availableRations / rationNeeded);
+  const rationStretch = rationStretchFor(state, cooks, residentCount, availableRations);
+  const rationNeeded = Math.max(0, residentCount - rationStretch);
+  const effectiveRationSupply = availableRations + Math.min(rationStretch, availableRations);
+  const rationCoverage = Math.min(1, effectiveRationSupply / residentCount);
   const rationConsumed = Math.min(rationNeeded, availableRations);
 
   const cookingQuality = qualityForCoverage(cookingCoverage);
@@ -79,7 +88,7 @@ export function previewMeal(state: GameState): MealPreview {
     quality,
     coverage: Math.min(cookingCoverage, rationCoverage),
     cookingCapacity,
-    residentsFed: Math.min(residentCount, Math.floor(Math.min(cookingCapacity, availableRations))),
+    residentsFed: Math.min(residentCount, Math.floor(Math.min(cookingCapacity, effectiveRationSupply))),
     rationCoverage,
     consecutiveShortageDays,
     wellFed: quality === 'full' || quality === 'well-fed',
@@ -87,6 +96,7 @@ export function previewMeal(state: GameState): MealPreview {
     residentCount,
     rationNeeded,
     rationConsumed,
+    rationStretch,
     energyRecovery,
     hopeDelta,
   };
