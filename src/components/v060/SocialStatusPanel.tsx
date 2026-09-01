@@ -24,39 +24,112 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
     .filter(({ mental }) => mental !== 'steady');
 
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-social-panel" aria-label="街区社会状态与压力记录">
       <div className="v6-section__head">
-        <div><span>街区状态</span><h2>希望告诉你大家还信不信，压力告诉你大家还撑不撑得住</h2></div>
-        <small>兑现 {social.fulfilledPromises} · 食言 {social.brokenPromises}</small>
-      </div>
-      <section className="v6-preview">
-        <div><span>希望</span><strong>{state.hope}</strong><small>长期：大家是否还相信这里值得守</small></div>
-        <div><span>街区压力</span><strong>{pressureLabel(state)}</strong><small>短期：冷食、伤亡、无人医疗和低防线会把人逼到极限</small></div>
         <div>
-          <span>核心人物心理</span>
-          <strong>{mentalNotes.length ? `${mentalNotes.length} 人出现波动` : '稳定'}</strong>
-          <small>{mentalNotes.length
-            ? mentalNotes.map(({ survivor, mental }) => `${survivor.name} · ${MENTAL_LABEL[mental]}${survivor.mentalUntilDay ? ` 至 DAY ${survivor.mentalUntilDay}` : ''}`).join('；')
-            : '专注会让人物判定 +1，动摇会让人物判定 -1；状态会自然消退。'}</small>
+          <span className="v6-section__tag">街区社会与心理记录</span>
+          <h2>生存压力与信任维系</h2>
         </div>
-      </section>
-
-      {active && <article className="v6-survivor" style={{ marginTop: 10 }}>
-        <div className="v6-survivor__top"><div><h3>当前承诺 · 《{active.title}》</h3><span>{active.detail}</span></div><div><b>{active.remainingDays}</b><small>剩余天数</small></div></div>
-        <p>承诺只检查你能控制的行动，不会因为一次坏骰子判你食言。</p>
-      </article>}
-
-      {!active && request && !compact && <article className="v6-survivor" style={{ marginTop: 10 }}>
-        <div className="v6-survivor__top"><div><h3>居民诉求 · 《{request.title}》</h3><span>{request.body}</span></div></div>
-        <p><strong>如果答应：</strong>{request.promiseText}</p>
-        <div className="v6-job-grid">
-          <button onClick={() => onCommit(acceptCommunityRequest(state, request.id))}>答应这件事</button>
-          <button onClick={() => onCommit(declineCommunityRequest(state, request.id))}>不作承诺</button>
+        <div className="v6-promise-tally">
+          <span>兑现 <b>{social.fulfilledPromises}</b></span>
+          <span className="v6-tally-sep">·</span>
+          <span>食言 <b>{social.brokenPromises}</b></span>
         </div>
-        <small>拒绝不会制造隐藏任务，但会让希望略降、街区压力上升。</small>
-      </article>}
+      </div>
 
-      {social.lastOutcome && <p className="v6-message">{social.lastOutcome}</p>}
+      <div className="v6-preview v6-social-metrics">
+        <div className="v6-metric-card v6-metric-card--hope">
+          <div className="v6-metric-header">
+            <span>街区希望</span>
+            <span className="v6-metric-chip">{state.hope >= 40 ? '充裕' : state.hope >= 20 ? '警戒' : '濒临绝望'}</span>
+          </div>
+          <strong>{state.hope}</strong>
+          <small>长期支柱：大家是否还相信这条街能够守到天亮</small>
+        </div>
+
+        <div className={`v6-metric-card v6-metric-card--pressure v6-metric-card--pressure-${social.pressure >= 3 ? 'extreme' : social.pressure >= 2 ? 'high' : social.pressure >= 1 ? 'moderate' : 'calm'}`}>
+          <div className="v6-metric-header">
+            <span>街区压力</span>
+            <span className="v6-metric-chip">{pressureLabel(state)}</span>
+          </div>
+          <strong>{pressureLabel(state)}</strong>
+          <small>短期负担：冷食、伤亡、无人医疗和防线受损会加剧压力</small>
+        </div>
+
+        <div className="v6-metric-card v6-metric-card--mental">
+          <div className="v6-metric-header">
+            <span>核心心理</span>
+            <span className="v6-metric-chip">{mentalNotes.length ? `${mentalNotes.length} 人波动` : '平稳'}</span>
+          </div>
+          <strong>{mentalNotes.length ? `${mentalNotes.length} 人出现波动` : '平稳'}</strong>
+          <small>
+            {mentalNotes.length
+              ? mentalNotes
+                  .map(
+                    ({ survivor, mental }) =>
+                      `${survivor.name} · ${MENTAL_LABEL[mental]}${
+                        survivor.mentalUntilDay ? ` (至 D${survivor.mentalUntilDay})` : ''
+                      }`,
+                  )
+                  .join('；')
+              : '专注判定 +1，动摇判定 -1；未受创伤时将自然平复。'}
+          </small>
+        </div>
+      </div>
+
+      {active && (
+        <article className="v6-survivor v6-promise-active" style={{ marginTop: 12 }}>
+          <div className="v6-survivor__top">
+            <div className="v6-survivor__profile">
+              <span className="v6-survivor__avatar-tag">📜</span>
+              <div>
+                <h3>已生效承诺 · 《{active.title}》</h3>
+                <div className="v6-survivor__trait">{active.detail}</div>
+              </div>
+            </div>
+            <div className="v6-survivor__energy">
+              <div className="v6-energy-header">
+                <span className="v6-survivor__energy-label">剩余期限</span>
+                <span className="v6-survivor__energy-val">{active.remainingDays} 天</span>
+              </div>
+            </div>
+          </div>
+          <p className="v6-promise-note">
+            承诺只检验你能够主动安排的行动，不会因单次判定失误而判定食言。
+          </p>
+        </article>
+      )}
+
+      {!active && request && !compact && (
+        <article className="v6-survivor v6-request-card" style={{ marginTop: 12 }}>
+          <div className="v6-survivor__top">
+            <div className="v6-survivor__profile">
+              <span className="v6-survivor__avatar-tag">📢</span>
+              <div>
+                <h3>居民诉求 · 《{request.title}》</h3>
+                <div className="v6-survivor__trait">{request.body}</div>
+              </div>
+            </div>
+          </div>
+          <div className="v6-request-promise-box">
+            <strong>如果应允承诺：</strong>
+            <span>{request.promiseText}</span>
+          </div>
+          <div className="v6-job-grid" style={{ marginTop: 10 }}>
+            <button className="v6-btn-pledge" onClick={() => onCommit(acceptCommunityRequest(state, request.id))}>
+              ✍️ 答应这件事
+            </button>
+            <button className="v6-btn-decline" onClick={() => onCommit(declineCommunityRequest(state, request.id))}>
+              ✕ 不作承诺
+            </button>
+          </div>
+          <small className="v6-request-hint">
+            拒绝不会产生隐藏任务，但会让希望值略降、街区短期压力上升。
+          </small>
+        </article>
+      )}
+
+      {social.lastOutcome && <p className="v6-message v6-message--social">{social.lastOutcome}</p>}
     </section>
   );
 }

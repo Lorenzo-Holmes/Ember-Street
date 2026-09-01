@@ -41,25 +41,33 @@ import { dawnBriefEntries } from './game/v060/morningBrief';
 import { activeMentalState, MENTAL_LABEL } from './game/v060/characterPsychology';
 
 // ─────────────────────────────────────────────
-// STATIC DATA
+// STATIC DATA & DICTIONARIES
 // ─────────────────────────────────────────────
-const JOBS: Array<{ id: DayAssignment; label: string; icon: string; note: string }> = [
-  { id: 'expedition', label: '探索', icon: '⬡', note: '外出搜集物资，可能受伤、失踪或死亡。' },
-  { id: 'repair',     label: '维修', icon: '⚙', note: '加固防线，并让工坊在夜里发挥作用。' },
-  { id: 'medical',    label: '医疗', icon: '✚', note: '优先处理街区里最严重的伤员。' },
-  { id: 'watch',      label: '守备', icon: '◉', note: '降低夜间紧急事件和尸潮风险。' },
-  { id: 'radio',      label: '广播', icon: '◎', note: '积累外界联系，寻找幸存者与军方信号。' },
-  { id: 'cook',       label: '炊事', icon: '◈', note: '按当前人口提高供餐覆盖率和次日恢复。' },
-  { id: 'rest',       label: '休息', icon: '◌', note: '恢复个人精力。' },
+const JOBS: Array<{ id: DayAssignment; label: string; icon: string; code: string; note: string }> = [
+  { id: 'expedition', label: '探索', icon: '⬡', code: 'EXP', note: '外出搜集物资，面临遭遇、受伤或死亡风险。' },
+  { id: 'repair',     label: '维修', icon: '⚙', code: 'REP', note: '加固街区防线，确保夜间工坊设施正常运转。' },
+  { id: 'medical',    label: '医疗', icon: '✚', code: 'MED', note: '优先救治重伤员，防止伤情恶化至危重或死亡。' },
+  { id: 'watch',      label: '守备', icon: '◉', code: 'DEF', note: '加强夜间巡逻警戒，降低突发威胁与尸潮压力。' },
+  { id: 'radio',      label: '广播', icon: '◎', code: 'RAD', note: '监听外界无线电波，搜寻幸存者与避难所信号。' },
+  { id: 'cook',       label: '炊事', icon: '◈', code: 'KIT', note: '调配现有口粮，提升供餐覆盖率以恢复精力与希望。' },
+  { id: 'rest',       label: '休息', icon: '◌', code: 'RST', note: '在避难所卧床静养，加快恢复体能精力。' },
 ];
 
 const CONDITION_LABEL: Record<SurvivorCondition, string> = {
-  healthy: '健康', fatigued: '疲劳', minor: '轻伤', serious: '重伤',
-  critical: '危重', missing: '失踪', dead: '死亡',
+  healthy: '健康',
+  fatigued: '疲劳',
+  minor: '轻伤',
+  serious: '重伤',
+  critical: '危重',
+  missing: '失踪',
+  dead: '死亡',
 };
 
 const RESULT_LABEL = {
-  perfect: '完美守住', held: '守住', damaged: '严重受损', breached: '街区失守',
+  perfect: '完美守住',
+  held: '勉强守住',
+  damaged: '严重受损',
+  breached: '街区失守',
 } as const;
 
 const BUILDING_IDS = Object.keys(V060_BUILDINGS) as BuildingId[];
@@ -82,17 +90,16 @@ function commit(next: GameState, setState: (state: GameState) => void) {
   setState(next);
 }
 
-/** Resource status tier for display-only styling */
-function resStatus(value: number, critThreshold: number, warnThreshold: number): 'critical' | 'warning' | 'ok' {
-  if (value <= critThreshold) return 'critical';
-  if (value <= warnThreshold) return 'warning';
+function resTier(value: number, crit: number, warn: number): 'critical' | 'warning' | 'ok' {
+  if (value <= crit) return 'critical';
+  if (value <= warn) return 'warning';
   return 'ok';
 }
 
 function DecisionTags({ tags }: { tags: string[] }) {
   if (!tags || !tags.length) return null;
   return (
-    <div className="v6-decision-tags">
+    <div className="v6-decision-tags" aria-label="决策影响标签">
       {tags.map((tag) => (
         <span className="v6-badge--tag" key={tag}>{tag}</span>
       ))}
@@ -101,112 +108,142 @@ function DecisionTags({ tags }: { tags: string[] }) {
 }
 
 // ─────────────────────────────────────────────
-// TOPBAR
+// TOPBAR — WARTIME SHELTER COMMAND HEADER
 // ─────────────────────────────────────────────
 function TopBar({ state }: { state: GameState }) {
   const pop = population(state);
   const phase = state.phase;
-  const phaseLabel = phase === 'dusk' ? '黄昏' : (phase === 'night' || phase === 'night-summary') ? '夜晚' : (phase === 'summary' || phase === 'dawn') ? '黎明' : '白天';
-  const phaseClass = phase === 'dusk' ? 'dusk' : (phase === 'night' || phase === 'night-summary') ? 'night' : (phase === 'summary' || phase === 'dawn') ? 'dawn' : 'day';
+  const phaseLabel =
+    phase === 'dusk' ? '黄昏阶段' :
+    (phase === 'night' || phase === 'night-summary') ? '长夜防守' :
+    (phase === 'summary' || phase === 'dawn') ? '黎明结算' :
+    '白天调遣';
+  const phaseClass =
+    phase === 'dusk' ? 'dusk' :
+    (phase === 'night' || phase === 'night-summary') ? 'night' :
+    (phase === 'summary' || phase === 'dawn') ? 'dawn' :
+    'day';
 
   return (
-    <header className="v6-topbar">
+    <header className="v6-topbar" aria-label="战时指挥日志抬头">
       <div className="v6-topbar__brand">
-        <div className="v6-brand-meta">
-          <span className="v6-game-title">EMBER STREET</span>
-          <span className="v6-game-subtitle">余烬长街 · 极夜生存</span>
+        <div className="v6-brand-stamp">
+          <span className="v6-stamp-title">EMBER STREET</span>
+          <span className="v6-stamp-sub">余烬长街 · 生存纪事</span>
         </div>
-        <div className="v6-day-display">
-          <span className="v6-day-label">DAY</span>
-          <span className="v6-day-number">{String(state.day).padStart(2, '0')}</span>
-          <span className="v6-day-total">/ 30</span>
+        <div className="v6-day-stamp" title="生存天数记录">
+          <span className="v6-day-tag">SURVIVAL LOG</span>
+          <div className="v6-day-num-wrap">
+            <span className="v6-day-prefix">DAY</span>
+            <span className="v6-day-number">{String(state.day).padStart(2, '0')}</span>
+            <span className="v6-day-total">/ 30</span>
+          </div>
         </div>
       </div>
 
       <div className="v6-topbar__status">
-        <span className="v6-status-chip v6-status-chip--safe" title="当前总人口">
-          <span className="chip-icon">👥</span>
-          <span>人口</span>
-          <span className="chip-value">{pop}</span>
-        </span>
-        <span className="v6-status-chip v6-status-chip--hope" title="希望值，过低将引发街区崩溃">
-          <span className="chip-icon">🔥</span>
-          <span>希望</span>
-          <span className="chip-value">{state.hope}</span>
-        </span>
-        <span className="v6-status-chip v6-status-chip--defense" title="防御强度，抵抗夜间袭击">
-          <span className="chip-icon">🛡️</span>
-          <span>防线</span>
-          <span className="chip-value">{Math.round(state.defense)}</span>
-        </span>
-        <span className={`v6-status-chip ${state.mainLightStage >= 2 ? 'v6-status-chip--safe' : 'v6-status-chip--danger'}`} title="街区核心主路灯">
-          <span className="chip-icon">💡</span>
-          <span>主灯</span>
-          <span className="chip-value">阶段 {state.mainLightStage}</span>
-        </span>
+        <div className="v6-status-gauge" title={`街区人口：${pop} 人（核心 ${corePresent(state)} + 居民 ${state.civilianResidents}）`}>
+          <span className="v6-gauge-icon">👥</span>
+          <div className="v6-gauge-content">
+            <span className="v6-gauge-label">总人口</span>
+            <span className="v6-gauge-val">{pop}<small>人</small></span>
+          </div>
+        </div>
+
+        <div className={`v6-status-gauge v6-status-gauge--hope ${state.hope <= 15 ? 'is-critical' : ''}`} title="希望值：街区民众对生存的信心">
+          <span className="v6-gauge-icon">🔥</span>
+          <div className="v6-gauge-content">
+            <span className="v6-gauge-label">希望</span>
+            <span className="v6-gauge-val">{state.hope}</span>
+          </div>
+        </div>
+
+        <div className={`v6-status-gauge v6-status-gauge--defense ${state.defense <= 30 ? 'is-critical' : ''}`} title="防线强度：阻挡夜间威胁的屏障">
+          <span className="v6-gauge-icon">🛡️</span>
+          <div className="v6-gauge-content">
+            <span className="v6-gauge-label">防线</span>
+            <span className="v6-gauge-val">{Math.round(state.defense)}</span>
+          </div>
+        </div>
+
+        <div className={`v6-status-gauge v6-status-gauge--light stage-${state.mainLightStage}`} title="主街路灯：驱散黑暗的灯火">
+          <span className="v6-gauge-icon">💡</span>
+          <div className="v6-gauge-content">
+            <span className="v6-gauge-label">主路灯</span>
+            <span className="v6-gauge-val">阶段 {state.mainLightStage}</span>
+          </div>
+        </div>
       </div>
 
       <div className="v6-topbar__phase">
-        <span className={`v6-phase-badge v6-phase-badge--${phaseClass}`}>{phaseLabel}</span>
-        <span className="v6-topbar__forecast">
-          {state.day === 29 ? '最后的白天' : state.forecast.title}
-        </span>
+        <div className={`v6-phase-stamp v6-phase-stamp--${phaseClass}`}>
+          <span className="v6-phase-indicator" />
+          <span className="v6-phase-text">{phaseLabel}</span>
+        </div>
+        <div className="v6-forecast-banner" title={state.forecast.detail}>
+          <span className="v6-forecast-alert">REPORT:</span>
+          <span className="v6-forecast-title">{state.day === 29 ? '决战前夕 · 最终尸潮' : state.forecast.title}</span>
+        </div>
       </div>
     </header>
   );
 }
 
 // ─────────────────────────────────────────────
-// STREET VISUAL
+// STREET VISUAL — BESIEGED STREET WITH DYNAMIC LIGHT
 // ─────────────────────────────────────────────
 function StreetVisual({ state }: { state: GameState }) {
   const stage = state.mainLightStage;
-  const stageDesc = [
-    '主灯熄灭 · 黑暗笼罩街区',
-    '一盏灯亮着 · 孤独的信号',
-    '主灯恢复 · 部分街区有光',
-    '完全照明 · 街区安全区形成',
-  ][stage] ?? '主灯状态未知';
+  const stageInfo = [
+    { label: '主灯熄灭', desc: '黑暗吞噬整条街道 · 寒冷与绝望逼近', status: 'dark' },
+    { label: '孤灯残照', desc: '一盏昏黄路灯 · 艰难照亮核心避难所', status: 'dim' },
+    { label: '主灯恢复', desc: '部分街区重现光明 · 防线有了依托', status: 'glow' },
+    { label: '灯火通明', desc: '街区安全区形成 · 希望之火长存', status: 'bright' },
+  ][stage] ?? { label: '状态未知', desc: '主灯运转异常', status: 'dim' };
 
   return (
-    <section className={`v6-street v6-street--stage-${stage}`} aria-label="街区视觉">
+    <section className={`v6-street v6-street--stage-${stage}`} aria-label="街区废墟全景">
+      {/* Sky & Atmospheric Dust */}
       <div className="v6-street__sky">
-        <div className="v6-stars" />
-        <div className="v6-fog" />
+        <div className="v6-dust-layer" />
+        <div className="v6-soot-particles" />
+        <div className="v6-mist-layer" />
       </div>
 
-      {/* Buildings silhouettes */}
-      <div className="v6-bldg v6-bldg--back-1" />
-      <div className="v6-bldg v6-bldg--back-2" />
-      <div className="v6-bldg v6-bldg--left" />
-      <div className="v6-bldg v6-bldg--center-l" />
-      <div className="v6-bldg v6-bldg--center-r" />
-      <div className="v6-bldg v6-bldg--right" />
+      {/* Layered Ruined City Silhouettes */}
+      <div className="v6-ruins-layer v6-ruins--distant" />
+      <div className="v6-ruins-layer v6-ruins--mid-l" />
+      <div className="v6-ruins-layer v6-ruins--mid-r" />
+      <div className="v6-ruins-layer v6-ruins--fore-l" />
+      <div className="v6-ruins-layer v6-ruins--fore-r" />
 
-      {/* Power line */}
-      <div className="v6-street__wire" />
+      {/* Broken Telephone Wire */}
+      <div className="v6-street__wires" />
 
-      {/* Main light */}
+      {/* Street Lamp Post & Light Cone */}
       <div className="v6-main-light">
-        <div className="v6-main-light__pole">
-          <div className="v6-main-light__arm" />
-          <div className="v6-main-light__head" />
-          <div className="v6-main-light__cone" />
-        </div>
+        <div className="v6-lamp-arm" />
+        <div className="v6-lamp-head" />
+        <div className="v6-lamp-cone" />
       </div>
 
-      <div className="v6-street__road" />
+      {/* Ground Road & Barricades */}
+      <div className="v6-street__ground">
+        <div className="v6-barricade-wood" />
+        <div className="v6-barricade-sandbags" />
+      </div>
 
-      {/* Meta HUD strip */}
+      {/* Worn Stencil HUD Strip */}
       <div className="v6-street__hud">
-        <div className="v6-hud-tags">
-          <span className="v6-hud-tag">居民 {population(state)}</span>
-          <span className="v6-hud-tag">核心 {corePresent(state)}</span>
-          <span className="v6-hud-tag">DAY {state.day} / 30</span>
+        <div className="v6-hud-items">
+          <span className="v6-hud-chip">👥 居民 {population(state)}</span>
+          <span className="v6-hud-chip">🛡️ 核心 {corePresent(state)}</span>
+          <span className="v6-hud-chip">📅 DAY {state.day} / 30</span>
         </div>
-        <div className="v6-hud-status">
-          <span className="v6-hud-dot" />
-          <span>{stageDesc}</span>
+        <div className="v6-hud-light-status">
+          <span className={`v6-lamp-dot v6-lamp-dot--${stageInfo.status}`} />
+          <strong>{stageInfo.label}</strong>
+          <span className="v6-hud-desc">· {stageInfo.desc}</span>
         </div>
       </div>
     </section>
@@ -214,23 +251,23 @@ function StreetVisual({ state }: { state: GameState }) {
 }
 
 // ─────────────────────────────────────────────
-// INVENTORY BAR
+// INVENTORY BAR — RUGGED SURVIVAL MANIFEST
 // ─────────────────────────────────────────────
-function ResItem({
-  label, value, icon, critAt, warnAt, unit,
-}: { label: string; value: number; icon: string; critAt: number; warnAt: number; unit?: string }) {
-  const status = resStatus(value, critAt, warnAt);
-  const statusLabel = status === 'critical' ? '危急' : status === 'warning' ? '偏低' : '充裕';
+function ManifestItem({
+  label, value, icon, crit, warn, unit,
+}: { label: string; value: number; icon: string; crit: number; warn: number; unit?: string }) {
+  const tier = resTier(value, crit, warn);
+  const tierText = tier === 'critical' ? '危急' : tier === 'warning' ? '偏低' : '充足';
   return (
-    <div className={`v6-res v6-res--${status}`}>
-      <div className="v6-res__top">
-        <span className="v6-res__icon">{icon}</span>
-        <span className="v6-res__label">{label}</span>
-        <span className={`v6-res__status v6-res__status--${status}`}>{statusLabel}</span>
+    <div className={`v6-manifest-item v6-manifest-item--${tier}`} title={`${label}: ${value} ${unit ?? ''} (${tierText})`}>
+      <div className="v6-manifest-head">
+        <span className="v6-manifest-icon">{icon}</span>
+        <span className="v6-manifest-label">{label}</span>
+        <span className={`v6-manifest-stamp v6-manifest-stamp--${tier}`}>{tierText}</span>
       </div>
-      <div className="v6-res__bottom">
-        <span className="v6-res__value">{value}</span>
-        {unit && <span className="v6-res__unit">{unit}</span>}
+      <div className="v6-manifest-body">
+        <span className="v6-manifest-val">{value}</span>
+        {unit && <span className="v6-manifest-unit">{unit}</span>}
       </div>
     </div>
   );
@@ -239,43 +276,65 @@ function ResItem({
 function InventoryBar({ state }: { state: GameState }) {
   const inv = state.inventory;
   return (
-    <section className="v6-inventory" aria-label="物资概览">
+    <section className="v6-inventory" aria-label="街区物资储备与生存指标">
       <div className="v6-inventory__title">
         <div className="v6-inventory__title-left">
-          <span className="v6-inventory__icon">📦</span>
-          <span>街区物资与生存指标</span>
+          <span className="v6-inventory__stamp-icon">📋</span>
+          <span>避难所物资清单与生存底线</span>
         </div>
-        <small className="v6-inventory__note">救回的居民也需要消耗口粮 · 维持防线与电力才能撑过黑夜</small>
+        <small className="v6-inventory__note">
+          救回的居民每日均需口粮 · 维持电力与建材才能熬过黑夜
+        </small>
       </div>
-      <div className="v6-resource-groups">
-        <div className="v6-res-group">
-          <div className="v6-res-group__label">生存保障</div>
-          <div className="v6-res-group__grid">
-            <ResItem label="口粮" icon="🍞" value={inv.ration} critAt={4} warnAt={12} unit="份" />
-            <ResItem label="药品" icon="💊" value={inv.medicine} critAt={2} warnAt={6} unit="件" />
+
+      <div className="v6-manifest-groups">
+        {/* Survival Lifeline */}
+        <div className="v6-manifest-group v6-manifest-group--vital">
+          <div className="v6-group-header">
+            <span className="v6-group-tag">01 · 生存保障</span>
+            <small>生命底线</small>
+          </div>
+          <div className="v6-group-grid">
+            <ManifestItem label="口粮" icon="🍞" value={inv.ration} crit={4} warn={10} unit="份" />
+            <ManifestItem label="药品" icon="💊" value={inv.medicine} crit={2} warn={5} unit="件" />
           </div>
         </div>
-        <div className="v6-res-group">
-          <div className="v6-res-group__label">工程资源</div>
-          <div className="v6-res-group__grid">
-            <ResItem label="电力" icon="⚡" value={inv.power} critAt={3} warnAt={10} unit="kw" />
-            <ResItem label="材料" icon="🪵" value={inv.materials} critAt={3} warnAt={8} unit="捆" />
-            <ResItem label="零件" icon="🔩" value={inv.parts} critAt={2} warnAt={5} unit="组" />
+
+        {/* Engineering Resources */}
+        <div className="v6-manifest-group v6-manifest-group--eng">
+          <div className="v6-group-header">
+            <span className="v6-group-tag">02 · 工程物资</span>
+            <small>防御与设施</small>
+          </div>
+          <div className="v6-group-grid">
+            <ManifestItem label="电力" icon="⚡" value={inv.power} crit={3} warn={10} unit="kw" />
+            <ManifestItem label="材料" icon="🪵" value={inv.materials} crit={3} warn={8} unit="捆" />
+            <ManifestItem label="零件" icon="🔩" value={inv.parts} crit={2} warn={5} unit="组" />
           </div>
         </div>
-        <div className="v6-res-group">
-          <div className="v6-res-group__label">街区状态</div>
-          <div className="v6-res-group__grid">
-            <ResItem label="希望" icon="🔥" value={state.hope} critAt={10} warnAt={25} />
-            <ResItem label="防线" icon="🛡️" value={Math.round(state.defense)} critAt={20} warnAt={40} />
-            <ResItem label="居民" icon="👥" value={population(state)} critAt={0} warnAt={1} unit="人" />
+
+        {/* Street Morale & Defense */}
+        <div className="v6-manifest-group v6-manifest-group--morale">
+          <div className="v6-group-header">
+            <span className="v6-group-tag">03 · 街区防务</span>
+            <small>凝聚与防线</small>
+          </div>
+          <div className="v6-group-grid">
+            <ManifestItem label="希望" icon="🔥" value={state.hope} crit={12} warn={25} />
+            <ManifestItem label="防线" icon="🛡️" value={Math.round(state.defense)} crit={20} warn={40} />
+            <ManifestItem label="居民" icon="👥" value={population(state)} crit={0} warn={1} unit="人" />
           </div>
         </div>
       </div>
+
       {!!state.storyItems.length && (
         <div className="v6-story-items">
-          <strong>特殊物品</strong>
-          {state.storyItems.map((item) => <span key={item}>{item}</span>)}
+          <strong className="v6-story-items-tag">📦 关键搜集品:</strong>
+          {state.storyItems.map((item) => (
+            <span className="v6-story-item-chip" key={item}>
+              ✦ {item}
+            </span>
+          ))}
         </div>
       )}
     </section>
@@ -283,25 +342,27 @@ function InventoryBar({ state }: { state: GameState }) {
 }
 
 // ─────────────────────────────────────────────
-// MEMORIAL PANEL
+// MEMORIAL WALL — SOOT-STAINED MEMORY WALL
 // ─────────────────────────────────────────────
 function MemorialPanel({ state }: { state: GameState }) {
   if (!state.memorials.length) return null;
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-memorial-section" aria-label="逝者纪念墙">
       <div className="v6-section__head">
         <div>
-          <span>纪念墙</span>
+          <span className="v6-section__tag">残墙刻痕</span>
           <h2>这里曾经有人</h2>
         </div>
-        <small>{state.memorials.length} 个名字</small>
+        <small className="v6-memorial-count">{state.memorials.length} 处碑文</small>
       </div>
-      <div className="v6-survivors">
+      <div className="v6-memorials-grid">
         {state.memorials.map((entry) => (
           <article className="v6-memorial-card" key={entry.survivorId}>
-            <h3>{entry.name}</h3>
-            <div className="v6-memorial-meta">DAY {entry.day} · {entry.cause}</div>
-            <p>{entry.epitaph}</p>
+            <div className="v6-memorial-head">
+              <h3>{entry.name}</h3>
+              <span className="v6-memorial-date">DAY {entry.day} · {entry.cause}</span>
+            </div>
+            <p className="v6-memorial-epitaph">“{entry.epitaph}”</p>
           </article>
         ))}
       </div>
@@ -310,41 +371,43 @@ function MemorialPanel({ state }: { state: GameState }) {
 }
 
 // ─────────────────────────────────────────────
-// CAMPAIGN EVENT SCREEN
+// CAMPAIGN EVENT SCREEN — WARTIME FIXED EVENTS
 // ─────────────────────────────────────────────
 function CampaignEventScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const event = pendingCampaignEvent(state);
   if (!event) return null;
-  const kind = event.kind === 'character' ? '人物事件'
-    : event.kind === 'building' ? '建成事件'
-    : event.kind === 'community' ? '社区事件'
-    : '探索情报';
-  const subtitle = event.kind === 'location'
-    ? '新地点会在探索地图中出现'
-    : event.kind === 'building'
-    ? '这座设施正式进入街区运转'
-    : event.kind === 'community'
-    ? '居民数量正在把避难点变成真正的社区'
-    : '只有已经加入街区的人物才会出现自己的事件';
+  const kind =
+    event.kind === 'character' ? '人物事件' :
+    event.kind === 'building' ? '建成事件' :
+    event.kind === 'community' ? '社区事件' :
+    '探索情报';
+  const subtitle =
+    event.kind === 'location'
+      ? '新地点会在探索地图中解锁出现'
+      : event.kind === 'building'
+      ? '这座设施正式进入街区运转'
+      : event.kind === 'community'
+      ? '居民数量正在把避难点变成真正的社区'
+      : '只有已经加入街区的人物才会出现自身专属事件';
 
   return (
-    <main className="v6-shell">
+    <main className="v6-shell v6-event-shell">
       <TopBar state={state} />
       <header className="v6-page-head">
-        <span>{kind} · DAY {state.day}</span>
+        <span className="v6-event-stamp">{kind} · DAY {state.day}</span>
         <h1>{event.title}</h1>
-        <p>{event.body}</p>
+        <p className="v6-page-desc">{event.body}</p>
       </header>
       <InventoryBar state={state} />
-      <section className="v6-section">
+      <section className="v6-section v6-event-box">
         <div className="v6-section__head">
           <div>
-            <span>{kind}</span>
+            <span className="v6-section__tag">{kind}</span>
             <h2>{subtitle}</h2>
           </div>
         </div>
-        <div className="v6-event-screen-body" style={{ margin: '14px 0 20px' }}>
-          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7 }}>{event.body}</p>
+        <div className="v6-event-body-text">
+          <p>{event.body}</p>
         </div>
         <button className="v6-cta" onClick={() => commit(resolveCampaignEvent(state, event.id), setState)}>
           {event.actionLabel}
@@ -355,46 +418,48 @@ function CampaignEventScreen({ state, setState }: { state: GameState; setState: 
 }
 
 // ─────────────────────────────────────────────
-// COMMUNITY PANEL
+// COMMUNITY PANEL — RESIDENT LABOR ALLOCATION
 // ─────────────────────────────────────────────
 function CommunityPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   if (state.civilianResidents <= 0) return null;
   const summary = communitySupportSummary(state);
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-community-section" aria-label="社区居民劳动力协同">
       <div className="v6-section__head">
         <div>
-          <span>社区劳动力</span>
-          <h2>{summary.activeResidents} 人已安置 · {summary.pendingResidents} 人在安置期</h2>
+          <span className="v6-section__tag">社区协力</span>
+          <h2>{summary.activeResidents} 人已安置 · {summary.pendingResidents} 人处于安置期</h2>
         </div>
-        <small>{summary.unlocked ? `今日轮值：${summary.supportModeLabel}` : '5 名已安置居民后解锁轮值'}</small>
+        <small className="v6-community-badge">
+          {summary.unlocked ? `今日轮值模式：${summary.supportModeLabel}` : '安置达 5 人后解锁轮值'}
+        </small>
       </div>
 
       <div className="v6-community-grid">
-        <div>
-          <span>后勤</span>
+        <div className="v6-comm-slot">
+          <span className="v6-comm-label">后勤协力</span>
           <strong>炊事 +{summary.cookingCapacity.toFixed(1)}</strong>
-          <small>宿营屋越完善，居民越能解放核心人物</small>
+          <small>完善宿营屋，可大幅解放核心队伍的炊事负担</small>
         </div>
-        <div>
-          <span>维修</span>
+        <div className="v6-comm-slot">
+          <span className="v6-comm-label">工程维护</span>
           <strong>防线 +{summary.repairDefense}</strong>
-          <small>居民处理搬运、封堵和轻度维护</small>
+          <small>居民协助搬运沙袋、封堵缺口和加固外墙</small>
         </div>
-        <div>
-          <span>守备</span>
-          <strong>夜间风险 -{Math.round(summary.nightRiskReduction * 100)}%</strong>
-          <small>守夜岗会放大居民守备协作</small>
+        <div className="v6-comm-slot">
+          <span className="v6-comm-label">夜巡协助</span>
+          <strong>夜险 -{Math.round(summary.nightRiskReduction * 100)}%</strong>
+          <small>守夜岗与居民哨位联动，降低突发袭击概率</small>
         </div>
-        <div>
-          <span>医疗辅助</span>
-          <strong>+{summary.medicalAssist}</strong>
-          <small>诊疗站 Lv2+ 后可协助照顾轻伤员</small>
+        <div className="v6-comm-slot">
+          <span className="v6-comm-label">医疗辅助</span>
+          <strong>+{summary.medicalAssist} 护理</strong>
+          <small>诊疗站升级后可协助照料轻伤员加速愈合</small>
         </div>
       </div>
 
       {summary.unlocked && (
-        <div className="v6-mode-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 10 }}>
+        <div className="v6-mode-grid">
           {(['logistics', 'repair', 'defense'] as const).map((mode) => (
             <button
               key={mode}
@@ -402,7 +467,7 @@ function CommunityPanel({ state, setState }: { state: GameState; setState: (stat
               disabled={state.dayState.assignmentsLocked}
               onClick={() => commit(selectCommunitySupportMode(state, mode), setState)}
             >
-              {mode === 'logistics' ? '后勤轮值' : mode === 'repair' ? '维修轮值' : '守备轮值'}
+              {mode === 'logistics' ? '🛠️ 后勤轮值' : mode === 'repair' ? '🧱 维修轮值' : '🛡️ 守备轮值'}
             </button>
           ))}
         </div>
@@ -412,18 +477,19 @@ function CommunityPanel({ state, setState }: { state: GameState; setState: (stat
 }
 
 // ─────────────────────────────────────────────
-// BUILDINGS PANEL
+// BUILDINGS PANEL — REBUILDING THE RUINS
 // ─────────────────────────────────────────────
 function BuildingsPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-buildings-section" aria-label="街区废墟设施修缮">
       <div className="v6-section__head">
         <div>
-          <span>街区建设</span>
-          <h2>把物资变成能救命的设施</h2>
+          <span className="v6-section__tag">废墟修缮</span>
+          <h2>将搜集到的建材转化为生存设施</h2>
         </div>
-        <small>首次建成会触发固定事件</small>
+        <small className="v6-build-hint">首次修成设施将触发特定建成事件</small>
       </div>
+
       <div className="v6-buildings">
         {BUILDING_IDS.map((id) => {
           const definition = V060_BUILDINGS[id];
@@ -431,35 +497,55 @@ function BuildingsPanel({ state, setState }: { state: GameState; setState: (stat
           const next = definition.levels[level] ?? null;
           const check = canUpgradeBuilding(state, id);
           const isMax = !next;
-          const cardClass = `v6-building-card${level === 0 ? ' v6-building-card--lv0' : isMax ? ' v6-building-card--max' : ''}`;
+          const isRuin = level === 0;
 
           return (
-            <article className={cardClass} key={id}>
+            <article
+              className={`v6-building-card ${isRuin ? 'v6-building-card--ruin' : ''} ${isMax ? 'v6-building-card--max' : ''}`}
+              key={id}
+            >
               <div className="v6-bldg-header">
-                <span className="v6-bldg-name">{definition.name}</span>
-                <span className="v6-bldg-level">Lv{level}</span>
+                <div className="v6-bldg-title-wrap">
+                  <span className="v6-bldg-icon">{isRuin ? '🏚️' : isMax ? '🏰' : '🔨'}</span>
+                  <span className="v6-bldg-name">{definition.name}</span>
+                </div>
+                <span className={`v6-bldg-level-stamp ${isRuin ? 'is-ruin' : isMax ? 'is-max' : 'is-level'}`}>
+                  {isRuin ? '废墟' : `Lv.${level}`}
+                </span>
               </div>
-              <h3>{level ? definition.levels[level - 1].title : '废墟 · 未恢复'}</h3>
-              <p>{level ? definition.levels[level - 1].unlock : '修复以后才会真正改变白天或夜晚的规则。'}</p>
+
+              <h3 className="v6-bldg-status-title">
+                {level ? definition.levels[level - 1].title : '破败废墟 · 亟待清理'}
+              </h3>
+              <p className="v6-bldg-desc">
+                {level ? definition.levels[level - 1].unlock : '修复该设施将真正改变白天探索或黑夜防守的规则。'}
+              </p>
+
               {next ? (
-                <>
-                  <div className="v6-upgrade-cost">
-                    ▸ 下一阶：材料 {next.materials} · 零件 {next.parts}
+                <div className="v6-bldg-upgrade-block">
+                  <div className="v6-upgrade-cost-tag">
+                    <span>修缮消耗:</span>
+                    <b>材料 {next.materials}</b>
+                    <span>·</span>
+                    <b>零件 {next.parts}</b>
                   </div>
                   <button
+                    className="v6-btn-upgrade"
                     disabled={!check.allowed || state.dayState.assignmentsLocked}
                     onClick={() => commit(upgradeBuilding(state, id), setState)}
                     title={!check.allowed ? check.reason : undefined}
                   >
                     {state.dayState.assignmentsLocked
-                      ? '今日派遣已锁定'
+                      ? '今日调遣已锁定'
                       : check.allowed
-                      ? `${level === 0 ? '建造' : '升级至'} Lv${next.level}`
+                      ? `${level === 0 ? '清理修造' : '加固升级至'} Lv.${next.level}`
                       : check.reason}
                   </button>
-                </>
+                </div>
               ) : (
-                <span className="v6-max">◆ 已完成</span>
+                <div className="v6-bldg-max-stamp">
+                  <span>◆ 设施已满级运转</span>
+                </div>
               )}
             </article>
           );
@@ -470,20 +556,21 @@ function BuildingsPanel({ state, setState }: { state: GameState; setState: (stat
 }
 
 // ─────────────────────────────────────────────
-// MISSING PERSONS PANEL (With Decision Preview)
+// MISSING PERSONS PANEL — SEARCH & RESCUE DOSSIER
 // ─────────────────────────────────────────────
 function MissingPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const missing = state.survivors.filter((s) => s.condition === 'missing');
   if (!missing.length) return null;
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-missing-section" aria-label="失踪搜救档案">
       <div className="v6-section__head">
         <div>
-          <span>失踪者</span>
-          <h2>今天要不要去找他们？</h2>
+          <span className="v6-section__tag v6-section__tag--danger">失踪人员档案</span>
+          <h2>是否在今日发起搜救？</h2>
         </div>
-        <small>搜救失败会累积，第二次失败可能确认死亡</small>
+        <small className="v6-missing-warning">搜救失败将累积风险，二次搜救失利或将确认死亡</small>
       </div>
+
       <div className="v6-survivors">
         {missing.map((s) => {
           const attempted = state.storyFlags.includes(`missing_search:${s.id}:${state.day}`);
@@ -494,41 +581,46 @@ function MissingPanel({ state, setState }: { state: GameState; setState: (state:
             <article className="v6-survivor v6-survivor--missing" key={s.id}>
               <div className="v6-survivor__top">
                 <div className="v6-survivor__profile">
-                  <span className="v6-survivor__avatar-tag">❓</span>
+                  <span className="v6-survivor__avatar-stamp">❓</span>
                   <div>
                     <h3>{s.name}</h3>
-                    <div className="v6-survivor__trait">昨晚以前，他/她还在这条街上。</div>
+                    <div className="v6-survivor__trait">在黑夜或探索中失联 · 生死未卜</div>
                   </div>
                 </div>
-                <div className="v6-survivor__energy">
-                  <span className="v6-survivor__energy-val">?</span>
-                  <span className="v6-survivor__energy-label">状态</span>
+                <div className="v6-survivor__condition-stamp v6-condition-stamp--missing">
+                  失踪
                 </div>
               </div>
-              <div className="v6-survivor__status">
-                <span className="v6-badge--condition v6-badge--missing">失踪</span>
-              </div>
-              <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', margin: '6px 0 10px' }}>
-                {attempted ? '今天已经寻找过一次。' : '先看清代价再决定：地面搜救占用人员，广播搜救消耗电力。'}
+
+              <p className="v6-missing-memo">
+                {attempted
+                  ? '今日已组织过一次搜救，现场痕迹已断。'
+                  : '权衡搜救代价：地面搜救需要占用两名健康队员，无线电搜救需消耗5点电力。'}
               </p>
-              <div style={{ display: 'grid', gap: 8 }}>
+
+              <div className="v6-missing-actions">
                 <button
-                  className="v6-link-card"
+                  className="v6-action-dossier"
                   disabled={attempted || teamUnavailable}
                   onClick={() => commit(searchForMissing(state, s.id, 'team'), setState)}
                 >
-                  <strong>派两人找</strong>
+                  <div className="v6-action-title">
+                    <strong>🥾 组织两人地面搜寻</strong>
+                  </div>
                   <DecisionTags tags={teamPreview.tags} />
-                  <small>{teamPreview.summary}</small>
+                  <small className="v6-action-summary">{teamPreview.summary}</small>
                 </button>
+
                 <button
-                  className="v6-link-card"
+                  className="v6-action-dossier"
                   disabled={attempted || state.buildings.radio <= 0 || state.inventory.power < 5}
                   onClick={() => commit(searchForMissing(state, s.id, 'radio'), setState)}
                 >
-                  <strong>广播搜救</strong>
+                  <div className="v6-action-title">
+                    <strong>📻 发射无线电定向呼叫</strong>
+                  </div>
                   <DecisionTags tags={radioPreview.tags} />
-                  <small>{radioPreview.summary}</small>
+                  <small className="v6-action-summary">{radioPreview.summary}</small>
                 </button>
               </div>
             </article>
@@ -540,19 +632,20 @@ function MissingPanel({ state, setState }: { state: GameState; setState: (state:
 }
 
 // ─────────────────────────────────────────────
-// ASSIGNMENT PANEL (Survivor Cards with Job Grid & Psychology)
+// ASSIGNMENT PANEL — SURVIVOR SURVIVAL DOSSIERS
 // ─────────────────────────────────────────────
 function AssignmentPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const expeditionCount = Object.values(state.dayAssignments).filter((job) => job === 'expedition').length;
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-assignment-section" aria-label="幸存者今日调遣指令">
       <div className="v6-section__head">
         <div>
-          <span>今日派遣</span>
-          <h2>一个人，一天只做一件主要的事</h2>
+          <span className="v6-section__tag">人员调遣</span>
+          <h2>今日指令 · 每个人专注一项核心职责</h2>
         </div>
-        <small>黄昏后不可改岗</small>
+        <small className="v6-assignment-notice">黄昏锁岗后将不可重新调遣</small>
       </div>
+
       <div className="v6-survivors">
         {state.survivors
           .filter((s) => s.condition !== 'dead' && s.condition !== 'missing')
@@ -570,61 +663,68 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
               committed ? 'is-committed' : '',
             ].filter(Boolean).join(' ');
 
-            const conditionBadgeClass = `v6-badge--condition v6-badge--${condition}`;
-
             return (
               <article className={cardClass} key={survivor.id}>
+                {/* Dossier Top Header */}
                 <div className="v6-survivor__top">
                   <div className="v6-survivor__profile">
-                    <div className="v6-survivor__avatar-tag">
-                      {condition === 'healthy' ? '🟢' : condition === 'fatigued' ? '🟡' : condition === 'minor' ? '🟠' : condition === 'serious' ? '🔴' : '⚠️'}
-                    </div>
+                    <div className={`v6-survivor__condition-dot v6-dot--${condition}`} />
                     <div>
-                      <h3>{survivor.name}</h3>
+                      <h3 className="v6-survivor__name">{survivor.name}</h3>
                       <div className="v6-survivor__trait">
-                        {committed ? '今天已经执行过行动' : survivor.trait ?? survivor.perk ?? '—'}
+                        {committed ? '今日行动已执行完毕' : survivor.trait ?? survivor.perk ?? '普通幸存者'}
                       </div>
                     </div>
                   </div>
-                  <div className="v6-survivor__energy">
-                    <div className="v6-energy-header">
-                      <span className="v6-survivor__energy-label">精力</span>
-                      <span className="v6-survivor__energy-val">{survivor.energy}</span>
+
+                  {/* Energy Meter */}
+                  <div className="v6-survivor__energy-gauge">
+                    <div className="v6-energy-meta">
+                      <span className="v6-energy-label">精力</span>
+                      <span className="v6-energy-val">{survivor.energy}</span>
                     </div>
-                    <div className="v6-energy-bar" title={`当前精力: ${survivor.energy}/100`}>
+                    <div className="v6-energy-track">
                       <div
-                        className={`v6-energy-fill v6-energy-fill--${survivor.energy > 60 ? 'high' : survivor.energy > 30 ? 'mid' : 'low'}`}
+                        className={`v6-energy-bar-fill v6-energy--${
+                          survivor.energy > 60 ? 'good' : survivor.energy > 30 ? 'mid' : 'low'
+                        }`}
                         style={{ width: `${Math.min(100, Math.max(0, survivor.energy))}%` }}
                       />
                     </div>
                   </div>
                 </div>
 
+                {/* Stamped Badges: Condition, Trust, Specialty, Mental, Active Job */}
                 <div className="v6-survivor__status">
-                  <span className={conditionBadgeClass}>{CONDITION_LABEL[condition]}</span>
-                  <span className="v6-badge--trust">信任 {survivor.trust ?? 0}</span>
+                  <span className={`v6-stamp-badge v6-stamp--condition v6-stamp--${condition}`}>
+                    {CONDITION_LABEL[condition]}
+                  </span>
+                  <span className="v6-stamp-badge v6-stamp--trust">
+                    信任 {survivor.trust ?? 0}
+                  </span>
                   {survivor.specialty && (
-                    <span className="v6-badge--specialty">{survivor.specialty}</span>
+                    <span className="v6-stamp-badge v6-stamp--specialty">
+                      ★ {survivor.specialty}
+                    </span>
                   )}
                   {mental !== 'steady' && (
-                    <span className={`v6-badge--psychology v6-badge--psychology-${mental}`}>
+                    <span className={`v6-stamp-badge v6-stamp--mental v6-stamp--mental-${mental}`}>
                       {mental === 'focused' ? '⚡ 心理 · 专注 (+1)' : '⚠️ 心理 · 动摇 (-1)'}
                     </span>
                   )}
                   {current && (
-                    <span className="v6-badge--active-job">
-                      当前：{JOBS.find(j => j.id === current)?.icon} {JOBS.find(j => j.id === current)?.label}
+                    <span className="v6-stamp-badge v6-stamp--job-active">
+                      当前指派: {JOBS.find((j) => j.id === current)?.icon} {JOBS.find((j) => j.id === current)?.label}
                     </span>
                   )}
                 </div>
 
-                {committed && (
-                  <p style={{ fontSize: 'var(--fs-xs)', color: 'var(--ember)', marginBottom: '4px', paddingLeft: '4px' }}>
-                    今日行动已完成，无法重新派遣。
-                  </p>
-                )}
-
-                {!committed && (
+                {committed ? (
+                  <div className="v6-committed-banner">
+                    <span>✓ 今日任务已锁定执行，无法重新派遣</span>
+                  </div>
+                ) : (
+                  /* 7-Job Tactical Grid */
                   <div className="v6-job-grid">
                     {JOBS.map((job) => {
                       const availability = canTakeDayAssignment(state, survivor.id, job.id);
@@ -632,12 +732,13 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
                       const disabled = !availability.allowed || extraLimit;
                       const isActive = current === job.id;
                       const disabledReason = extraLimit
-                        ? '探索队已满（最多 2 人）'
+                        ? '探索队已达上限（最多 2 人）'
                         : availability.reason ?? job.note;
+
                       return (
                         <button
                           key={job.id}
-                          className={isActive ? 'active' : ''}
+                          className={`v6-job-btn ${isActive ? 'is-active' : ''}`}
                           disabled={disabled}
                           title={disabled ? disabledReason : job.note}
                           onClick={() =>
@@ -649,7 +750,8 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
                             )
                           }
                         >
-                          {job.icon} {job.label}
+                          <span className="v6-job-icon">{job.icon}</span>
+                          <span className="v6-job-label">{job.label}</span>
                         </button>
                       );
                     })}
@@ -664,7 +766,7 @@ function AssignmentPanel({ state, setState }: { state: GameState; setState: (sta
 }
 
 // ─────────────────────────────────────────────
-// EXPEDITION STATUS (mid-day)
+// EXPEDITION STATUS (MID-DAY FIELD STATUS)
 // ─────────────────────────────────────────────
 function ExpeditionStatus({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   if (!state.expeditionState.departed) return null;
@@ -672,29 +774,30 @@ function ExpeditionStatus({ state, setState }: { state: GameState; setState: (st
     .map((id) => state.survivors.find((s) => s.id === id)?.name ?? id)
     .join('、');
   const location =
-    EXPEDITION_LOCATIONS.find((item) => item.id === state.expeditionState.locationId)?.name ?? '未知地点';
+    EXPEDITION_LOCATIONS.find((item) => item.id === state.expeditionState.locationId)?.name ?? '未知废墟';
   const event = currentExpeditionEvent(state);
+
   return (
-    <section className="v6-section">
+    <section className="v6-section v6-expedition-status-box" aria-label="外出探索队战况">
       <div className="v6-section__head">
         <div>
-          <span>搜索队外出中</span>
-          <h2>{party} · {location}</h2>
+          <span className="v6-section__tag v6-section__tag--danger">探索队在外行动中</span>
+          <h2>{party} · 前往 {location}</h2>
         </div>
-        <small>今日派遣已锁定</small>
+        <small className="v6-expedition-locked-tag">今日调遣已锁定</small>
       </div>
-      <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', marginBottom: '12px' }}>
-        {event ? `途中传来消息：${event.title}` : '搜索队还在路上。'}
+      <p className="v6-expedition-msg">
+        {event ? `收到前方消息：${event.title}` : '搜寻队伍正在废墟道路中摸索前进……'}
       </p>
       <button className="v6-cta" onClick={() => commit({ ...state, phase: 'expedition' }, setState)}>
-        处理探索事件
+        🧭 进入并处理探索决策
       </button>
     </section>
   );
 }
 
 // ─────────────────────────────────────────────
-// DAY SCREEN
+// DAY SCREEN — MAIN SURVIVAL WORKBENCH
 // ─────────────────────────────────────────────
 function DayScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const [reviewingDispatch, setReviewingDispatch] = useState(false);
@@ -730,6 +833,7 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <CommunityPanel state={state} setState={setState} />
       <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)} />
 
+      {/* Default Daytime Workspace Panels */}
       {!state.dayState.assignmentsLocked && !reviewingDispatch && (
         <>
           <MissingPanel state={state} setState={setState} />
@@ -738,91 +842,108 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
         </>
       )}
 
-      {/* Dispatch Confirmation View */}
+      {/* Two-Stage Dispatch Confirmation Dossier */}
       {!state.dayState.assignmentsLocked && reviewingDispatch && (
-        <section className="v6-section">
+        <section className="v6-section v6-dispatch-confirm-box" aria-label="最终调遣确认单">
           <div className="v6-section__head">
             <div>
-              <span>最后确认</span>
-              <h2>确认后，今天的派遣不能再修改</h2>
+              <span className="v6-section__tag v6-section__tag--danger">战备复核</span>
+              <h2>最终确认 · 锁定后今日调遣将不可更改</h2>
             </div>
-            <small>{dispatch.manuallyAssigned} 人手动安排 · {dispatch.autoResting} 人自动休息</small>
+            <small className="v6-confirm-tally">
+              {dispatch.manuallyAssigned} 人手动派发 · {dispatch.autoResting} 人自动静养
+            </small>
           </div>
+
           <div className="v6-survivors">
             {dispatch.entries.map((entry) => (
-              <article className={`v6-survivor ${entry.unavailable || entry.committed ? 'is-unavailable' : ''}`} key={entry.survivorId}>
+              <article
+                className={`v6-survivor v6-survivor--confirm ${entry.unavailable || entry.committed ? 'is-unavailable' : ''}`}
+                key={entry.survivorId}
+              >
                 <div className="v6-survivor__top">
                   <div className="v6-survivor__profile">
-                    <span className="v6-survivor__avatar-tag">
+                    <span className="v6-survivor__avatar-stamp">
                       {entry.unavailable ? '⚠️' : entry.automatic ? '💤' : '✅'}
                     </span>
                     <div>
-                      <h3>{entry.name}</h3>
+                      <h3 className="v6-survivor__name">{entry.name}</h3>
                       <div className="v6-survivor__trait">
-                        {entry.automatic ? '你没有为他/她指定岗位' : entry.committed ? '今天已经执行过行动' : '今日最终派遣'}
+                        {entry.automatic
+                          ? '未指定具体岗位，将自动在避难所休息恢复'
+                          : entry.committed
+                          ? '今日已完成外出或突发行动'
+                          : '确认执行指派岗位'}
                       </div>
                     </div>
                   </div>
-                  <div className="v6-survivor__energy">
-                    <b className="v6-survivor__energy-val">{entry.label}</b>
-                    <small className="v6-survivor__energy-label">{entry.unavailable ? '不可派遣' : entry.automatic ? '自动' : '已确认'}</small>
+                  <div className="v6-confirm-job-stamp">
+                    <b className="v6-confirm-job-name">{entry.label}</b>
+                    <small className="v6-confirm-job-tag">
+                      {entry.unavailable ? '不可调遣' : entry.automatic ? '自动休息' : '已核准'}
+                    </small>
                   </div>
                 </div>
               </article>
             ))}
           </div>
-          <div className="v6-preview" style={{ marginTop: 14 }}>
-            <div>
-              <span>预计供餐</span>
+
+          <div className="v6-preview v6-confirm-preview" style={{ marginTop: 16 }}>
+            <div className="v6-preview-block">
+              <span className="v6-preview-title">预计供餐补给</span>
               <strong>{mealLabel(meal.quality)}</strong>
               <small>
-                炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}
+                炊事效能 {meal.cookingCapacity.toFixed(1)} / 总人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}
               </small>
             </div>
-            <div>
-              <span>预计夜间</span>
+            <div className="v6-preview-block">
+              <span className="v6-preview-title">预计夜防备勤</span>
               <strong>{prep.defense}</strong>
               <small>
                 探索 {dispatch.expeditionCount} 人 · 医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}
               </small>
             </div>
           </div>
-          <p className="v6-message" style={{ textAlign: 'left', margin: '12px 0' }}>
-            未手动安排的人会自动休息。点击下面的按钮后，探索队将进入地点选择；没有探索任务则直接进入黄昏。
+
+          <p className="v6-confirm-warning">
+            ⚠️ 锁定后，若有探索队将进入地点选择；若无探索人员则直接进入黄昏核对阶段。
           </p>
+
           <button className="v6-cta" onClick={lock}>
-            确认并锁定今日派遣
+            🔒 确认并锁定今日人员调遣
           </button>
-          <button className="v6-link" onClick={() => setReviewingDispatch(false)}>
-            ← 返回调整派遣
+          <button className="v6-link-back" onClick={() => setReviewingDispatch(false)}>
+            ← 返回重新调整人员岗位
           </button>
         </section>
       )}
 
       <MemorialPanel state={state} />
 
+      {/* Previews under Normal View */}
       {!reviewingDispatch && (
         <div className="v6-preview">
-          <div>
-            <span>预计供餐</span>
+          <div className="v6-preview-block">
+            <span className="v6-preview-title">预计今晚供餐</span>
             <strong>{mealLabel(meal.quality)}</strong>
             <small>
-              炊事能力 {meal.cookingCapacity.toFixed(1)} / 人口 {meal.residentCount} ·
-              精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}
+              炊事效能 {meal.cookingCapacity.toFixed(1)} / 总人口 {meal.residentCount} · 精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}
             </small>
           </div>
-          <div>
-            <span>预计夜间准备</span>
+          <div className="v6-preview-block">
+            <span className="v6-preview-title">预计夜间备勤</span>
             <strong>{prep.defense}</strong>
             <small>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</small>
           </div>
         </div>
       )}
 
+      {/* Primary Action Button */}
       {!state.expeditionState.departed && !reviewingDispatch && (
         state.dayState.assignmentsLocked ? (
           <button className="v6-cta" onClick={() => commit({ ...state, phase: 'dusk' }, setState)}>
-            进入黄昏准备
+            🌅 进入黄昏防备阶段
+            <small>核对今晚防线、物资消耗与已知风险</small>
           </button>
         ) : (
           <button
@@ -830,18 +951,19 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
             disabled={!available && !Object.keys(state.dayAssignments).length}
             onClick={() => setReviewingDispatch(true)}
           >
-            确认今日派遣
-            <small>{assigned} 已手动安排 · 未安排者自动休息</small>
+            📋 确认今日人员调遣
+            <small>{assigned} 人已明确分工 · 其余队员自动在避难所静养</small>
           </button>
         )
       )}
-      <p className="v6-message">{state.lastMessage}</p>
+
+      {state.lastMessage && <p className="v6-message">{state.lastMessage}</p>}
     </main>
   );
 }
 
 // ─────────────────────────────────────────────
-// EXPEDITION SCREEN
+// EXPEDITION SCREEN — THE PERILOUS OUTPOST MAP
 // ─────────────────────────────────────────────
 function ExpeditionScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const assignedIds = state.survivors
@@ -879,7 +1001,7 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
       {
         ...next,
         phase: 'street',
-        lastMessage: `${party.map((id) => state.survivors.find((s) => s.id === id)?.name ?? id).join('、')}已经出发 · 今日派遣保持锁定`,
+        lastMessage: `${party.map((id) => state.survivors.find((s) => s.id === id)?.name ?? id).join('、')}已出发前往搜寻 · 岗位保持锁定`,
       },
       setState,
     );
@@ -923,31 +1045,33 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
 
   if (!state.expeditionState.departed) {
     return (
-      <main className="v6-shell">
+      <main className="v6-shell v6-expedition-shell">
         <TopBar state={state} />
         <header className="v6-page-head">
-          <span>白天 · 探索</span>
-          <h1>选择搜索队和已解锁地点</h1>
-          <p>新地点不会因为天数自动出现。只有街区事件提供情报以后，它才会进入探索地图。</p>
+          <span className="v6-event-stamp">战地外勤 · 探索任务简报</span>
+          <h1>选择探索小队与搜寻目标</h1>
+          <p className="v6-page-desc">
+            废墟深处充满未知的崩塌与潜伏威胁。只有根据情报解锁的据点才允许探索。
+          </p>
         </header>
         <InventoryBar state={state} />
 
-        {/* Party selection */}
+        {/* Party Member Slots */}
         <section className="v6-section">
           <div className="v6-section__head">
             <div>
-              <span>探索队</span>
-              <h2>1–2 人出发</h2>
+              <span className="v6-section__tag">小队编组</span>
+              <h2>出勤队员 (1–2 人)</h2>
             </div>
-            <small>点击成员切换参与状态</small>
+            <small>点击成员标签调整出勤人员</small>
           </div>
-          <div className="v6-party">
+          <div className="v6-party-grid">
             {assignedIds.map((id) => {
               const survivor = state.survivors.find((item) => item.id === id)!;
               const active = party.includes(id);
               return (
                 <button
-                  className={active ? 'active' : ''}
+                  className={`v6-party-card ${active ? 'is-selected' : ''}`}
                   key={id}
                   onClick={() =>
                     setParty((current) =>
@@ -955,35 +1079,46 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
                     )
                   }
                 >
-                  <strong>{survivor.name}</strong>
-                  <span>精力 {survivor.energy} · {CONDITION_LABEL[survivor.condition ?? 'healthy']}</span>
+                  <div className="v6-party-card-head">
+                    <strong>{survivor.name}</strong>
+                    <span className="v6-party-check">{active ? '✓ 已入队' : '+ 待命'}</span>
+                  </div>
+                  <span className="v6-party-stat">
+                    精力 {survivor.energy} · {CONDITION_LABEL[survivor.condition ?? 'healthy']}
+                  </span>
                 </button>
               );
             })}
           </div>
         </section>
 
-        {/* Location grid */}
+        {/* Location Selection Map */}
         <section className="v6-section">
           <div className="v6-section__head">
             <div>
-              <span>探索地图</span>
-              <h2>已发现地点</h2>
+              <span className="v6-section__tag">战术地图</span>
+              <h2>已确认搜寻地点</h2>
             </div>
-            <strong className={`v6-risk v6-risk--${risk}`}>
-              {risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}
-            </strong>
+            <div className={`v6-risk-stamp v6-risk-stamp--${risk}`}>
+              风险等级: {risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险 ⚠️' : '极险 ☠️'}
+            </div>
           </div>
-          <div className="v6-locations">
+
+          <div className="v6-locations-grid">
             {availableLocations.map((location) => (
               <button
-                className={location.id === locationId ? 'active' : ''}
+                className={`v6-location-card ${location.id === locationId ? 'is-active' : ''}`}
                 key={location.id}
                 onClick={() => setLocationId(location.id)}
               >
-                <strong>{location.name}</strong>
-                <span>{location.description}</span>
-                <small>主要：{location.primary} · 危险度 {location.danger}/5</small>
+                <div className="v6-loc-top">
+                  <strong className="v6-loc-name">{location.name}</strong>
+                  <span className="v6-loc-danger">危险度 {location.danger}/5</span>
+                </div>
+                <p className="v6-loc-desc">{location.description}</p>
+                <div className="v6-loc-foot">
+                  <span>主要产出: <b>{location.primary}</b></span>
+                </div>
               </button>
             ))}
           </div>
@@ -994,59 +1129,72 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
           disabled={!party.length || !availableLocations.length}
           onClick={begin}
         >
-          搜索队出发 · 返回主界面
+          🚶‍♂️ 探索小队出发 · 返回主界面
         </button>
-        <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>
-          ← 返回派遣
+        <button className="v6-link-back" onClick={() => commit(reopenDayAssignments(state), setState)}>
+          ← 取消并返回调遣界面
         </button>
       </main>
     );
   }
 
+  /* Mid-Expedition Choice Encounter */
   return (
-    <main className="v6-shell">
+    <main className="v6-shell v6-expedition-shell">
       <TopBar state={state} />
       <header className="v6-page-head">
-        <span>探索途中 · {activeRisk === 'safe' ? '安全' : activeRisk === 'cautious' ? '谨慎' : activeRisk === 'dangerous' ? '危险' : '极险'}</span>
-        <h1>{event?.title ?? '搜索队进入了建筑'}</h1>
-        <p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p>
+        <span className="v6-event-stamp">
+          探索遭遇 · 风险评级: {activeRisk === 'safe' ? '安全' : activeRisk === 'cautious' ? '谨慎' : activeRisk === 'dangerous' ? '危险' : '极险'}
+        </span>
+        <h1>{event?.title ?? '小队进入废墟深处'}</h1>
+        <p className="v6-page-desc">{event?.body ?? '四周一片死寂，唯有碎石滑落的微响。'}</p>
       </header>
-      <section className="v6-expedition-choices">
-        <button onClick={() => finish('push')}>
-          <b>A</b>
-          <strong>继续深入</strong>
-          <span>更高收益，但判定更难。</span>
-          <div style={{ gridColumn: 2 }}>
-            <DecisionTags tags={pushPreview.tags} />
-            <small>{pushPreview.summary}</small>
+
+      <section className="v6-expedition-decision-board">
+        <button className="v6-decision-card v6-decision--push" onClick={() => finish('push')}>
+          <div className="v6-decision-badge">A</div>
+          <div className="v6-decision-main">
+            <strong>深入搜寻 (Push Forward)</strong>
+            <span>承受更高判定压力与风险，力争搜刮更多关键生存物资。</span>
+            <div className="v6-decision-tags-wrap">
+              <DecisionTags tags={pushPreview.tags} />
+              <small className="v6-decision-summary">{pushPreview.summary}</small>
+            </div>
           </div>
         </button>
-        <button onClick={() => finish('careful')}>
-          <b>B</b>
-          <strong>谨慎绕行</strong>
-          <span>降低判定压力，不追求额外收益。</span>
-          <div style={{ gridColumn: 2 }}>
-            <DecisionTags tags={carefulPreview.tags} />
-            <small>{carefulPreview.summary}</small>
+
+        <button className="v6-decision-card v6-decision--careful" onClick={() => finish('careful')}>
+          <div className="v6-decision-badge">B</div>
+          <div className="v6-decision-main">
+            <strong>谨慎周旋 (Cautious Route)</strong>
+            <span>降低行动风险，不追求额外收益，优先保证队员人身安全。</span>
+            <div className="v6-decision-tags-wrap">
+              <DecisionTags tags={carefulPreview.tags} />
+              <small className="v6-decision-summary">{carefulPreview.summary}</small>
+            </div>
           </div>
         </button>
-        <button onClick={retreat}>
-          <b>C</b>
-          <strong>立刻撤回</strong>
-          <span>放弃今天的物资收益，把人带回来。</span>
-          <div style={{ gridColumn: 2 }}>
-            <DecisionTags tags={retreatPreview.tags} />
-            <small>{retreatPreview.summary}</small>
+
+        <button className="v6-decision-card v6-decision--retreat" onClick={retreat}>
+          <div className="v6-decision-badge">C</div>
+          <div className="v6-decision-main">
+            <strong>立刻撤离 (Retreat to Base)</strong>
+            <span>放弃今日未到手的物资，全员立刻原路撤回避难所。</span>
+            <div className="v6-decision-tags-wrap">
+              <DecisionTags tags={retreatPreview.tags} />
+              <small className="v6-decision-summary">{retreatPreview.summary}</small>
+            </div>
           </div>
         </button>
       </section>
-      <p className="v6-message">{state.lastMessage}</p>
+
+      {state.lastMessage && <p className="v6-message">{state.lastMessage}</p>}
     </main>
   );
 }
 
 // ─────────────────────────────────────────────
-// DUSK SCREEN
+// DUSK SCREEN — OMINOUS TWILIGHT & RISK AUDIT
 // ─────────────────────────────────────────────
 function DuskScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const meal = previewMeal(state);
@@ -1058,39 +1206,46 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
     <main className="v6-shell v6-shell--dusk">
       <TopBar state={state} />
       <header className="v6-page-head">
-        <span>DUSK · DAY {state.day}</span>
+        <span className="v6-event-stamp v6-event-stamp--dusk">DUSK · 暮色将至 · DAY {state.day}</span>
         <h1>天黑以后，不再换岗。</h1>
-        <p>这是白天最后一次确认。今晚发生什么，取决于现在留下了谁、修好了什么、物资还剩多少。</p>
+        <p className="v6-page-desc">
+          这是白昼向黑夜交接前的最后一次核对。今夜能否挺住，取决于留守人员、设施完备度与余存物资。
+        </p>
       </header>
       <InventoryBar state={state} />
 
-      <div className="v6-dusk-grid">
-        <article>
-          <span>供餐</span>
+      <div className="v6-dusk-audit-grid">
+        <article className="v6-dusk-card">
+          <span className="v6-dusk-card-tag">今晚供餐状态</span>
           <h2>{mealLabel(meal.quality)}</h2>
-          <p>人口 {meal.residentCount} · 炊事能力 {meal.cookingCapacity.toFixed(1)} · 覆盖 {Math.round(meal.coverage * 100)}%</p>
-          <strong>精力 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}</strong>
+          <p>总人口 {meal.residentCount} · 炊事能力 {meal.cookingCapacity.toFixed(1)} · 覆盖率 {Math.round(meal.coverage * 100)}%</p>
+          <div className="v6-dusk-stat-pill">
+            精力恢复 +{meal.energyRecovery} · 希望 {meal.hopeDelta >= 0 ? '+' : ''}{meal.hopeDelta}
+          </div>
         </article>
-        <article>
-          <span>夜间准备</span>
-          <h2>{prep.defense}</h2>
-          <p>医疗 {prep.medical} · 维修 {prep.repair} · 广播 {prep.radio}</p>
-          <strong>守备和设施会改变随机事件风险</strong>
+
+        <article className="v6-dusk-card">
+          <span className="v6-dusk-card-tag">夜防就绪评估</span>
+          <h2>防线评估: {prep.defense}</h2>
+          <p>医疗待命 {prep.medical} · 设施维护 {prep.repair} · 广播值守 {prep.radio}</p>
+          <div className="v6-dusk-stat-pill">
+            守备人员与防御工事将显著影响夜间突发威胁判定
+          </div>
         </article>
       </div>
 
       {!!causalSignals.length && (
-        <section className="v6-section">
+        <section className="v6-section v6-causal-section">
           <div className="v6-section__head">
             <div>
-              <span>今晚的因果</span>
-              <h2>这些不是固定剧本，而是今天留下的风险</h2>
+              <span className="v6-section__tag v6-section__tag--danger">⚠️ 战地因果预警</span>
+              <h2>今夜潜伏风险 · 今日决策引发的连锁影响</h2>
             </div>
           </div>
-          <div className="v6-causal-signals">
+          <div className="v6-causal-list">
             {causalSignals.map((signal) => (
-              <div className="v6-causal-item" key={signal}>
-                <span className="v6-causal-icon">⚠️</span>
+              <div className="v6-causal-bullet" key={signal}>
+                <span className="v6-causal-warn-icon">⚠️</span>
                 <p>{signal}</p>
               </div>
             ))}
@@ -1098,24 +1253,26 @@ function DuskScreen({ state, setState }: { state: GameState; setState: (state: G
         </section>
       )}
 
-      <button className="v6-cta" onClick={() => commit(finalizeDay(state), setState)}>
-        进入夜晚
-        <small>天黑以后所有派遣生效，夜间事件随即开始</small>
+      <button className="v6-cta v6-cta--night" onClick={() => commit(finalizeDay(state), setState)}>
+        🌑 进入长夜防守
+        <small>天黑以后所有岗位立即生效 · 夜间事件与威胁判定随即启动</small>
       </button>
+
       {!committed ? (
-        <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>
-          ← 返回调整派遣
+        <button className="v6-link-back" onClick={() => commit(reopenDayAssignments(state), setState)}>
+          ← 返回日间重新调整人员调遣
         </button>
       ) : (
-        <p className="v6-message">今日已经执行过探索或搜救，派遣不可再调整。</p>
+        <p className="v6-message">今日已执行过外出探索或搜救行动，调遣已锁定不可更改。</p>
       )}
-      <p className="v6-message">{state.lastMessage}</p>
+
+      {state.lastMessage && <p className="v6-message">{state.lastMessage}</p>}
     </main>
   );
 }
 
 // ─────────────────────────────────────────────
-// DAWN SCREEN
+// DAWN SCREEN — COLD MORNING ROLL CALL & DEBRIEF
 // ─────────────────────────────────────────────
 function DawnScreen({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   const brief = dawnBriefEntries(state);
@@ -1123,31 +1280,32 @@ function DawnScreen({ state, setState }: { state: GameState; setState: (state: G
     <main className="v6-shell v6-shell--dawn">
       <TopBar state={state} />
       <header className="v6-page-head">
-        <span>DAWN · DAY {state.day}</span>
-        <h1>{state.day === 29 ? '最后的夜结束了。' : '天亮了。'}</h1>
-        <p>
+        <span className="v6-event-stamp v6-event-stamp--dawn">DAWN · 晨曦破晓 · DAY {state.day}</span>
+        <h1>{state.day === 29 ? '最后的黑夜熬过去了。' : '又熬过了一夜，天亮了。'}</h1>
+        <p className="v6-page-desc">
           {state.nightState.hordeActive
-            ? '尸潮退去以后，街道重新有了颜色。现在才看得清昨夜留下的损失。'
-            : '发电机的声音重新盖过远处的脚步。今天仍然有事要做。'}
+            ? '尸潮退去以后，街道重见轮廓。昨夜的创伤与代价一一显现。'
+            : '发电机的轰鸣压过了远处的风声。废墟里的人还要继续撑下去。'}
         </p>
       </header>
       <InventoryBar state={state} />
 
-      <div className="v6-stats">
-        <div>
-          <span>夜间事件</span>
+      {/* Night Casualty & Progress Tally */}
+      <div className="v6-dawn-stats-grid">
+        <div className="v6-dawn-stat-card">
+          <span>夜间事件处置</span>
           <b>{state.nightState.resolutions.length}</b>
         </div>
-        <div>
-          <span>死亡</span>
+        <div className="v6-dawn-stat-card v6-stat-card--danger">
+          <span>累计确认死亡</span>
           <b>{state.campaignStats.deaths}</b>
         </div>
-        <div>
-          <span>失踪</span>
+        <div className="v6-dawn-stat-card v6-stat-card--warn">
+          <span>当前下落不明</span>
           <b>{state.campaignStats.missing}</b>
         </div>
-        <div>
-          <span>救回</span>
+        <div className="v6-dawn-stat-card v6-stat-card--safe">
+          <span>累计搜救收容</span>
           <b>{state.campaignStats.rescued}</b>
         </div>
       </div>
@@ -1155,17 +1313,17 @@ function DawnScreen({ state, setState }: { state: GameState; setState: (state: G
       <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)} compact />
 
       {!!brief.length && (
-        <section className="v6-section">
+        <section className="v6-section v6-brief-section">
           <div className="v6-section__head">
             <div>
-              <span>昨夜简报</span>
-              <h2>昨天的选择留下了什么</h2>
+              <span className="v6-section__tag">昨夜战报</span>
+              <h2>昨夜决断与事件结果简报</h2>
             </div>
-            <small>只记录真正发生的变化</small>
+            <small>仅记录真实产生影响的变动</small>
           </div>
-          <div className="v6-brief">
+          <div className="v6-brief-list">
             {brief.map((entry, index) => (
-              <div className="v6-brief-item" key={`${entry}-${index}`}>
+              <div className="v6-brief-row" key={`${entry}-${index}`}>
                 <span className="v6-brief-bullet">◆</span>
                 <p>{entry}</p>
               </div>
@@ -1175,15 +1333,16 @@ function DawnScreen({ state, setState }: { state: GameState; setState: (state: G
       )}
 
       <MemorialPanel state={state} />
+
       <button className="v6-cta" onClick={() => commit(advanceCampaignDay(state), setState)}>
-        {state.day === 29 ? '进入 DAY 30 · 结算' : `开始 DAY ${state.day + 1}`}
+        {state.day === 29 ? '进入 DAY 30 · 终局结算' : `开启 DAY ${state.day + 1} 幸存日志`}
       </button>
     </main>
   );
 }
 
 // ─────────────────────────────────────────────
-// ENDING SCREEN
+// ENDING SCREEN — THE FINAL SURVIVAL CHRONICLE
 // ─────────────────────────────────────────────
 function EndingScreen({
   state,
@@ -1199,59 +1358,68 @@ function EndingScreen({
 
   return (
     <main className={`v6-shell v6-ending v6-ending--${ending.tier}`}>
-      <div className="v6-ending__day">DAY 30 · 极夜终局</div>
-      <p style={{ textAlign: 'center', color: 'var(--text-muted)', margin: '4px 0 16px' }}>天亮了。</p>
+      <div className="v6-ending-banner">
+        <span className="v6-ending-stamp">DAY 30 · 极夜生存终局结案</span>
+        <h1 className="v6-ending-main-title">天亮了。</h1>
+      </div>
 
-      <section className="v6-ending__ledger">
-        <span style={{ gridColumn: '1 / -1', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 700 }}>过去 29 天生存结算</span>
-        <div>
-          <b>{state.campaignStats.rescued}</b>
-          <small>救回的人</small>
+      <section className="v6-ending-ledger-box">
+        <div className="v6-ledger-title">
+          <span>过去 29 天街区生存总账</span>
         </div>
-        <div>
-          <b>{population(state)} 人</b>
-          <small>核心 {corePresent(state)} · 居民 {state.civilianResidents}</small>
-        </div>
-        <div>
-          <b>{state.campaignStats.deaths}</b>
-          <small>确认死亡</small>
-        </div>
-        <div>
-          <b>{state.campaignStats.expeditions}</b>
-          <small>探索次数</small>
-        </div>
-        <div>
-          <b>{state.campaignStats.locationsDiscovered}</b>
-          <small>发现地点</small>
-        </div>
-        <div>
-          <b>{state.finalHordeResult ? RESULT_LABEL[state.finalHordeResult] : '未知'}</b>
-          <small>DAY 29 尸潮守备</small>
+        <div className="v6-ledger-grid">
+          <div className="v6-ledger-cell">
+            <span>救回幸存者</span>
+            <b>{state.campaignStats.rescued} 人</b>
+          </div>
+          <div className="v6-ledger-cell">
+            <span>街区现存人口</span>
+            <b>{population(state)} 人</b>
+            <small>核心 {corePresent(state)} + 居民 {state.civilianResidents}</small>
+          </div>
+          <div className="v6-ledger-cell">
+            <span>确认遇难人数</span>
+            <b>{state.campaignStats.deaths} 人</b>
+          </div>
+          <div className="v6-ledger-cell">
+            <span>外勤探索总次</span>
+            <b>{state.campaignStats.expeditions} 次</b>
+          </div>
+          <div className="v6-ledger-cell">
+            <span>发现未知据点</span>
+            <b>{state.campaignStats.locationsDiscovered} 处</b>
+          </div>
+          <div className="v6-ledger-cell">
+            <span>DAY 29 终战防守</span>
+            <b>{state.finalHordeResult ? RESULT_LABEL[state.finalHordeResult] : '未知'}</b>
+          </div>
         </div>
       </section>
 
       <MemorialPanel state={state} />
 
-      <section className="v6-ending__story">
-        <span>{ending.tier === 'secret' ? '隐藏结局' : '结局'}</span>
-        <h1>《{ending.title}》</h1>
-        <p>{ending.summary}</p>
+      <section className="v6-ending-story-card">
+        <span className="v6-story-tier-tag">
+          {ending.tier === 'secret' ? '★ 隐藏生存结局' : '✦ 达成终局'}
+        </span>
+        <h2 className="v6-story-title">《{ending.title}》</h2>
+        <p className="v6-story-summary">{ending.summary}</p>
       </section>
 
-      {/* Ending Gallery */}
-      <section className="v6-ending-gallery">
+      {/* Ending Chronicle Gallery */}
+      <section className="v6-section v6-gallery-section">
         <div className="v6-section__head">
           <div>
-            <span>结局图鉴</span>
+            <span className="v6-section__tag">结局图鉴档案</span>
             <h2>解锁记录 ({meta.endingsUnlocked.length} / {Object.keys(ENDINGS).length})</h2>
           </div>
         </div>
-        <div className="v6-ending-grid">
+        <div className="v6-gallery-grid">
           {(Object.keys(ENDINGS) as EndingId[]).map((id) => {
             const def = ENDINGS[id];
             const unlocked = meta.endingsUnlocked.includes(id);
             return (
-              <div key={id} className={unlocked ? 'unlocked' : ''}>
+              <div className={`v6-gallery-card ${unlocked ? 'is-unlocked' : 'is-locked'}`} key={id}>
                 <strong>{unlocked ? def.title : '？？？？'}</strong>
                 <small>{unlocked ? def.tier : endingHint(id)}</small>
               </div>
@@ -1261,7 +1429,7 @@ function EndingScreen({
       </section>
 
       <button className="v6-cta" onClick={onRestart}>
-        再次守住这条街
+        🔄 重启新的 30 天极夜轮回
       </button>
     </main>
   );
