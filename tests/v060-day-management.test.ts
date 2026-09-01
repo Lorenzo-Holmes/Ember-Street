@@ -73,7 +73,7 @@ describe('v0.6 daytime management', () => {
     expect(preview.autoResting).toBe(3);
     expect(preview.expeditionCount).toBe(1);
     expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('探索');
-    expect(preview.entries.find((entry) => entry.survivorId === 'zhou')?.label).toBe('休息 · 自动安排');
+    expect(preview.entries.find((entry) => entry.survivorId === 'zhou')?.label).toBe('留在屋里休息');
     expect(state.dayState.assignmentsLocked).toBe(false);
   });
   it('keeps critical and already committed survivors out of automatic rest in the confirmation preview', () => {
@@ -87,8 +87,8 @@ describe('v0.6 daytime management', () => {
     const preview = previewDispatchConfirmation(state);
     expect(preview.committed).toBe(1);
     expect(preview.autoResting).toBe(3);
-    expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('探索 · 已执行');
-    expect(preview.entries.find((entry) => entry.survivorId === 'cheng')?.label).toBe('危重 · 不可派遣');
+    expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('探索 · 已经去过');
+    expect(preview.entries.find((entry) => entry.survivorId === 'cheng')?.label).toBe('危重 · 今天动不了');
   });
   it('locks daytime jobs and refuses dead, serious, or committed survivors', () => {
     let state = assignDayJob(fivePersonState(), 'lin-xia', 'expedition'); state = lockDayAssignments(state);
