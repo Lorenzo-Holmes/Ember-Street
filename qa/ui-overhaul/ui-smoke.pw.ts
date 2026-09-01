@@ -191,6 +191,33 @@ test('DAY1 shell remains usable at all target viewports', async ({ page }) => {
   }
 });
 
+test('mobile DAY1 keeps the primary assignment ahead of routine building work', async ({ page }) => {
+  const viewport = { width: 390, height: 844 };
+  await renderState(page, quietState(961390), viewport);
+  const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
+  const building = page.locator('.v6-section').filter({ hasText: '街区建设' }).first();
+  const commitButton = page.getByRole('button', { name: /安排好了/ });
+  await expect(assignment).toBeVisible();
+  await expect(building).toBeVisible();
+  await expect(commitButton).toBeVisible();
+  await expect(assignment.getByText('熟路', { exact: true })).toBeVisible();
+  await expect(assignment.getByText('维修熟手', { exact: true })).toBeVisible();
+  await expect(assignment.getByText('会做饭', { exact: true })).toBeVisible();
+
+  const assignmentBox = await assignment.boundingBox();
+  const buildingBox = await building.boundingBox();
+  const commitBox = await commitButton.boundingBox();
+  expect(assignmentBox).toBeTruthy();
+  expect(buildingBox).toBeTruthy();
+  expect(commitBox).toBeTruthy();
+  expect(assignmentBox!.y).toBeLessThan(buildingBox!.y);
+
+  const fromTop = assignmentBox!.y / viewport.height;
+  const assignmentToCommit = (commitBox!.y - assignmentBox!.y) / viewport.height;
+  console.log(`[mobile-action-distance] assignment-from-top=${fromTop.toFixed(2)} screens; assignment-to-commit=${assignmentToCommit.toFixed(2)} screens`);
+  await capture(page, 'day1-action-distance-390x844');
+});
+
 test('milestone DAY7 DAY14 DAY21 screens stay readable as the street grows', async ({ page }) => {
   const expectedQuestions = new Map<number, string>([
     [7, '下一口先给谁？'],
@@ -217,6 +244,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
 
   const building = page.locator('.v6-section').filter({ hasText: '街区建设' }).first();
   await expect(building).toBeVisible();
+  await expect(building.getByText('刚能用', { exact: true }).first()).toBeVisible();
+  await expect(building.getByText('Lv1', { exact: true })).toHaveCount(0);
   await building.screenshot({ path: `${SCREENSHOT_DIR}/building-panel-1440x900.png` });
 
   let expedition = quietState(962002);
@@ -236,6 +265,7 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await renderState(page, dusk);
   await expect(page.getByText('天黑了', { exact: true })).toBeVisible();
   await expect(page.getByText('还有时间，重新安排', { exact: false })).toBeVisible();
+  await expect(page.getByText(/今晚这锅/).first()).toBeVisible();
   await capture(page, 'dusk-1440x900');
 
   const normalNightBase = { ...quietState(962004), day: 5, phase: 'night' as const };
@@ -259,6 +289,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await renderState(page, communityState());
   await expect(page.getByText('街里的人手', { exact: true })).toBeVisible();
   await expect(page.getByText('街区近况', { exact: true })).toBeVisible();
+  await expect(page.getByText(/能多顾到约/).first()).toBeVisible();
+  await expect(page.getByText(/夜里的岗能轮得更开/).first()).toBeVisible();
   await capture(page, 'social-community-1440x900');
 
   const horde = scheduleNight(finalReady());
