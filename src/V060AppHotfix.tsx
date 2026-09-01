@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import SocialStatusPanel from './components/v060/SocialStatusPanel';
 import V060NightScene from './V060NightScene';
 import { clearSave, loadGame, saveGame } from './game/storage';
 import type { BuildingId, DayAssignment, EndingId, GameState, SurvivorCondition } from './game/types';
@@ -268,6 +269,7 @@ function DayScreen({ state, setState }: { state: GameState; setState: (state: Ga
       <StreetVisual state={state}/><InventoryBar state={state}/>
       <ExpeditionStatus state={state} setState={setState}/>
       <CommunityPanel state={state} setState={setState}/>
+      <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)}/>
       {!state.dayState.assignmentsLocked && !reviewingDispatch && <><MissingPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/></>}
       {!state.dayState.assignmentsLocked && reviewingDispatch && <section className="v6-section">
         <div className="v6-section__head"><div><span>最后确认</span><h2>确认后，今天的派遣不能再修改</h2></div><small>{dispatch.manuallyAssigned} 人手动安排 · {dispatch.autoResting} 人自动休息</small></div>
@@ -384,6 +386,7 @@ function DawnScreen({ state, setState }: { state: GameState; setState: (state: G
       <header className="v6-page-head"><span>DAWN · DAY {state.day}</span><h1>{state.day === 29 ? '最后的夜结束了。' : '天亮了。'}</h1><p>{state.nightState.hordeActive ? '尸潮退去以后，街道重新有了颜色。现在才看得清昨夜留下的损失。' : '发电机的声音重新盖过远处的脚步。今天仍然有事要做。'}</p></header>
       <InventoryBar state={state}/>
       <section className="v6-stats"><div><span>夜间事件</span><b>{state.nightState.resolutions.length}</b></div><div><span>死亡</span><b>{state.campaignStats.deaths}</b></div><div><span>失踪</span><b>{state.campaignStats.missing}</b></div><div><span>救回</span><b>{state.campaignStats.rescued}</b></div></section>
+      <SocialStatusPanel state={state} onCommit={(next) => commit(next, setState)} compact/>
       {!!brief.length && <section className="v6-section"><div className="v6-section__head"><div><span>昨夜简报</span><h2>昨天的选择留下了什么</h2></div><small>只记录真正发生的变化</small></div>{brief.map((entry, index) => <p key={`${entry}-${index}`}>• {entry}</p>)}</section>}
       <MemorialPanel state={state}/>
       <button className="v6-cta" onClick={() => commit(advanceCampaignDay(state), setState)}>{state.day === 29 ? '进入 DAY 30 · 结算' : `开始 DAY ${state.day + 1}`}</button>
