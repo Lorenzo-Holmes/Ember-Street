@@ -101,25 +101,28 @@ export function communityCookingSupport(state: GameState): number {
   if (!pairs) return 0;
   const shelter = clamp(Math.floor(state.buildings.shelter), 0, 3);
   const focused = modeActive(state, 'logistics') ? 1.5 : 1;
-  return clamp(pairs * COOKING_PER_PAIR[shelter] * focused, 0, 8);
+  const principle = state.socialState?.principles?.includes('everyone-shares') ? 1.15 : 1;
+  return clamp(pairs * COOKING_PER_PAIR[shelter] * focused * principle, 0, 8);
 }
 
 export function communityRepairSupport(state: GameState): number {
   const community = normalized(state);
   if (community.activeResidents < 3) return 0;
+  const principleBonus = state.socialState?.principles?.includes('community-shares-risk') ? 1 : 0;
   const base = 1;
-  if (!modeActive(state, 'repair')) return base;
+  if (!modeActive(state, 'repair')) return clamp(base + principleBonus, 0, 6);
   const extra = clamp(Math.floor(community.activeResidents / 2), 2, 5);
   const workshop = clamp(Math.floor(state.buildings.workshop), 0, 3);
   const multiplier = workshop >= 3 ? 1.4 : workshop >= 2 ? 1.2 : 1;
-  return clamp(Math.round((base + extra) * multiplier), 0, 6);
+  return clamp(Math.round((base + extra) * multiplier) + principleBonus, 0, 6);
 }
 
 export function communityDefenseSupport(state: GameState): number {
   const community = normalized(state);
   const groups = Math.floor(community.activeResidents / 3);
   if (!groups) return 0;
-  const baseReduction = groups * 0.01;
+  const principleBonus = state.socialState?.principles?.includes('community-shares-risk') ? 0.02 : 0;
+  const baseReduction = groups * 0.01 + principleBonus;
   if (!modeActive(state, 'defense')) return clamp(baseReduction, 0, 0.12);
   const watchPost = clamp(Math.floor(state.buildings.watchPost), 0, 3);
   const multiplier = watchPost >= 3 ? 1.5 : watchPost >= 2 ? 1.25 : 1;
