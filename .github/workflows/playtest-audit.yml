@@ -2,7 +2,7 @@ name: Playtest Audit
 
 on:
   push:
-    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown", "feat/v06x-night-cadence-v2"]
+    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown", "feat/v06x-night-cadence-v2", "feat/v06x-balance-integration"]
   workflow_dispatch:
     inputs:
       policy_runs:
@@ -20,11 +20,11 @@ on:
       v2_runs:
         description: Corrected V2 baseline runs per policy
         required: false
-        default: "80"
+        default: "240"
       controlled_runs:
         description: Controlled resident runs per policy/count
         required: false
-        default: "40"
+        default: "80"
       repeat_runs:
         description: Night diversity runs per V2 policy
         required: false
@@ -42,8 +42,8 @@ jobs:
       PLAYTEST_POLICY_RUNS: ${{ inputs.policy_runs || '200' }}
       PLAYTEST_PRINCIPLE_RUNS: ${{ inputs.principle_runs || '80' }}
       PLAYTEST_CURVE_RUNS: ${{ inputs.curve_runs || '120' }}
-      PLAYTEST_V2_RUNS: ${{ inputs.v2_runs || '80' }}
-      PLAYTEST_CONTROLLED_RUNS: ${{ inputs.controlled_runs || '40' }}
+      PLAYTEST_V2_RUNS: ${{ inputs.v2_runs || '240' }}
+      PLAYTEST_CONTROLLED_RUNS: ${{ inputs.controlled_runs || '80' }}
       PLAYTEST_REPEAT_RUNS: ${{ inputs.repeat_runs || '150' }}
     steps:
       - name: Checkout
