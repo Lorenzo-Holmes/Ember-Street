@@ -1,0 +1,62 @@
+name: Playtest Audit Baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["feat/v060-playtest-audit"]
+    paths:
+      - "tools/simulation/**"
+      - "tests/simulation/**"
+      - "package.json"
+      - "tsconfig.json"
+      - ".github/workflows/playtest-audit.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck audit tools
+        run: npm run typecheck
+
+      - name: Simulation regression suite
+        run: npx vitest run tests/simulation/playtest-audit-v060.test.ts
+
+      - name: Generate 10k baseline
+        run: npm run audit:playtest:baseline
+
+      - name: Upload baseline artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: v0.6.0-baseline-playtest
+          path: |
+            reports/playtest/
+            docs/playtest/
+
+      - name: Commit generated baseline
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports/playtest docs/playtest
+          if git diff --cached --quiet; then
+            echo "Baseline is unchanged."
+          else
+            git commit -m "chore(playtest): refresh v0.6.0 baseline audit"
+            git push origin HEAD:feat/v060-playtest-audit
+          fi
