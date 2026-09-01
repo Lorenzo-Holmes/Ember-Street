@@ -2,7 +2,7 @@ name: Playtest Audit
 
 on:
   push:
-    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown", "feat/v06x-night-cadence-v2", "feat/v06x-balance-integration"]
+    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown", "feat/v06x-night-cadence-v2", "feat/v06x-balance-integration", "feat/v06x-night-pool-expansion-v2"]
   workflow_dispatch:
     inputs:
       policy_runs:
