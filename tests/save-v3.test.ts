@@ -49,4 +49,38 @@ describe('v0.6 save resume', () => {
     expect(restored.nightState.scheduledEventIds).toEqual(schedule);
     expect(rollPendingCheck(restored).pendingCheck?.dice).toEqual(dice);
   });
+
+  it('preserves social continuity instead of reopening earlier principle decisions after reload', () => {
+    const base = createV060InitialState(991123);
+    const state = {
+      ...base,
+      day: 21,
+      socialState: {
+        pressure: 3,
+        activePromise: {
+          id: 'promise-hot-meal-18',
+          kind: 'hot-meal' as const,
+          title: '至少让孩子吃顿热的',
+          createdDay: 18,
+          deadlineDay: 21,
+          status: 'active' as const,
+          targetValue: 1,
+        },
+        fulfilledPromises: 4,
+        brokenPromises: 1,
+        principles: ['everyone-shares', 'community-shares-risk'] as const,
+        lastRequestDay: 18,
+        lastOutcome: '这件事还记着。',
+      },
+    };
+
+    const restored = promoteV2ToV3(JSON.parse(JSON.stringify(state)))!;
+    expect(restored.socialState.pressure).toBe(3);
+    expect(restored.socialState.principles).toEqual(['everyone-shares', 'community-shares-risk']);
+    expect(restored.socialState.activePromise).toEqual(state.socialState.activePromise);
+    expect(restored.socialState.fulfilledPromises).toBe(4);
+    expect(restored.socialState.brokenPromises).toBe(1);
+    expect(restored.socialState.lastRequestDay).toBe(18);
+    expect(restored.socialState.lastOutcome).toBe('这件事还记着。');
+  });
 });
