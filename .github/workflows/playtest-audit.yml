@@ -13,6 +13,10 @@ on:
         description: Runs per isolated principle
         required: false
         default: "80"
+      curve_runs:
+        description: Daily pressure-curve runs per policy
+        required: false
+        default: "120"
 
 permissions:
   contents: read
@@ -25,6 +29,7 @@ jobs:
       WRITE_PLAYTEST_AUDIT: "1"
       PLAYTEST_POLICY_RUNS: ${{ inputs.policy_runs || '200' }}
       PLAYTEST_PRINCIPLE_RUNS: ${{ inputs.principle_runs || '80' }}
+      PLAYTEST_CURVE_RUNS: ${{ inputs.curve_runs || '120' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,7 +43,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Run DAY1→30 audit matrix
-        run: npx vitest run qa/playtest/playtest-audit-report.test.ts --reporter=verbose
+        run: npx vitest run qa/playtest/playtest-audit-report.test.ts qa/playtest/pressure-curves.test.ts --reporter=verbose
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4
