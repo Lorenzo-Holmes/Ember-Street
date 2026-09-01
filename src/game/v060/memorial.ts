@@ -1,4 +1,5 @@
 import type { GameState } from '../types';
+import { adjustPressure } from './socialPressure';
 
 const EPITAPH: Record<string, string> = {
   'lin-xia': '“先看好退路，再往前走。”',
@@ -45,7 +46,7 @@ export function recordDeath(state: GameState, survivorId: string, cause: string)
     cause,
     epitaph: EPITAPH[survivorId] ?? '“这里曾经有人。”',
   }];
-  return {
+  const dead: GameState = {
     ...state,
     survivors: state.survivors.map((item) => item.id === survivorId ? { ...item, condition: 'dead' as const, energy: 0 } : item),
     campaignStats: {
@@ -58,4 +59,5 @@ export function recordDeath(state: GameState, survivorId: string, cause: string)
     hope: Math.max(0, state.hope - 4),
     lastMessage: `${survivor.name}没有回来。纪念墙上多了一个名字。`,
   };
+  return adjustPressure(dead, 2, `core-death-${survivorId}`);
 }

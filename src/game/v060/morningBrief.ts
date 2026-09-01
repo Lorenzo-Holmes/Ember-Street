@@ -1,4 +1,5 @@
 import type { GameState, SurvivorCondition } from '../types';
+import { pressureLabel, socialStateOf } from './socialPressure';
 
 const CONDITION_LABEL: Record<SurvivorCondition, string> = {
   healthy: '健康', fatigued: '疲劳', minor: '轻伤', serious: '重伤', critical: '危重', missing: '失踪', dead: '死亡',
@@ -16,8 +17,10 @@ export function appendDawnBrief(before: GameState, after: GameState, title: stri
   const civilians = after.civilianResidents - before.civilianResidents;
   const deaths = after.campaignStats.deaths - before.campaignStats.deaths;
   const missing = after.campaignStats.missing - before.campaignStats.missing;
+  const pressure = socialStateOf(after).pressure - socialStateOf(before).pressure;
 
   if (hope) parts.push(`希望 ${signed(hope)}`);
+  if (pressure) parts.push(`压力${pressure > 0 ? '上升' : '下降'} → ${pressureLabel(after)}`);
   if (defense) parts.push(`防线 ${signed(defense)}`);
   if (power) parts.push(`电力 ${signed(power)}`);
   if (ration) parts.push(`口粮 ${signed(ration)}`);

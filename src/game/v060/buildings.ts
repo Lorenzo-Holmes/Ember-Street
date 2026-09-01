@@ -1,4 +1,5 @@
 import type { BuildingId, GameState } from '../types';
+import { evaluatePromiseProgress } from './communityPromises';
 
 export interface BuildingLevelDefinition {
   level: 1 | 2 | 3;
@@ -75,7 +76,7 @@ export function upgradeBuilding(state: GameState, id: BuildingId): GameState {
   const storyFlags = next.level === 1
     ? [...new Set([...state.storyFlags, `building_event_pending:${id}`])]
     : state.storyFlags;
-  return {
+  const upgraded: GameState = {
     ...state,
     inventory,
     buildings,
@@ -86,4 +87,5 @@ export function upgradeBuilding(state: GameState, id: BuildingId): GameState {
       ? `${V060_BUILDINGS[id].name}建成了 · 有件事值得所有人停下来看看`
       : `${V060_BUILDINGS[id].name}升级到 Lv${next.level} · ${next.unlock}`,
   };
+  return evaluatePromiseProgress(upgraded);
 }

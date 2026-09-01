@@ -1,6 +1,7 @@
 import { nextRandom } from '../rng';
 import type { GameState } from '../types';
 import { normalizeCommunityState } from './community';
+import { adjustPressure } from './socialPressure';
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 
@@ -128,7 +129,7 @@ export function loseCommunityResidents(state: GameState, requestedLoss: number, 
   const pendingResidents = Math.max(0, community.pendingResidents - pendingLoss);
   const supportMode = activeResidents >= 5 ? community.supportMode : null;
   const storyFlags = [...new Set([...state.storyFlags, `civilian_loss:${state.day}:${cause}:${loss}`])];
-  return {
+  const lost: GameState = {
     ...state,
     civilianResidents: state.civilianResidents - loss,
     communityState: { ...community, activeResidents, pendingResidents, supportMode },
@@ -137,4 +138,5 @@ export function loseCommunityResidents(state: GameState, requestedLoss: number, 
     storyFlags,
     lastMessage: residentLossNarrative(cause, loss),
   };
+  return adjustPressure(lost, Math.min(2, loss), `civilian-loss-${cause}`);
 }
