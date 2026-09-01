@@ -1,6 +1,7 @@
 import { canTrustReroll, OUTCOME_LABEL, rerollLowestDie, rollPendingCheck } from './game/dice';
 import { saveGame } from './game/storage';
 import type { GameState } from './game/types';
+import { nightChoicePreview } from './game/v060/decisionReadability';
 import { canAffordNightChoice, acceptNightCheckResult, chooseNightOption, currentNightEvent, scheduleNight } from './game/v060/nightScheduler';
 
 const CATEGORY_LABEL = {
@@ -80,10 +81,13 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
       <div className="v060-choices">{event.choices.map((choice, index) => {
         const affordable = canAffordNightChoice(state, choice);
         const cost = costLabel(choice.cost);
+        const preview = nightChoicePreview(state, event, choice);
         return <button key={choice.id} className={`v060-choice v060-choice--${choice.strategy}`} disabled={!affordable} onClick={() => commit(chooseNightOption(state, choice.id), setState)}>
           <span className="v060-choice__letter">{String.fromCharCode(65 + index)}</span>
           <strong>{choice.label}</strong>
           <span>{choice.detail}</span>
+          <div className="v6-survivor__status" style={{ gridColumn: 2, margin: '7px 0 2px' }} aria-label="选择提示">{preview.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+          <small>{preview.summary}</small>
           <small>{choice.check ? `🎲 ${choice.check.label}` : cost || '直接处理'}{cost && choice.check ? ` · ${cost}` : ''}{!affordable ? ' · 物资不足' : ''}</small>
         </button>;
       })}</div>
