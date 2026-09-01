@@ -100,8 +100,8 @@ describe('v0.6 night scheduler', () => {
     expect(residents.modifiers).toContainEqual({ label: '居民维修轮值', value: -1 });
   });
 
-  it.each([10, 20])('forces a horde on DAY %i with the ordinary milestone scheduler', (day) => {
-    const state = scheduleNight(stateFor(day, 7000 + day)); expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(6);
+  it.each([10, 20])('forces a horde on DAY %i with the phased milestone scheduler', (day) => {
+    const state = scheduleNight(stateFor(day, 7000 + day)); expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(5);
     expect(state.nightState.scheduledEventIds.map((id) => nightEventById(id)).some((event) => event?.category === 'horde')).toBe(true);
   });
 
@@ -113,9 +113,9 @@ describe('v0.6 night scheduler', () => {
     expect(state.nightState.emergencyEventIds).toEqual([]);
   });
 
-  it('keeps milestone emergencies on DAY10/20 but reserves all six DAY29 slots for the finale', () => {
-    const day10 = scheduleNight(stateFor(10, 1010)); expect(day10.nightState.scheduledEventIds).toHaveLength(6); expect(day10.nightState.emergencyEventIds).toHaveLength(1);
-    const day20 = scheduleNight(stateFor(20, 2020)); expect(day20.nightState.scheduledEventIds).toHaveLength(6); expect(day20.nightState.emergencyEventIds.length).toBeGreaterThanOrEqual(1); expect(day20.nightState.emergencyEventIds.length).toBeLessThanOrEqual(2);
+  it('keeps milestone emergencies on DAY10/20 while DAY29 reserves six slots for the finale', () => {
+    const day10 = scheduleNight(stateFor(10, 1010)); expect(day10.nightState.scheduledEventIds).toHaveLength(5); expect(day10.nightState.emergencyEventIds).toHaveLength(1);
+    const day20 = scheduleNight(stateFor(20, 2020)); expect(day20.nightState.scheduledEventIds).toHaveLength(5); expect(day20.nightState.emergencyEventIds.length).toBeGreaterThanOrEqual(1); expect(day20.nightState.emergencyEventIds.length).toBeLessThanOrEqual(2);
     const day29 = scheduleNight(stateFor(29, 2929)); expect(day29.nightState.scheduledEventIds).toEqual([...FINAL_HORDE_EVENT_IDS]); expect(day29.nightState.emergencyEventIds).toEqual([]);
   });
 
