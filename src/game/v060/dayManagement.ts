@@ -25,21 +25,21 @@ export function survivorAvailableForDay(survivor: Survivor): boolean {
 }
 
 export function canTakeDayAssignment(state: GameState, survivorId: string, job: DayAssignment): { allowed: boolean; reason?: string } {
-  if (state.dayState.assignmentsLocked) return { allowed: false, reason: '今日派遣已经锁定' };
-  if (state.dayState.committedSurvivorIds.includes(survivorId)) return { allowed: false, reason: '今天已经执行过行动' };
+  if (state.dayState.assignmentsLocked) return { allowed: false, reason: '今天的人手已经定了' };
+  if (state.dayState.committedSurvivorIds.includes(survivorId)) return { allowed: false, reason: '这个人今天已经忙过一趟了' };
   const survivor = state.survivors.find((item) => item.id === survivorId);
-  if (!survivor) return { allowed: false, reason: '人物不在街区' };
-  if (!survivorAvailableForDay(survivor)) return { allowed: false, reason: survivor.condition === 'missing' ? '人物仍然失踪' : survivor.condition === 'dead' ? '人物已经死亡' : '人物情况危重' };
-  if (job === 'expedition' && state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天的搜索队已经执行过一次' };
-  if (job === 'expedition' && (survivor.condition === 'serious' || survivor.energy < 15)) return { allowed: false, reason: survivor.condition === 'serious' ? '重伤人物不能正常外出' : '精力过低，无法出发' };
+  if (!survivor) return { allowed: false, reason: '这个人现在不在街里' };
+  if (!survivorAvailableForDay(survivor)) return { allowed: false, reason: survivor.condition === 'missing' ? '人还没回来' : survivor.condition === 'dead' ? '这个人已经不在了' : '伤得太重，今天动不了' };
+  if (job === 'expedition' && state.dayState.returnedExpeditions > 0) return { allowed: false, reason: '今天已经有人出去过一次了' };
+  if (job === 'expedition' && (survivor.condition === 'serious' || survivor.energy < 15)) return { allowed: false, reason: survivor.condition === 'serious' ? '伤得太重，不能再往街外走' : '人已经太累，走不远了' };
   const building = JOB_BUILDING[job];
-  if (building && state.buildings[building] <= 0) return { allowed: false, reason: '对应设施尚未修复' };
+  if (building && state.buildings[building] <= 0) return { allowed: false, reason: '这件事现在还没有能用的地方' };
   return { allowed: true };
 }
 
 export function assignDayJob(state: GameState, survivorId: string, job: DayAssignment): GameState {
   const availability = canTakeDayAssignment(state, survivorId, job);
-  if (!availability.allowed) return { ...state, lastMessage: availability.reason ?? '无法执行这项派遣' };
+  if (!availability.allowed) return { ...state, lastMessage: availability.reason ?? '今天做不了这件事' };
   return {
     ...state,
     dayAssignments: { ...state.dayAssignments, [survivorId]: job },
@@ -84,7 +84,7 @@ export function previewDispatchConfirmation(state: GameState): DispatchConfirmat
           survivorId: survivor.id,
           name: survivor.name,
           assignment: explicit ?? null,
-          label: explicit ? `${DAY_ASSIGNMENT_LABEL[explicit]} · 已执行` : '已执行今日行动',
+          label: explicit ? `${DAY_ASSIGNMENT_LABEL[explicit]} · 已经去过` : '今天已经忙过了',
           automatic: false,
           committed: true,
           unavailable: false,
@@ -95,7 +95,7 @@ export function previewDispatchConfirmation(state: GameState): DispatchConfirmat
           survivorId: survivor.id,
           name: survivor.name,
           assignment: null,
-          label: '危重 · 不可派遣',
+          label: '危重 · 今天动不了',
           automatic: false,
           committed: false,
           unavailable: true,
@@ -106,7 +106,7 @@ export function previewDispatchConfirmation(state: GameState): DispatchConfirmat
         survivorId: survivor.id,
         name: survivor.name,
         assignment,
-        label: explicit ? DAY_ASSIGNMENT_LABEL[assignment] : '休息 · 自动安排',
+        label: explicit ? DAY_ASSIGNMENT_LABEL[assignment] : '留在屋里休息',
         automatic: !explicit,
         committed: false,
         unavailable: false,
@@ -137,12 +137,12 @@ export function lockDayAssignments(state: GameState): GameState {
     ...state,
     dayAssignments: nextAssignments,
     dayState: { ...state.dayState, assignmentsLocked: true },
-    lastMessage: '今日派遣已锁定 · 天黑以后不能临时换岗',
+    lastMessage: '人手已经定了。太阳落下以后，就不再换班。',
   };
 }
 
 export function lockDayAssignmentsAndRoute(state: GameState): GameState {
-  if (state.expeditionState.departed) return { ...state, phase: 'street', lastMessage: '搜索队还在外出中 · 先处理探索事件。' };
+  if (state.expeditionState.departed) return { ...state, phase: 'street', lastMessage: '出去的人还没回来。先看看他们那边出了什么事。' };
   const locked = lockDayAssignments(state);
   return { ...locked, phase: hasPendingExpeditionAssignment(locked) ? 'expedition' : 'dusk' };
 }
@@ -157,7 +157,7 @@ export function reopenDayAssignments(state: GameState): GameState {
       ...state,
       phase: 'dusk',
       dayState: { ...state.dayState, assignmentsLocked: true },
-      lastMessage: '今天已经有人执行过探索或搜救，不能重新调整派遣。',
+      lastMessage: '今天已经有人出过街或出去找过人，这一天没法重新来一遍。',
     };
   }
   return {
@@ -165,7 +165,7 @@ export function reopenDayAssignments(state: GameState): GameState {
     phase: 'street',
     dayAssignments: { ...state.dayAssignments },
     dayState: { ...state.dayState, assignmentsLocked: false, committedSurvivorIds: [] },
-    lastMessage: '已返回白天派遣 · 可以继续调整岗位。',
+    lastMessage: '天还没黑。现在改主意还来得及。',
   };
 }
 
