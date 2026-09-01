@@ -8,6 +8,14 @@ import {
 } from './finalHorde';
 import type { NightChoice, V060NightEvent } from './nightEvents';
 
+const COST_LABEL = {
+  ration: '口粮',
+  medicine: '药品',
+  materials: '材料',
+  parts: '零件',
+  power: '电力',
+} as const;
+
 const CONCESSION_COPY: Record<string, { tags: string[]; summary: string; tone: DecisionTone }> = {
   'final-gate-fallback': {
     tags: ['主动放掉外层', '少让人暴露'],
@@ -45,6 +53,21 @@ function unique(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))];
 }
 
+function reducedByPastPreparation(rawChoice: NightChoice, effectiveChoice: NightChoice): boolean {
+  if (!rawChoice.cost || !effectiveChoice.cost) return false;
+  return (Object.keys(COST_LABEL) as Array<keyof typeof COST_LABEL>)
+    .some((key) => (effectiveChoice.cost?.[key] ?? 0) < (rawChoice.cost?.[key] ?? 0));
+}
+
+export function effectiveNightChoiceCostLabel(state: GameState, rawChoice: NightChoice): string {
+  const choice = effectiveFinalHordeChoice(state, rawChoice);
+  if (!choice.cost) return '';
+  return (Object.entries(choice.cost) as Array<[keyof typeof COST_LABEL, number | undefined]>)
+    .filter(([, value]) => Boolean(value))
+    .map(([key, value]) => `${COST_LABEL[key]} -${value}`)
+    .join(' · ');
+}
+
 export function enhanceFinalHordePreview(
   state: GameState,
   event: V060NightEvent,
@@ -70,10 +93,13 @@ export function enhanceFinalHordePreview(
   }
 
   if (choice.strategy === 'resource') {
+    const discounted = reducedByPastPreparation(rawChoice, choice);
     return {
       tone: 'stable',
-      tags: unique([...base.tags, stageTag, '不掷骰', '用库存换确定']),
-      summary: `把现在标出的东西直接拿出来，这一段不再交给骰子。过去真的找回过工具、药、路线或防护材料时，实际要从仓房拿走的东西会更少。${legacyTail}`,
+      tags: unique([...base.tags, stageTag, '不掷骰', '用库存换确定', discounted ? '过去准备省下物资' : '']),
+      summary: discounted
+        ? `把现在标出的东西直接拿出来，这一段不再交给骰子。过去的准备已经替这一步省下一部分东西，现在这笔就是还要从仓房拿走的量。${legacyTail}`
+        : `把现在标出的东西直接拿出来，这一段不再交给骰子。没有额外的旧准备替这一步省库存。${legacyTail}`,
     };
   }
 
