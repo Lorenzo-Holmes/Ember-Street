@@ -5,6 +5,7 @@ import type { CheckOutcome, FinalHordeResult, GameState, Survivor, SurvivorCondi
 import { advanceCommunityDay, communityMedicalSupport, communityRepairSupport, createDefaultCommunityState, normalizeCommunityState, rescueCommunityResidents } from './community';
 import { lockDayAssignments, survivorAvailableForDay, unlockNextDayAssignments } from './dayManagement';
 import { currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, locationForId, resolveExpeditionOutcome, retreatExpedition } from './expedition';
+import { applyExpeditionStoryOutcome, expeditionSpecialtyBonus } from './expeditionStories';
 import { resolveMeal } from './food';
 import { resolveEnding } from './endings';
 import { recordDeath, recoverMissing } from './memorial';
@@ -178,25 +179,16 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
   const riskModifier = risk === 'safe' ? 2 : risk === 'cautious' ? 1 : risk === 'dangerous' ? 0 : -1;
   const mealModifier = state.mealState.wellFed ? 1 : 0;
   const stanceModifier = stance === 'careful' ? 1 : -1;
-  const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier;
+  const event = currentExpeditionEvent(state);
+  const specialtyModifier = expeditionSpecialtyBonus(state, event);
+  const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier + specialtyModifier;
   const twist = dice[0] === 6 && dice[1] === 6 ? 'double-six' : dice[0] === 1 && dice[1] === 1 ? 'double-one' : undefined;
   const outcome: CheckOutcome = twist === 'double-one' ? 'failure' : twist === 'double-six' ? 'critical' : total <= 6 ? 'failure' : total <= 9 ? 'partial' : total <= 11 ? 'success' : 'critical';
-  const event = currentExpeditionEvent(state);
-  let next = resolveExpeditionOutcome({ ...state, rngState }, outcome, twist);
+  const withStory = applyExpeditionStoryOutcome({ ...state, rngState }, event, outcome);
+  let next = resolveExpeditionOutcome(withStory, outcome, twist);
   if (stance === 'push' && (outcome === 'success' || outcome === 'critical')) next = addBonusLoot(next, 2);
-  if (event?.tags.includes('rescue') && outcome !== 'failure') {
-    const rescueFlag = `expedition_rescue:${state.day}:${event.id}`;
-    if (!next.storyFlags.includes(rescueFlag)) {
-      next = rescueCommunityResidents({
-        ...next,
-        storyFlags: [...next.storyFlags, rescueFlag],
-        campaignStats: { ...next.campaignStats, rescued: next.campaignStats.rescued + 1 },
-      }, 1, 1);
-    }
-  }
-  if (state.expeditionState.locationId === 'subway' && outcome !== 'failure') next = { ...next, storyFlags: [...new Set([...next.storyFlags, 'subway_exit_known', 'evacuation_route_known'])] };
-  if (state.expeditionState.locationId === 'bus-station' && outcome !== 'failure') next = { ...next, storyFlags: [...new Set([...next.storyFlags, 'evacuation_route_known'])] };
-  return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}` };
+  const specialtyText = specialtyModifier ? ' · 专长 +1' : '';
+  return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}${specialtyText}` };
 }
 
 export function retreatCurrentExpedition(state: GameState): GameState { return retreatExpedition(state); }
@@ -249,9 +241,10 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
 export function finalHordeResultFor(state: GameState): FinalHordeResult {
   const coreAlive = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').length;
   const severe = state.survivors.filter((s) => s.condition === 'critical' || s.condition === 'serious').length;
-  if (state.defense >= 78 && state.hope >= 55 && severe === 0 && coreAlive >= 4) return 'perfect';
-  if (state.defense >= 52 && state.hope >= 30 && coreAlive >= 3) return 'held';
-  if (state.defense >= 24 && coreAlive >= 2) return 'damaged';
+  const effectiveDefense = clamp(state.defense + (state.storyFlags.includes('final_horde_supplies') ? 8 : 0));
+  if (effectiveDefense >= 78 && state.hope >= 55 && severe === 0 && coreAlive >= 4) return 'perfect';
+  if (effectiveDefense >= 52 && state.hope >= 30 && coreAlive >= 3) return 'held';
+  if (effectiveDefense >= 24 && coreAlive >= 2) return 'damaged';
   return 'breached';
 }
 
