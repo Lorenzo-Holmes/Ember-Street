@@ -12,6 +12,16 @@ export type EndingId = 'E01' | 'E02' | 'E03' | 'E04' | 'E05' | 'E06' | 'E07' | '
 export type CommunitySupportMode = 'logistics' | 'repair' | 'defense';
 export type CommunityPromiseKind = 'hot-meal' | 'search-missing' | 'restore-defense' | 'medical-care' | 'shelter';
 export type CommunityPromiseStatus = 'active' | 'fulfilled' | 'broken';
+export type StreetPrincipleId =
+  | 'everyone-shares'
+  | 'triage-first'
+  | 'outward-search'
+  | 'core-leads'
+  | 'community-shares-risk'
+  | 'preserve-strength'
+  | 'hold-the-street'
+  | 'prepare-evacuation'
+  | 'await-aid';
 
 export interface CommunityPromise {
   id: string;
@@ -29,6 +39,7 @@ export interface SocialState {
   activePromise: CommunityPromise | null;
   fulfilledPromises: number;
   brokenPromises: number;
+  principles: StreetPrincipleId[];
   lastRequestDay?: number;
   lastOutcome?: string;
 }
