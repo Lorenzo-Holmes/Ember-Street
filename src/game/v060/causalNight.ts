@@ -34,24 +34,24 @@ export function nightCausalSignals(state: GameState): string[] {
 
   if (!assignedCount(state, 'watch')) {
     signals.push(communityDefense
-      ? '居民正在守备轮值：能分担巡夜与示警，但仍不如核心人物专职守备稳定'
-      : '无人守备：外部威胁与围栏事故更容易出现');
+      ? '今晚没有熟手专门守街口，不过居民已经排了轮值。至少每个路口都还有人看着。'
+      : '街口今晚没有专人盯着。门外真有东西靠近，可能要等撞上铁皮才会被听见。');
   }
   if (!assignedCount(state, 'repair')) {
     signals.push(communityRepair
-      ? '居民正在维修轮值：能处理轻度故障，但复杂设施事故仍缺少核心维修人员'
-      : '无人维修：发电机、围栏与建筑故障权重上升');
+      ? '修车铺今晚没有熟手留下，不过有人会帮着递工具、堵小缝。真坏了大件，还是得临时想办法。'
+      : '修车铺今晚是空的。发电机、围栏或者哪扇门真坏了，只能到时候再找人。');
   }
-  if (injured > 0 && !assignedCount(state, 'medical')) signals.push(`有 ${injured} 名伤员且无人医疗：医疗危机更容易在夜里爆发`);
-  if (state.inventory.power < 35) signals.push('电力吃紧：断电与设备故障更容易发生');
-  if (poorMealForCausalSignal(state)) signals.push('今晚供餐不足：配给争执与低士气事件更容易出现');
-  if (hope === 'low' || hope === 'collapse') signals.push('希望低迷：争执、离开与恐慌事件权重上升');
-  if (pressure === 'near-breaking') signals.push('街区压力濒临失控：争吵、恐慌和居民事故更容易被放大');
-  if (pressure === 'breaking') signals.push('街区压力已经失控：今晚社会危机事件的权重显著上升');
-  if (assignedCount(state, 'radio')) signals.push('广播有人值守：远方信号与外界情报更容易出现');
-  if (state.storyFlags.includes('generator_backup')) signals.push('加油站带回的备用发电组件：断电类事故权重下降');
-  if (state.storyFlags.includes('working_vehicle_parts')) signals.push('修理店带回的完整部件：基础设施事故更容易被街区消化');
-  if (state.storyFlags.includes('final_horde_supplies') && state.day >= 24) signals.push('北仓库防护材料已经单独封存：DAY29 最终防守会获得额外准备');
+  if (injured > 0 && !assignedCount(state, 'medical')) signals.push(`诊所里还有 ${injured} 个伤员，今晚却没人专门守着他们。`);
+  if (state.inventory.power < 35) signals.push('电已经不宽裕了。几盏灯被提前关掉，发电机的声音也开始时断时续。');
+  if (poorMealForCausalSignal(state)) signals.push('今晚锅里的东西不太够。有人盛完饭以后，又把自己的碗往回倒了一点。');
+  if (hope === 'low' || hope === 'collapse') signals.push('这两天很少有人谈明天。有人收拾东西时，已经开始把最重要的几件单独装进包里。');
+  if (pressure === 'near-breaking') signals.push('说话的声音越来越短。饭馆和宿营屋里，已经有几次争执差一点没收住。');
+  if (pressure === 'breaking') signals.push('街里现在一点火星都可能点着。几个人已经不愿意再待在同一张桌子边。');
+  if (assignedCount(state, 'radio')) signals.push('广播亭今晚有人守着。天线没收，收音机里的杂音也一直没有关。');
+  if (state.storyFlags.includes('generator_backup')) signals.push('从加油站拖回来的备用发电组件已经放在机器旁边。真断电时，至少还有东西能换。');
+  if (state.storyFlags.includes('working_vehicle_parts')) signals.push('修理店带回来的完整部件还收在工坊里。今晚真有东西坏掉，不至于只能拆东墙补西墙。');
+  if (state.storyFlags.includes('final_horde_supplies') && state.day >= 24) signals.push('北仓库带回来的防护材料一直单独堆着。没人动那一摞东西，大家都知道它是在等哪一晚。');
   return signals.slice(0, 6);
 }
 
