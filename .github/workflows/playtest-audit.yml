@@ -20,11 +20,11 @@ on:
       v2_runs:
         description: Corrected V2 baseline runs per policy
         required: false
-        default: "80"
+        default: "240"
       controlled_runs:
         description: Controlled resident runs per policy/count
         required: false
-        default: "40"
+        default: "80"
 
 permissions:
   contents: read
@@ -38,8 +38,8 @@ jobs:
       PLAYTEST_POLICY_RUNS: ${{ inputs.policy_runs || '200' }}
       PLAYTEST_PRINCIPLE_RUNS: ${{ inputs.principle_runs || '80' }}
       PLAYTEST_CURVE_RUNS: ${{ inputs.curve_runs || '120' }}
-      PLAYTEST_V2_RUNS: ${{ inputs.v2_runs || '80' }}
-      PLAYTEST_CONTROLLED_RUNS: ${{ inputs.controlled_runs || '40' }}
+      PLAYTEST_V2_RUNS: ${{ inputs.v2_runs || '240' }}
+      PLAYTEST_CONTROLLED_RUNS: ${{ inputs.controlled_runs || '80' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
