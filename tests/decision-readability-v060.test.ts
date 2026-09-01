@@ -12,13 +12,13 @@ function eventWith(id: string, choice: NightChoice): V060NightEvent {
 }
 
 describe('v0.6 decision readability', () => {
-  it('shows resource costs and stable resolution for non-check choices', () => {
+  it('shows resource costs and a clearly safer path for non-check choices', () => {
     const state = createV060InitialState(880001);
     const choice: NightChoice = { id: 'battery', label: '启用备用电源', detail: '直接供电。', strategy: 'resource', cost: { power: 10 }, direct: { hope: 1 } };
     const preview = nightChoicePreview(state, eventWith('clinic-blackout', choice), choice);
-    expect(preview.tags).toContain('稳定');
+    expect(preview.tags).toContain('拿东西换稳妥');
     expect(preview.tags).toContain('电力 -10');
-    expect(preview.summary).toContain('不需要投骰');
+    expect(preview.summary).toContain('不再把结果交给运气');
   });
 
   it('warns that a critical untreated survivor can die in the medical crisis', () => {
@@ -35,16 +35,16 @@ describe('v0.6 decision readability', () => {
     const isolate = event!.choices.find((choice) => choice.id === 'mortality-isolate')!;
     expect(nightChoicePreview(state, event!, treat).tags).toContain('失败可致死');
     expect(nightChoicePreview(state, event!, isolate).tags).toContain('可能尸变/死亡');
-    expect(nightChoicePreview(state, event!, isolate).summary).toContain('尸变死亡');
+    expect(nightChoicePreview(state, event!, isolate).summary).toContain('等不到天亮');
   });
 
-  it('makes low-hope departure consequences explicit', () => {
+  it('makes low-hope departure consequences explicit without system-state language', () => {
     const state = createV060InitialState(880003);
     const leave: NightChoice = { id: 'mortality-leave', label: '不阻拦', detail: '让对方离开。', strategy: 'consequence', direct: { hope: -1 } };
     const event = eventWith('mortality-hope:lin-xia', leave);
     const preview = nightChoicePreview(state, event, leave);
     expect(preview.tags).toContain('必定失踪');
-    expect(preview.summary).toContain('进入可搜救的失踪状态');
+    expect(preview.summary).toContain('只能再想办法去找');
   });
 
   it('warns about resident losses on civilian incident choices', () => {
@@ -60,10 +60,10 @@ describe('v0.6 decision readability', () => {
     const push = expeditionDecisionPreview(state, 'push', 'extreme');
     const retreat = expeditionDecisionPreview(state, 'retreat', 'extreme');
     expect(push.tags).toContain('严重失败可能失踪/死亡');
-    expect(push.summary).toContain('双一');
+    expect(push.summary).toContain('甚至可能回不来');
     expect(retreat.tags).toContain('安全撤回');
-    expect(retreat.tags).toContain('无物资收益');
-    expect(retreat.summary).toContain('不会因这次探索事件受伤、失踪或死亡');
+    expect(retreat.tags).toContain('今天空手');
+    expect(retreat.summary).toContain('人会直接回来');
   });
 
   it('marks a second failed missing-person search as fatal before the player commits', () => {
@@ -76,7 +76,7 @@ describe('v0.6 decision readability', () => {
     };
     const radio = missingSearchPreview(state, 'lin-xia', 'radio');
     expect(radio.tags).toContain('电力 -5');
-    expect(radio.tags).toContain('失败将确认死亡');
-    expect(radio.summary).toContain('第二次搜救');
+    expect(radio.tags).toContain('再失败就确认死亡');
+    expect(radio.summary).toContain('第二次找');
   });
 });
