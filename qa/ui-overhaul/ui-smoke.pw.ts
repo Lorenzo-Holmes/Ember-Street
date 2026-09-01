@@ -131,7 +131,7 @@ test('DAY1 shell remains usable at all target viewports', async ({ page }) => {
   for (const [name, viewport] of VIEWPORTS) {
     await renderState(page, quietState(961000 + viewport.width), viewport);
     await expect(page.getByText('EMBER STREET', { exact: true })).toBeVisible();
-    await expect(page.getByText('物资箱', { exact: false })).toBeVisible();
+    await expect(page.getByText('仓房', { exact: true })).toBeVisible();
     await capture(page, `day1-main-${name}`);
   }
 });
@@ -153,7 +153,7 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   expedition = lockDayAssignments(expedition);
   expedition = { ...expedition, phase: 'expedition' };
   await renderState(page, expedition);
-  await expect(page.getByText('探索地图', { exact: true })).toBeVisible();
+  await expect(page.getByText('手里的路线', { exact: true })).toBeVisible();
   await capture(page, 'exploration-1440x900');
 
   const duskBase = quietState(962003);
@@ -163,8 +163,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
     dayState: { ...duskBase.dayState, assignmentsLocked: true },
   };
   await renderState(page, dusk);
-  await expect(page.getByText('进入夜晚', { exact: true })).toBeVisible();
-  await expect(page.getByText('返回调整派遣', { exact: false })).toBeVisible();
+  await expect(page.getByText('天黑了', { exact: true })).toBeVisible();
+  await expect(page.getByText('还有时间，重新安排', { exact: false })).toBeVisible();
   await capture(page, 'dusk-1440x900');
 
   const normalNightBase = { ...quietState(962004), day: 5, phase: 'night' as const };
@@ -186,8 +186,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await capture(page, 'night-result-1440x900');
 
   await renderState(page, communityState());
-  await expect(page.getByText('社区劳动力', { exact: true })).toBeVisible();
-  await expect(page.getByText('街区社会与心理记录', { exact: true })).toBeVisible();
+  await expect(page.getByText('街里的人手', { exact: true })).toBeVisible();
+  await expect(page.getByText('街区近况', { exact: true })).toBeVisible();
   await capture(page, 'social-community-1440x900');
 
   const horde = scheduleNight(finalReady());
