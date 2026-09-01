@@ -193,7 +193,7 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   const horde = scheduleNight(finalReady());
   expect(horde.nightState.eventTotal).toBe(6);
   await renderState(page, horde);
-  await expect(page.getByText('尸潮迹象', { exact: false })).toBeVisible();
+  await expect(page.getByText('尸潮正在靠近', { exact: false })).toBeVisible();
   await capture(page, 'day29-final-horde-1440x900');
 
   const ending = endingState();
