@@ -1,12 +1,19 @@
-import { nextRandom } from '../rng';
 import type { CheckOutcome, GameState, Survivor } from '../types';
 import { isLocationUnlocked } from './campaignEvents';
+import {
+  applyExpeditionStoryOutcome,
+  drawExpeditionStory,
+  expeditionStoryEventById,
+  locationRoleRiskReduction,
+  type ExpeditionResource,
+  type ExpeditionStoryEvent,
+} from './expeditionStories';
 import { markMissing, recordDeath } from './memorial';
 
 export { isLocationUnlocked };
+export type { ExpeditionResource, ExpeditionStoryEvent as ExpeditionEvent } from './expeditionStories';
 
 export type ExpeditionRisk = 'safe' | 'cautious' | 'dangerous' | 'extreme';
-export type ExpeditionResource = 'ration' | 'medicine' | 'materials' | 'parts';
 
 export interface ExpeditionLocation {
   id: string;
@@ -16,14 +23,6 @@ export interface ExpeditionLocation {
   primary: ExpeditionResource;
   secondary: ExpeditionResource;
   description: string;
-}
-
-export interface ExpeditionEvent {
-  id: string;
-  title: string;
-  body: string;
-  riskBias: number;
-  tags: string[];
 }
 
 export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
@@ -37,17 +36,6 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
   { id: 'hospital', name: '医院', unlockDay: 17, danger: 5, primary: 'medicine', secondary: 'parts', description: '药很多。尸群也很多。这里是典型的“值不值得再赌一次”。' },
   { id: 'bus-station', name: '公交总站', unlockDay: 21, danger: 4, primary: 'materials', secondary: 'ration', description: '车辆残骸形成复杂通道，也可能藏着撤离路线。' },
   { id: 'warehouse', name: '北仓库', unlockDay: 24, danger: 5, primary: 'materials', secondary: 'parts', description: '最后几天仍值得冒险的地方之一，但已经靠近尸群迁移方向。' },
-];
-
-const EVENTS: ExpeditionEvent[] = [
-  { id: 'blocked-stairs', title: '楼梯间被堵住了', body: '前面的脚步声越来越密。继续走可以拿到更多东西，但退路会被压缩。', riskBias: 1, tags: ['horde', 'indoor'] },
-  { id: 'locked-room', title: '一扇上锁的门', body: '门后没有声音。锁很旧，但撬门会制造很大的动静。', riskBias: 0, tags: ['loot', 'noise'] },
-  { id: 'survivor-call', title: '有人在里面求救', body: '声音很虚弱，也可能不是一个人。', riskBias: 1, tags: ['rescue', 'survivor'] },
-  { id: 'collapsed-floor', title: '地板开始下沉', body: '裂缝一路延伸到承重墙，继续深入需要更轻、更快。', riskBias: 2, tags: ['injury', 'structure'] },
-  { id: 'quiet-cache', title: '被遗漏的储物柜', body: '没有尸影，也没有声音。越安静的时候，越让人不敢相信运气。', riskBias: -1, tags: ['loot', 'quiet'] },
-  { id: 'stray-horde', title: '尸群从侧街经过', body: '它们还没发现搜索队。现在决定的是继续等，还是趁空隙撤。', riskBias: 2, tags: ['horde', 'escape'] },
-  { id: 'blood-trail', title: '新鲜的血迹', body: '痕迹向建筑深处延伸，时间不会超过几个小时。', riskBias: 1, tags: ['survivor', 'story'] },
-  { id: 'roof-route', title: '屋顶之间有一条路', body: '路线更快，但跳跃距离不小。体力差的人会很吃亏。', riskBias: 1, tags: ['movement', 'route'] },
 ];
 
 function aliveForExpedition(survivor: Survivor): boolean {
@@ -81,6 +69,7 @@ export function expeditionRiskScore(state: GameState, partyIds: string[], locati
     if (survivor.specialty === 'search') score -= 1;
     if (survivor.specialty === 'watch' && partyIds.length > 1) score -= 1;
   }
+  score -= locationRoleRiskReduction(state, partyIds, locationId);
   if (state.storyFlags.includes(`scouted:${locationId}`)) score -= 2;
   if (state.storyFlags.includes(`danger:${locationId}`)) score += 2;
   return Math.max(0, score);
@@ -132,14 +121,18 @@ export function startExpedition(state: GameState, partyIds: string[], locationId
 export function drawExpeditionEvent(state: GameState): GameState {
   if (!state.expeditionState.departed || !state.expeditionState.locationId || state.expeditionState.eventId) return state;
   const risk = expeditionRiskScore(state, state.expeditionState.activePartyIds, state.expeditionState.locationId);
-  const weighted = EVENTS.flatMap((event) => Array.from({ length: Math.max(1, 3 + event.riskBias + Math.floor(risk / 4)) }, () => event));
-  const [value, rngState] = nextRandom(state.rngState);
-  const event = weighted[Math.floor(value * weighted.length) % weighted.length];
-  return { ...state, rngState, expeditionState: { ...state.expeditionState, eventId: event.id }, lastMessage: event.title };
+  const drawn = drawExpeditionStory(state, state.expeditionState.locationId, risk);
+  if (!drawn) return state;
+  return {
+    ...state,
+    rngState: drawn.rngState,
+    expeditionState: { ...state.expeditionState, eventId: drawn.event.id },
+    lastMessage: drawn.event.title,
+  };
 }
 
-export function currentExpeditionEvent(state: GameState): ExpeditionEvent | null {
-  return EVENTS.find((event) => event.id === state.expeditionState.eventId) ?? null;
+export function currentExpeditionEvent(state: GameState): ExpeditionStoryEvent | null {
+  return expeditionStoryEventById(state.expeditionState.eventId);
 }
 
 function advanceCondition(survivor: Survivor, severe: boolean): Survivor {
@@ -181,8 +174,10 @@ export function retreatExpedition(state: GameState): GameState {
 
 export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome, twist?: 'double-six' | 'double-one'): GameState {
   if (!state.expeditionState.departed || !state.expeditionState.locationId) return state;
+  const locationId = state.expeditionState.locationId;
+  const event = currentExpeditionEvent(state);
   const partyIds = state.expeditionState.activePartyIds;
-  const risk = expeditionRiskLabel(expeditionRiskScore(state, partyIds, state.expeditionState.locationId));
+  const risk = expeditionRiskLabel(expeditionRiskScore(state, partyIds, locationId));
   const targetId = [...partyIds].sort((a, b) => (state.survivors.find((item) => item.id === a)?.energy ?? 100) - (state.survivors.find((item) => item.id === b)?.energy ?? 100))[0];
   let next: GameState = {
     ...state,
@@ -202,10 +197,10 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
     const canDie = state.day >= 11 && extreme && twist === 'double-one' && Boolean(target && (target.energy < 45 || target.condition === 'minor' || target.condition === 'fatigued'));
     const canGoMissing = state.day >= 6 && (extreme || twist === 'double-one');
     if (canDie && target) {
-      next = recordDeath(next, target.id, `探索 · ${locationForId(state.expeditionState.locationId)?.name ?? '未知地点'}`);
+      next = recordDeath(next, target.id, `探索 · ${locationForId(locationId)?.name ?? '未知地点'}`);
       message = `${target.name}没能回来`;
     } else if (canGoMissing && target) {
-      next = markMissing(next, target.id, `探索 · ${locationForId(state.expeditionState.locationId)?.name ?? '未知地点'}`);
+      next = markMissing(next, target.id, `探索 · ${locationForId(locationId)?.name ?? '未知地点'}`);
       message = `${target.name}失踪了`;
     } else {
       next = { ...next, survivors: next.survivors.map((survivor) => survivor.id === targetId ? advanceCondition(survivor, true) : survivor) };
@@ -213,7 +208,9 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
     }
   }
 
-  const locationFlag = `visited:${state.expeditionState.locationId}`;
+  next = applyExpeditionStoryOutcome(next, event, outcome, locationId);
+
+  const locationFlag = `visited:${locationId}`;
   const firstVisit = !next.storyFlags.includes(locationFlag);
   const committedSurvivorIds = [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])];
   return {
@@ -223,6 +220,6 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
     campaignStats: { ...next.campaignStats, locationsDiscovered: next.campaignStats.locationsDiscovered + (firstVisit ? 1 : 0) },
     expeditionState: { activePartyIds: [], locationId: null, eventId: null, departed: false },
     dayState: { ...next.dayState, assignmentsLocked: true, returnedExpeditions: next.dayState.returnedExpeditions + 1, committedSurvivorIds },
-    lastMessage: `${message} · 进入黄昏`,
+    lastMessage: `${message}${event?.kind === 'signature' ? ` · ${event.title} 已记录为地点故事` : ''} · 进入黄昏`,
   };
 }
