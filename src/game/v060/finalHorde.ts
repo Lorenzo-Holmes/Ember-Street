@@ -122,7 +122,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
         { defense: 3, hope: 1, addFlags: ['final_last_line_barely'] },
         { defense: -12, hope: -3, actorCondition: 'serious', addFlags: ['final_last_line_broken'] }),
       resource('final-last-stockpile', '把最后的建材和零件全部用掉', '不用任何人去赌最后一次失手，把仓房能钉、能焊、能顶住门的东西全部搬出来。', { materials: 6, parts: 3 }, { defense: 13, hope: 2, addFlags: ['final_last_line_fortified'] }),
-      consequence('final-last-retreat', '退进内街，先把人保住', '主动承认外层守不住。这个决定不会把街区算作完整守住，但能避免再把一个人推到最前面。', { defense: -5, hope: 1, addFlags: ['final_last_line_retreated'] }),
+      consequence('final-last-retreat', '退进内街，先把人保住', '主动承认外层守不住。少守一段街，也少让一个人去赌最后一次失手。', { defense: -5, hope: 1, addFlags: ['final_last_line_retreated'] }),
     ],
   },
 ];
