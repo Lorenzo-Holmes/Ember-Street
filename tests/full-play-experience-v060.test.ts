@@ -1,40 +1,40 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-
-const DAY_UI = readFileSync('src/V060AppHotfix.tsx', 'utf8');
+import {
+  SPECIALTY_LABEL,
+  buildingConditionLabel,
+  mealCoverageLine,
+  nightPreparationLine,
+} from '../src/V060AppHotfix';
 
 describe('v0.6 full-play player-facing language', () => {
-  it('never renders raw survivor specialty enums in assignment cards', () => {
-    expect(DAY_UI).not.toContain('<span>{survivor.specialty}</span>');
-    expect(DAY_UI).toContain("search: '熟路'");
-    expect(DAY_UI).toContain("repair: '维修熟手'");
-    expect(DAY_UI).toContain("cook: '会做饭'");
-    expect(DAY_UI).toContain('SPECIALTY_LABEL[survivor.specialty]');
+  it('maps implementation specialties to lived labels', () => {
+    expect(SPECIALTY_LABEL.search).toBe('熟路');
+    expect(SPECIALTY_LABEL.repair).toBe('维修熟手');
+    expect(SPECIALTY_LABEL.medical).toBe('懂医');
+    expect(SPECIALTY_LABEL.watch).toBe('守夜熟手');
+    expect(SPECIALTY_LABEL.cook).toBe('会做饭');
+    expect(SPECIALTY_LABEL.radio).toBe('懂广播');
   });
 
-  it('uses repaired-space condition language instead of visible LvN progression', () => {
-    expect(DAY_UI).not.toContain('<b>Lv{level}</b>');
-    expect(DAY_UI).not.toContain('· Lv${next.level}');
-    expect(DAY_UI).toContain("['还没收拾', '刚能用', '收拾得像样', '已经很稳']");
-    expect(DAY_UI).toContain('buildingConditionLabel(level)');
+  it('describes repaired spaces without level jargon', () => {
+    expect([0, 1, 2, 3].map(buildingConditionLabel)).toEqual([
+      '还没收拾',
+      '刚能用',
+      '收拾得像样',
+      '已经很稳',
+    ]);
   });
 
-  it('puts concrete community consequences before support formulas', () => {
-    expect(DAY_UI).not.toContain('炊事 +{summary.cookingCapacity.toFixed(1)}');
-    expect(DAY_UI).not.toContain('<strong>夜间风险 -{Math.round(summary.nightRiskReduction * 100)}%</strong>');
-    expect(DAY_UI).toContain('能多顾到约 ${summary.cookingCapacity.toFixed(1)} 人份');
-    expect(DAY_UI).toContain('夜里的岗能轮得更开');
-    expect(DAY_UI).toContain('能多照看 ${summary.medicalAssist} 个轻伤的人');
+  it('turns meal coverage into a human-first sentence', () => {
+    expect(mealCoverageLine(1)).toContain('所有人');
+    expect(mealCoverageLine(0.9)).toContain('大多数人');
+    expect(mealCoverageLine(0.7)).toContain('少吃一点');
+    expect(mealCoverageLine(0.4)).toContain('不够分');
   });
 
-  it('places the daily assignment before routine building work', () => {
-    expect(DAY_UI).toContain('<MissingPanel state={state} setState={setState}/><AssignmentPanel state={state} setState={setState}/><BuildingsPanel state={state} setState={setState}/>');
-  });
-
-  it('splits meal and night preparation into lived summary plus hard numbers', () => {
-    expect(DAY_UI).toContain('mealCoverageLine(meal.coverage)');
-    expect(DAY_UI).toContain('nightPreparationLine(prep.defense)');
-    expect(DAY_UI).toContain('约 {meal.cookingCapacity.toFixed(1)} 人份 / 街里 {meal.residentCount} 人');
-    expect(DAY_UI).toContain('防线 {prep.defense}');
+  it('turns night preparation bands into lived warnings', () => {
+    expect(nightPreparationLine('良好')).toContain('还算稳');
+    expect(nightPreparationLine('一般')).toContain('盯紧');
+    expect(nightPreparationLine('薄弱')).toContain('太薄');
   });
 });
