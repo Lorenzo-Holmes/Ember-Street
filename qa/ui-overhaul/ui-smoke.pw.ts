@@ -36,6 +36,11 @@ function milestoneDayState(day: 7 | 14 | 21, seed: number): GameState {
   const base = quietState(seed);
   const level = day >= 21 ? 3 : day >= 14 ? 2 : 1;
   const residents = day >= 21 ? 8 : day >= 14 ? 5 : 2;
+  const priorPrinciples = day >= 21
+    ? ['everyone-shares', 'community-shares-risk'] as const
+    : day >= 14
+      ? ['everyone-shares'] as const
+      : [] as const;
   return {
     ...base,
     day,
@@ -64,10 +69,15 @@ function milestoneDayState(day: 7 | 14 | 21, seed: number): GameState {
       supportMode: day >= 14 ? 'logistics' : null,
       lastSupportDay: day,
     },
+    socialState: {
+      ...normalizeSocialState(base.socialState),
+      principles: [...priorPrinciples],
+    },
     storyFlags: [
       ...base.storyFlags,
-      ...(day >= 14 ? ['community_rotation_unlocked'] : []),
-      ...(day >= 21 ? ['evacuation_route_known', 'working_vehicle_parts'] : []),
+      ...priorPrinciples.map((principle) => `principle:${principle}`),
+      ...(day >= 14 ? ['community_rotation_unlocked', 'principle_day:7'] : []),
+      ...(day >= 21 ? ['evacuation_route_known', 'working_vehicle_parts', 'principle_day:14'] : []),
     ],
   };
 }
@@ -120,7 +130,7 @@ function finalReady(seed = 960003): GameState {
   };
 }
 
-function endingState(seed = 960004): GameState {
+function finalLastLineState(seed = 960005): GameState {
   let state = scheduleNight(finalReady(seed));
   for (const choiceId of [
     'final-gate-reinforce',
@@ -128,10 +138,15 @@ function endingState(seed = 960004): GameState {
     'final-clinic-supplies',
     'final-community-rations',
     'final-route-barricade',
-    'final-last-stockpile',
   ]) {
     state = chooseNightOption(state, choiceId);
   }
+  return state;
+}
+
+function endingState(seed = 960004): GameState {
+  let state = finalLastLineState(seed);
+  state = chooseNightOption(state, 'final-last-stockpile');
   return advanceCampaignDay(state);
 }
 
@@ -177,11 +192,17 @@ test('DAY1 shell remains usable at all target viewports', async ({ page }) => {
 });
 
 test('milestone DAY7 DAY14 DAY21 screens stay readable as the street grows', async ({ page }) => {
+  const expectedQuestions = new Map<number, string>([
+    [7, '下一口先给谁？'],
+    [14, '下一次出事，谁站前面？'],
+    [21, '这条街还要守多久？'],
+  ]);
   for (const [day, seed] of [[7, 963007], [14, 963014], [21, 963021]] as const) {
     await renderState(page, milestoneDayState(day, seed));
     await expect(page.getByText(`DAY ${day}`, { exact: true })).toBeVisible();
     await expect(page.getByText('仓房', { exact: true })).toBeVisible();
     await expect(page.getByText('今日派遣', { exact: true })).toBeVisible();
+    await expect(page.getByText(expectedQuestions.get(day)!, { exact: true })).toBeVisible();
     await capture(page, `narrative-audit-day${day}-1440x900`);
   }
 });
@@ -245,6 +266,15 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await renderState(page, horde);
   await expect(page.getByText('尸潮正在靠近', { exact: false })).toBeVisible();
   await capture(page, 'day29-final-horde-1440x900');
+
+  const lastLine = finalLastLineState();
+  await renderState(page, lastLine);
+  await expect(page.getByText('第六阶段 · 最后一条线', { exact: true })).toBeVisible();
+  await expect(page.getByText('省下库存', { exact: true })).toBeVisible();
+  await expect(page.getByText('用库存换确定', { exact: true })).toBeVisible();
+  await expect(page.getByText('先保住人', { exact: true })).toBeVisible();
+  await expect(page.getByText('材料 -3 · 零件 -1', { exact: true })).toBeVisible();
+  await capture(page, 'day29-last-line-1440x900');
 
   const ending = endingState();
   expect(ending.day).toBe(30);
