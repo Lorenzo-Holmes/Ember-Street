@@ -1,4 +1,5 @@
 import type { GameState } from '../../game/types';
+import { activeMentalState, MENTAL_LABEL } from '../../game/v060/characterPsychology';
 import {
   acceptCommunityRequest,
   activePromiseSummary,
@@ -17,6 +18,10 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
   const social = socialStateOf(state);
   const active = activePromiseSummary(state);
   const request = pendingCommunityRequest(state);
+  const mentalNotes = state.survivors
+    .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing')
+    .map((survivor) => ({ survivor, mental: activeMentalState(state, survivor) }))
+    .filter(({ mental }) => mental !== 'steady');
 
   return (
     <section className="v6-section">
@@ -27,6 +32,13 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
       <section className="v6-preview">
         <div><span>希望</span><strong>{state.hope}</strong><small>长期：大家是否还相信这里值得守</small></div>
         <div><span>街区压力</span><strong>{pressureLabel(state)}</strong><small>短期：冷食、伤亡、无人医疗和低防线会把人逼到极限</small></div>
+        <div>
+          <span>核心人物心理</span>
+          <strong>{mentalNotes.length ? `${mentalNotes.length} 人出现波动` : '稳定'}</strong>
+          <small>{mentalNotes.length
+            ? mentalNotes.map(({ survivor, mental }) => `${survivor.name} · ${MENTAL_LABEL[mental]}${survivor.mentalUntilDay ? ` 至 DAY ${survivor.mentalUntilDay}` : ''}`).join('；')
+            : '专注会让人物判定 +1，动摇会让人物判定 -1；状态会自然消退。'}</small>
+        </div>
       </section>
 
       {active && <article className="v6-survivor" style={{ marginTop: 10 }}>
