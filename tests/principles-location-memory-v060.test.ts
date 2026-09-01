@@ -6,7 +6,7 @@ import { communityCookingSupport, communityDefenseSupport, communityRepairSuppor
 import { expeditionRiskScore } from '../src/game/v060/expedition';
 import { locationMemory, locationMemoryRiskModifier, locationMemorySummary } from '../src/game/v060/locationMemory';
 import { mortalityEventById } from '../src/game/v060/mortalityEvents';
-import { NORMAL_NIGHT_EVENTS } from '../src/game/v060/nightEvents';
+import { EMERGENCY_EVENTS, NORMAL_NIGHT_EVENTS } from '../src/game/v060/nightEvents';
 import { choosePrinciple, pendingPrincipleDecision } from '../src/game/v060/principles';
 import { normalizeSocialState } from '../src/game/v060/socialPressure';
 import type { GameState } from '../src/game/types';
@@ -108,15 +108,15 @@ describe('v0.6 location memory and building ecology', () => {
   it('workshop level 2 suppresses infrastructure failures in the night event ecology', () => {
     const event = NORMAL_NIGHT_EVENTS.find((item) => item.id === 'generator-drop')!;
     const seed = createV060InitialState(99203);
-    const base: GameState = { ...seed, mealState: { ...seed.mealState, quality: 'hot' }, dayAssignments: { zhou: 'repair' } };
+    const base: GameState = { ...seed, mealState: { ...seed.mealState, quality: 'hot' }, dayAssignments: {} };
     const upgraded: GameState = { ...base, buildings: { ...base.buildings, workshop: 2 } };
     expect(nightEventWeight(upgraded, event)).toBeLessThan(nightEventWeight(base, event));
   });
 
   it('shelter level 2 suppresses panic-related events', () => {
-    const event = NORMAL_NIGHT_EVENTS.find((item) => item.id === 'emergency-panic')!;
+    const event = EMERGENCY_EVENTS.find((item) => item.id === 'emergency-panic')!;
     const seed = createV060InitialState(99204);
-    const base: GameState = { ...seed, civilianResidents: 5, buildings: { ...seed.buildings, shelter: 1 } };
+    const base: GameState = { ...seed, civilianResidents: 5, socialState: { ...normalizeSocialState(seed.socialState), pressure: 4 }, buildings: { ...seed.buildings, shelter: 1 } };
     const upgraded: GameState = { ...base, buildings: { ...base.buildings, shelter: 2 } };
     expect(nightEventWeight(upgraded, event)).toBeLessThan(nightEventWeight(base, event));
   });
