@@ -8,7 +8,7 @@ import type { GameState } from '../src/game/types';
 
 function stateWithDay(day = 8): GameState {
   const base = createV060InitialState(88001);
-  return { ...base, day, hope: 55, socialState: { pressure: 2, activePromise: null, fulfilledPromises: 0, brokenPromises: 0 } };
+  return { ...base, day, hope: 55, socialState: { pressure: 2, activePromise: null, fulfilledPromises: 0, brokenPromises: 0, principles: [] } };
 }
 
 describe('v0.6 survivor psychology', () => {
