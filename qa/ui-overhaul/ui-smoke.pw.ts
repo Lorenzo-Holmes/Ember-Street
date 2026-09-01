@@ -197,9 +197,11 @@ test('mobile DAY1 keeps the primary assignment ahead of routine building work', 
   const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
   const building = page.locator('.v6-section').filter({ hasText: '街区建设' }).first();
   const commitButton = page.getByRole('button', { name: /安排好了/ });
+  const lastAssignmentControl = assignment.locator('.v6-job-grid button').last();
   await expect(assignment).toBeVisible();
   await expect(building).toBeVisible();
   await expect(commitButton).toBeVisible();
+  await expect(lastAssignmentControl).toBeVisible();
   await expect(assignment.getByText('熟路', { exact: true })).toBeVisible();
   await expect(assignment.getByText('维修熟手', { exact: true })).toBeVisible();
   await expect(assignment.getByText('会做饭', { exact: true })).toBeVisible();
@@ -207,14 +209,18 @@ test('mobile DAY1 keeps the primary assignment ahead of routine building work', 
   const assignmentBox = await assignment.boundingBox();
   const buildingBox = await building.boundingBox();
   const commitBox = await commitButton.boundingBox();
+  const lastControlBox = await lastAssignmentControl.boundingBox();
   expect(assignmentBox).toBeTruthy();
   expect(buildingBox).toBeTruthy();
   expect(commitBox).toBeTruthy();
-  expect(assignmentBox!.y).toBeLessThan(buildingBox!.y);
+  expect(lastControlBox).toBeTruthy();
+  expect(assignmentBox!.y).toBeLessThan(commitBox!.y);
+  expect(commitBox!.y).toBeLessThan(buildingBox!.y);
 
   const fromTop = assignmentBox!.y / viewport.height;
-  const assignmentToCommit = (commitBox!.y - assignmentBox!.y) / viewport.height;
-  console.log(`[mobile-action-distance] assignment-from-top=${fromTop.toFixed(2)} screens; assignment-to-commit=${assignmentToCommit.toFixed(2)} screens`);
+  const lastControlToCommit = (commitBox!.y - (lastControlBox!.y + lastControlBox!.height)) / viewport.height;
+  console.log(`[mobile-action-distance] assignment-from-top=${fromTop.toFixed(2)} screens; last-control-to-commit=${lastControlToCommit.toFixed(2)} screens`);
+  expect(lastControlToCommit).toBeLessThan(1.5);
   await capture(page, 'day1-action-distance-390x844');
 });
 
