@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { createV060InitialState } from '../src/game/v060/campaign';
+import { effectiveNightChoiceCostLabel, enhanceFinalHordePreview } from '../src/game/v060/day29Comprehension';
 import { expeditionDecisionPreview, missingSearchPreview, nightChoicePreview } from '../src/game/v060/decisionReadability';
+import { finalHordeEventById } from '../src/game/v060/finalHorde';
 import { medicalCrisisFlag } from '../src/game/v060/mortality';
 import { mortalityEventById } from '../src/game/v060/mortalityEvents';
 import type { GameState } from '../src/game/types';
@@ -78,5 +80,55 @@ describe('v0.6 decision readability', () => {
     expect(radio.tags).toContain('电力 -5');
     expect(radio.tags).toContain('再失败就确认死亡');
     expect(radio.summary).toContain('第二次找');
+  });
+
+  it('makes the three last-line promises readable before the player commits', () => {
+    const base = createV060InitialState(880007);
+    const state: GameState = {
+      ...base,
+      day: 29,
+      inventory: { ...base.inventory, materials: 12, parts: 6 },
+      storyFlags: [...base.storyFlags, 'final_horde_supplies'],
+    };
+    const event = finalHordeEventById('final-horde-last-line')!;
+    const person = event.choices.find((choice) => choice.id === 'final-last-hold')!;
+    const resource = event.choices.find((choice) => choice.id === 'final-last-stockpile')!;
+    const retreat = event.choices.find((choice) => choice.id === 'final-last-retreat')!;
+
+    const personPreview = enhanceFinalHordePreview(state, event, person, nightChoicePreview(state, event, person));
+    const resourcePreview = enhanceFinalHordePreview(state, event, resource, nightChoicePreview(state, event, resource));
+    const retreatPreview = enhanceFinalHordePreview(state, event, retreat, nightChoicePreview(state, event, retreat));
+
+    expect(personPreview.tags).toContain('省下库存');
+    expect(personPreview.tags).toContain('结果交给人');
+    expect(personPreview.summary).toContain('失手也会直接落在人身上');
+
+    expect(resourcePreview.tags).toContain('不掷骰');
+    expect(resourcePreview.tags).toContain('用库存换确定');
+    expect(resourcePreview.tags).toContain('过去准备省下物资');
+    expect(resourcePreview.summary).toContain('还要从仓房拿走的量');
+
+    expect(retreatPreview.tags).toContain('先保住人');
+    expect(retreatPreview.tags).toContain('主动放弃外层');
+    expect(retreatPreview.summary).toContain('不再烧库存');
+    expect(retreatPreview.tone).toBe('stable');
+  });
+
+  it('uses the discounted DAY29 cost as the one visible to the player', () => {
+    const base = createV060InitialState(880008);
+    const state: GameState = {
+      ...base,
+      day: 29,
+      storyFlags: [...base.storyFlags, 'final_horde_supplies'],
+    };
+    const event = finalHordeEventById('final-horde-last-line')!;
+    const stockpile = event.choices.find((choice) => choice.id === 'final-last-stockpile')!;
+    const preview = nightChoicePreview(state, event, stockpile);
+
+    expect(effectiveNightChoiceCostLabel(state, stockpile)).toBe('材料 -3 · 零件 -1');
+    expect(preview.tags).toContain('材料 -3');
+    expect(preview.tags).toContain('零件 -1');
+    expect(preview.tags).not.toContain('材料 -6');
+    expect(preview.tags).not.toContain('零件 -3');
   });
 });
