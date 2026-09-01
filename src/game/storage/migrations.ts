@@ -3,6 +3,7 @@ import { forecastFor } from '../progression';
 import { normalizeSeed } from '../rng';
 import type { Buildings, DayAssignment, GameState, Survivor } from '../types';
 import { normalizeCommunityState } from '../v060/community';
+import { normalizeSocialState } from '../v060/socialPressure';
 
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {};
 const num = (value: unknown, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -104,6 +105,7 @@ export function promoteV2ToV3(input: unknown): GameState | null {
     mainLightStage: clamp(num(legacy.mainLightStage, Math.ceil(num(legacy.firstLightLevel, 1) / 2)), 1, 5) as 1 | 2 | 3 | 4 | 5,
     civilianResidents,
     communityState: normalizeCommunityState(legacy.communityState, civilianResidents),
+    socialState: normalizeSocialState(legacy.socialState),
     dayAssignments: version === 3 ? legacyAssignments(legacy.dayAssignments) : legacyAssignments(legacy.assignments),
     dayState: { ...createDefaultDayState(), ...asRecord(legacy.dayState), committedSurvivorIds: Array.isArray(asRecord(legacy.dayState).committedSurvivorIds) ? (asRecord(legacy.dayState).committedSurvivorIds as unknown[]).map(String) : [] },
     expeditionState: { ...createDefaultExpeditionState(), ...asRecord(legacy.expeditionState) } as GameState['expeditionState'],
