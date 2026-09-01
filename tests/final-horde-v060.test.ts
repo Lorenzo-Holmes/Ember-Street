@@ -116,14 +116,14 @@ describe('DAY29 six-stage final horde', () => {
     ]));
   });
 
-  it('shows the player which old decisions are affecting a final-horde choice', () => {
+  it('shows which old preparations are still helping on the final night', () => {
     const state = finalReady(88008);
     const event = finalHordeEventById('final-horde-last-line')!;
     const choice = event.choices.find((item) => item.id === 'final-last-hold')!;
     const preview = nightChoicePreview(state, event, choice);
-    expect(preview.tags).toContain('最终尸潮 6/6');
+    expect(preview.tags).toContain('最后一夜 6/6');
     expect(preview.tags).toContain('北仓库防护物资 +2');
-    expect(preview.summary).toContain('过去的选择正在生效');
+    expect(preview.summary).toContain('过去留下的东西正在派上用场');
   });
 
   it('advances through all six stages before entering night summary', () => {
