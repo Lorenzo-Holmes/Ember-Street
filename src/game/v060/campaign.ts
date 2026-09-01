@@ -184,9 +184,9 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
   const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier + specialtyModifier;
   const twist = dice[0] === 6 && dice[1] === 6 ? 'double-six' : dice[0] === 1 && dice[1] === 1 ? 'double-one' : undefined;
   const outcome: CheckOutcome = twist === 'double-one' ? 'failure' : twist === 'double-six' ? 'critical' : total <= 6 ? 'failure' : total <= 9 ? 'partial' : total <= 11 ? 'success' : 'critical';
-  const withStory = applyExpeditionStoryOutcome({ ...state, rngState }, event, outcome);
-  let next = resolveExpeditionOutcome(withStory, outcome, twist);
-  if (stance === 'push' && (outcome === 'success' || outcome === 'critical')) next = addBonusLoot(next, 2);
+  let withStory = applyExpeditionStoryOutcome({ ...state, rngState }, event, outcome);
+  if (stance === 'push' && (outcome === 'success' || outcome === 'critical')) withStory = addBonusLoot(withStory, 2);
+  const next = resolveExpeditionOutcome(withStory, outcome, twist);
   const specialtyText = specialtyModifier ? ' · 专长 +1' : '';
   return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}${specialtyText}` };
 }
