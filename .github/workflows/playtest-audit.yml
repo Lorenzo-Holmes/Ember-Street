@@ -2,7 +2,7 @@ name: Playtest Audit
 
 on:
   push:
-    branches: ["feat/v06x-playtest-audit"]
+    branches: ["feat/v06x-playtest-audit", "feat/v06x-audit-v2-cooldown"]
   workflow_dispatch:
     inputs:
       policy_runs:
@@ -25,6 +25,10 @@ on:
         description: Controlled resident runs per policy/count
         required: false
         default: "40"
+      repeat_runs:
+        description: Cooldown diversity runs per V2 policy
+        required: false
+        default: "150"
 
 permissions:
   contents: read
@@ -40,6 +44,7 @@ jobs:
       PLAYTEST_CURVE_RUNS: ${{ inputs.curve_runs || '120' }}
       PLAYTEST_V2_RUNS: ${{ inputs.v2_runs || '80' }}
       PLAYTEST_CONTROLLED_RUNS: ${{ inputs.controlled_runs || '40' }}
+      PLAYTEST_REPEAT_RUNS: ${{ inputs.repeat_runs || '150' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,7 +58,7 @@ jobs:
         run: npm install --no-audit --no-fund
 
       - name: Run DAY1→30 audit matrix
-        run: npx vitest run qa/playtest/playtest-audit-report.test.ts qa/playtest/pressure-curves.test.ts qa/playtest/audit-v2-methodology.test.ts --reporter=verbose
+        run: npx vitest run qa/playtest/playtest-audit-report.test.ts qa/playtest/pressure-curves.test.ts qa/playtest/audit-v2-methodology.test.ts qa/playtest/repeat-cooldown-evaluation.test.ts --reporter=verbose
 
       - name: Upload audit report
         uses: actions/upload-artifact@v4
