@@ -10,6 +10,7 @@ const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = {
   search: 'expedition', repair: 'repair', medical: 'medical', watch: 'watch', cook: 'cook', radio: 'radio', rest: 'rest',
 };
 const clamp = (value: number, min = 1, max = 9) => Math.min(max, Math.max(min, value));
+const NIGHT_SEEN_PREFIX = 'night_seen:';
 
 function assignedCount(state: GameState, role: Role): number {
   const assignment = ROLE_ASSIGNMENT[role];
@@ -21,6 +22,35 @@ function poorMealForCausalSignal(state: GameState): boolean {
   const preparingTonight = ['street', 'assignment', 'expedition', 'dusk'].includes(state.phase);
   const meal = preparingTonight ? previewMeal(state) : state.mealState;
   return meal.quality === 'cold' || meal.quality === 'struggling' || meal.consecutiveShortageDays >= 2;
+}
+
+function lastSeenDay(state: GameState, eventId: string): number | null {
+  const prefix = `${NIGHT_SEEN_PREFIX}${eventId}:`;
+  let latest: number | null = null;
+  for (const flag of state.storyFlags) {
+    if (!flag.startsWith(prefix)) continue;
+    const day = Number(flag.slice(prefix.length));
+    if (!Number.isFinite(day)) continue;
+    latest = latest === null ? day : Math.max(latest, day);
+  }
+  return latest;
+}
+
+export function nightEventRepeatPenalty(state: GameState, event: V060NightEvent): number {
+  const seenDay = lastSeenDay(state, event.id);
+  if (seenDay === null) return 0;
+  const age = state.day - seenDay;
+  if (age <= 0) return -8;
+  const urgent = event.category === 'horde' || event.category === 'emergency';
+  if (urgent) {
+    if (age === 1) return -3;
+    if (age === 2) return -1;
+    return 0;
+  }
+  if (age === 1) return -7;
+  if (age === 2) return -5;
+  if (age <= 4) return -3;
+  return 0;
 }
 
 export function nightCausalSignals(state: GameState): string[] {
@@ -94,5 +124,6 @@ export function nightEventWeight(state: GameState, event: V060NightEvent): numbe
   if (state.storyFlags.includes('working_vehicle_parts') && event.category === 'infrastructure') weight -= 1;
 
   weight += buildingEventWeightModifier(state, event);
+  weight += nightEventRepeatPenalty(state, event);
   return clamp(weight);
 }

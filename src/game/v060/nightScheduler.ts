@@ -353,10 +353,16 @@ function applyCivilianIncident(state: GameState, eventId: string, choiceId: stri
   return state;
 }
 
+function rememberNightEvent(state: GameState, eventId: string): GameState {
+  const flag = `night_seen:${eventId}:${state.day}`;
+  return state.storyFlags.includes(flag) ? state : { ...state, storyFlags: [...state.storyFlags, flag] };
+}
+
 function completeCurrentEvent(state: GameState, eventId: string): GameState {
   const already = state.nightState.resolutions.includes(eventId);
-  const resolutions = already ? state.nightState.resolutions : [...state.nightState.resolutions, eventId];
-  const temporary = { ...state, nightState: { ...state.nightState, resolutions, currentEventId: null } };
+  const remembered = already ? state : rememberNightEvent(state, eventId);
+  const resolutions = already ? remembered.nightState.resolutions : [...remembered.nightState.resolutions, eventId];
+  const temporary = { ...remembered, nightState: { ...remembered.nightState, resolutions, currentEventId: null } };
   const nextId = nextNightEventId(temporary);
   const validMainIds = availableScheduledIds(temporary, temporary.nightState.scheduledEventIds);
   const mainResolved = validMainIds.filter((id) => resolutions.includes(id)).length;
