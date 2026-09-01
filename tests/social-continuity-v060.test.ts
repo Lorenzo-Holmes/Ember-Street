@@ -114,16 +114,18 @@ describe('v0.6 community promises', () => {
     expect(socialStateOf(searched).fulfilledPromises).toBe(1);
   });
 
-  it('fulfills a medical promise by assigning medical work, not by guaranteeing a cure', () => {
+  it('fulfills a medical promise by assigning valid medical work, not by guaranteeing a cure', () => {
     let state = withDay(createV060InitialState(702004), 8);
     state = {
       ...state,
+      buildings: { ...state.buildings, clinic: 1 },
       survivors: state.survivors.map((survivor) => survivor.id === 'lin-xia' ? { ...survivor, condition: 'serious' as const } : survivor),
     };
     const request = pendingCommunityRequest(state)!;
     expect(request.kind).toBe('medical-care');
     state = acceptCommunityRequest(state, request.id);
     state = assignDayJob(state, 'zhou', 'medical');
+    expect(state.dayAssignments.zhou).toBe('medical');
     const resolved = finalizeDay(state);
     expect(socialStateOf(resolved).activePromise).toBeNull();
     expect(socialStateOf(resolved).fulfilledPromises).toBe(1);
