@@ -34,6 +34,7 @@ import {
   expeditionRiskScore,
   startExpedition,
 } from './game/v060/expedition';
+import { expeditionStoryRoleNote, locationStoryProfile, signatureSeenFlag } from './game/v060/expeditionStories';
 import { mealLabel, previewMeal } from './game/v060/food';
 import { isLocationUnlocked, pendingCampaignEvent, resolveCampaignEvent } from './game/v060/campaignEvents';
 import { dawnBriefEntries } from './game/v060/morningBrief';
@@ -68,6 +69,17 @@ function commit(next: GameState, setState: (state: GameState) => void) {
 
 function DecisionTags({ tags }: { tags: string[] }) {
   return <div className="v6-survivor__status" style={{ margin: '7px 0 2px' }}>{tags.map((tag) => <span key={tag}>{tag}</span>)}</div>;
+}
+
+function locationKnowledgeTags(state: GameState, locationId: string): string[] {
+  const tags: string[] = [];
+  if (state.storyFlags.includes(signatureSeenFlag(locationId))) tags.push('地点故事已记录');
+  else tags.push('首次进入有专属故事');
+  if (state.storyFlags.includes(`scouted:${locationId}`)) tags.push('已侦察');
+  if (state.storyFlags.includes(`danger:${locationId}`)) tags.push('风险上升');
+  if ((locationId === 'subway' || locationId === 'bus-station') && state.storyFlags.includes('evacuation_route_known')) tags.push('撤离路线已知');
+  if (locationId === 'warehouse' && state.storyFlags.includes('final_horde_supplies')) tags.push('最终尸潮物资已备');
+  return tags;
 }
 
 function InventoryBar({ state }: { state: GameState }) {
@@ -237,9 +249,10 @@ function ExpeditionStatus({ state, setState }: { state: GameState; setState: (st
   const party = state.expeditionState.activePartyIds.map((id) => state.survivors.find((s) => s.id === id)?.name ?? id).join('、');
   const location = EXPEDITION_LOCATIONS.find((item) => item.id === state.expeditionState.locationId)?.name ?? '未知地点';
   const event = currentExpeditionEvent(state);
+  const kind = event?.kind === 'signature' ? '首次地点故事' : event?.kind === 'rare' ? '稀有地点事件' : event?.kind === 'local' ? '地点事件' : '通用探索事件';
   return (
     <section className="v6-section">
-      <div className="v6-section__head"><div><span>搜索队外出中</span><h2>{party} · {location}</h2></div><small>今日派遣已锁定</small></div>
+      <div className="v6-section__head"><div><span>搜索队外出中 · {kind}</span><h2>{party} · {location}</h2></div><small>今日派遣已锁定</small></div>
       <p>{event ? `途中传来消息：${event.title}` : '搜索队还在路上。'}</p>
       <button className="v6-cta" onClick={() => commit({ ...state, phase: 'expedition' }, setState)}>处理探索事件</button>
     </section>
@@ -305,6 +318,8 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
   const pushPreview = expeditionDecisionPreview(state, 'push', activeRisk);
   const carefulPreview = expeditionDecisionPreview(state, 'careful', activeRisk);
   const retreatPreview = expeditionDecisionPreview(state, 'retreat', activeRisk);
+  const eventKind = event?.kind === 'signature' ? '首次地点故事' : event?.kind === 'rare' ? '稀有地点事件' : event?.kind === 'local' ? '地点事件' : '通用探索事件';
+  const roleNote = expeditionStoryRoleNote(state, event);
 
   const begin = () => {
     if (!isLocationUnlocked(state, locationId)) return;
@@ -332,14 +347,23 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
   if (!state.expeditionState.departed) {
     return (
       <main className="v6-shell">
-        <header className="v6-page-head"><span>白天 · 探索</span><h1>选择搜索队和已解锁地点</h1><p>新地点不会因为天数自动出现。只有街区事件提供情报以后，它才会进入探索地图。</p></header>
+        <header className="v6-page-head"><span>白天 · 探索</span><h1>选择搜索队和已解锁地点</h1><p>每个地点现在都有自己的首次故事和本地事件池。新地点仍然只由情报事件解锁，不会因为天数自动出现。</p></header>
         <InventoryBar state={state}/>
         <section className="v6-section"><div className="v6-section__head"><div><span>探索队</span><h2>1–2 人</h2></div></div><div className="v6-party">{assignedIds.map((id) => {
           const survivor = state.survivors.find((item) => item.id === id)!;
           const active = party.includes(id);
           return <button className={active ? 'active' : ''} key={id} onClick={() => setParty((current) => active ? current.filter((x) => x !== id) : current.length < 2 ? [...current, id] : current)}><strong>{survivor.name}</strong><span>精力 {survivor.energy} · {CONDITION_LABEL[survivor.condition ?? 'healthy']}</span></button>;
         })}</div></section>
-        <section className="v6-section"><div className="v6-section__head"><div><span>探索地图</span><h2>已发现地点</h2></div><strong className={`v6-risk v6-risk--${risk}`}>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</strong></div><div className="v6-locations">{availableLocations.map((location) => <button className={location.id === locationId ? 'active' : ''} key={location.id} onClick={() => setLocationId(location.id)}><strong>{location.name}</strong><span>{location.description}</span><small>主要：{location.primary} · 危险 {location.danger}/5</small></button>)}</div></section>
+        <section className="v6-section"><div className="v6-section__head"><div><span>探索地图</span><h2>已发现地点</h2></div><strong className={`v6-risk v6-risk--${risk}`}>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</strong></div><div className="v6-locations">{availableLocations.map((location) => {
+          const profile = locationStoryProfile(location.id);
+          const knowledge = locationKnowledgeTags(state, location.id);
+          return <button className={location.id === locationId ? 'active' : ''} key={location.id} onClick={() => setLocationId(location.id)}>
+            <strong>{location.name}{profile ? ` · ${profile.theme}` : ''}</strong>
+            <span>{location.description}</span>
+            {profile && <DecisionTags tags={profile.features}/>}<DecisionTags tags={knowledge}/>
+            <small>主要：{location.primary} · 次要：{location.secondary} · 危险 {location.danger}/5</small>
+          </button>;
+        })}</div></section>
         <button className="v6-cta" disabled={!party.length || !availableLocations.length} onClick={begin}>搜索队出发 · 返回主界面</button>
         <button className="v6-link" onClick={() => commit(reopenDayAssignments(state), setState)}>← 返回派遣</button>
       </main>
@@ -348,7 +372,7 @@ function ExpeditionScreen({ state, setState }: { state: GameState; setState: (st
 
   return (
     <main className="v6-shell">
-      <header className="v6-page-head"><span>探索途中 · {activeRisk === 'safe' ? '安全' : activeRisk === 'cautious' ? '谨慎' : activeRisk === 'dangerous' ? '危险' : '极险'}</span><h1>{event?.title ?? '搜索队进入了建筑'}</h1><p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p></header>
+      <header className="v6-page-head"><span>探索途中 · {eventKind} · {activeRisk === 'safe' ? '安全' : activeRisk === 'cautious' ? '谨慎' : activeRisk === 'dangerous' ? '危险' : '极险'}</span><h1>{event?.title ?? '搜索队进入了建筑'}</h1><p>{event?.body ?? '前面没有声音，但没人知道拐角后面有什么。'}</p>{roleNote && <p>{roleNote}</p>}</header>
       <section className="v6-expedition-choices">
         <button onClick={() => finish('push')}><b>A</b><strong>继续深入</strong><span>更高收益，但判定更难。</span><div style={{ gridColumn: 2 }}><DecisionTags tags={pushPreview.tags}/><small>{pushPreview.summary}</small></div></button>
         <button onClick={() => finish('careful')}><b>B</b><strong>谨慎绕行</strong><span>降低判定压力，不追求额外收益。</span><div style={{ gridColumn: 2 }}><DecisionTags tags={carefulPreview.tags}/><small>{carefulPreview.summary}</small></div></button>
