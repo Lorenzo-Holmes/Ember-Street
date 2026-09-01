@@ -16,6 +16,14 @@ export function psychologyCheckModifier(survivor?: Survivor): CheckModifier | nu
   return null;
 }
 
+export function partyPsychologyModifier(state: GameState, survivorIds: string[]): number {
+  const modifiers = survivorIds
+    .map((id) => psychologyCheckModifier(state.survivors.find((survivor) => survivor.id === id))?.value ?? 0);
+  if (modifiers.includes(-1)) return -1;
+  if (modifiers.includes(1)) return 1;
+  return 0;
+}
+
 export function psychologyWorkEnergyDelta(survivor: Survivor, resting: boolean): number {
   if (survivor.psychology?.state !== 'grieving') return 0;
   return resting ? -6 : 2;
