@@ -124,7 +124,7 @@ function rowsFor(state: GameState) {
       return {
         choiceId: choice.id,
         strategy: choice.strategy,
-        affordable: canAffordNightChoice(state, choice),
+        affordable: canAffordNightChoice(state, raw),
         expectedValue: choice.check ? checkExpectedValue(state, choice) : effectScore(choice.direct) - costScore(choice),
       };
     }).sort((a, b) => b.expectedValue - a.expectedValue),
@@ -137,6 +137,10 @@ describe('DAY29 scenario matrix', () => {
     expect(scenarios).toHaveLength(6);
     expect(scenarios.every((scenario) => scenario.stages.length === 6)).toBe(true);
     expect(scenarios.flatMap((scenario) => scenario.stages).flatMap((stage) => stage.choices).every((choice) => Number.isFinite(choice.expectedValue))).toBe(true);
+
+    const lowStock = scenarios.find((scenario) => scenario.id === 'low-stock');
+    expect(lowStock).toBeDefined();
+    expect(lowStock!.stages.flatMap((stage) => stage.choices).some((choice) => choice.strategy === 'resource' && !choice.affordable)).toBe(true);
 
     mkdirSync('qa/playtest/out', { recursive: true });
     writeFileSync('qa/playtest/out/day29-scenario-matrix.json', `${JSON.stringify({ scenarios }, null, 2)}\n`);
