@@ -9,6 +9,28 @@ export type MealQuality = 'cold' | 'struggling' | 'hot' | 'full' | 'well-fed';
 export type FinalHordeResult = 'perfect' | 'held' | 'damaged' | 'breached';
 export type EndingId = 'E01' | 'E02' | 'E03' | 'E04' | 'E05' | 'E06' | 'E07' | 'E08' | 'E09' | 'E10' | 'E11' | 'E12' | 'E13';
 export type CommunitySupportMode = 'logistics' | 'repair' | 'defense';
+export type CommunityPromiseKind = 'hot-meal' | 'search-missing' | 'restore-defense' | 'medical-care' | 'shelter';
+export type CommunityPromiseStatus = 'active' | 'fulfilled' | 'broken';
+
+export interface CommunityPromise {
+  id: string;
+  kind: CommunityPromiseKind;
+  title: string;
+  createdDay: number;
+  deadlineDay: number;
+  status: CommunityPromiseStatus;
+  targetId?: string;
+  targetValue?: number;
+}
+
+export interface SocialState {
+  pressure: number;
+  activePromise: CommunityPromise | null;
+  fulfilledPromises: number;
+  brokenPromises: number;
+  lastRequestDay?: number;
+  lastOutcome?: string;
+}
 
 export interface CommunityState {
   pendingResidents: number;
@@ -144,6 +166,7 @@ export interface GameState {
   mainLightStage: 1 | 2 | 3 | 4 | 5;
   civilianResidents: number;
   communityState: CommunityState;
+  socialState?: SocialState;
   dayAssignments: Record<string, DayAssignment>;
   dayState: DayState;
   expeditionState: ExpeditionState;
