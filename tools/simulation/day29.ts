@@ -92,7 +92,7 @@ function survivorConditions(mode: Day29Dimensions['core'], rng: AuditRng): { con
     const count = 2 + rng.int(3);
     for (let i = 0; i < count; i += 1) conditions[(i * 2 + 1 + rng.int(2)) % conditions.length] = 'missing';
   }
-  if (conditions.every((condition) => condition === 'dead' || condition === 'missing')) conditions[0] = 'serious';
+  if (conditions.every((condition) => condition === 'dead' || condition === 'missing')) conditions.splice(0, 1, 'serious');
   return {
     conditions,
     deaths: conditions.filter((condition) => condition === 'dead').length,
