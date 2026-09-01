@@ -6,7 +6,7 @@ import {
   declineCommunityRequest,
   pendingCommunityRequest,
 } from '../../game/v060/communityPromises';
-import { choosePrinciple, pendingPrincipleDecision } from '../../game/v060/principles';
+import { choosePrinciple, pendingPrincipleDecision, PRINCIPLE_DECISIONS } from '../../game/v060/principles';
 import { pressureLabel, socialStateOf } from '../../game/v060/socialPressure';
 
 interface SocialStatusPanelProps {
@@ -20,6 +20,7 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
   const active = activePromiseSummary(state);
   const request = pendingCommunityRequest(state);
   const principle = pendingPrincipleDecision(state);
+  const principleChoices = PRINCIPLE_DECISIONS.flatMap((decision) => decision.choices);
   const mentalNotes = state.survivors
     .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing')
     .map((survivor) => ({ survivor, mental: activeMentalState(state, survivor) }))
@@ -44,7 +45,7 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
       </section>
 
       {!!social.principles.length && <div className="v6-survivor__status" style={{ marginTop: 10 }}>
-        {social.principles.map((id) => <span key={id}>原则 · {id}</span>)}
+        {social.principles.map((id) => <span key={id}>原则 · {principleChoices.find((choice) => choice.id === id)?.title ?? id}</span>)}
       </div>}
 
       {principle && !compact && <article className="v6-survivor" style={{ marginTop: 10 }}>
