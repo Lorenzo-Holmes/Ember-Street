@@ -98,40 +98,40 @@ function mortalityPreview(state: GameState, event: V060NightEvent, choice: Night
     const target = state.survivors.find((survivor) => survivor.id === targetId);
     const critical = target?.condition === 'critical';
     if (choice.id === 'mortality-treat') return {
-      tags: critical ? ['医疗判定', '失败可致死'] : ['医疗判定', '失败会恶化'],
+      tags: critical ? ['要靠人抢救', '失败可致死'] : ['要靠人抢救', '失败会恶化'],
       summary: critical
-        ? '这是最后的抢救窗口。成功会把伤势拉回重伤；失败会触发尸变死亡。'
-        : '成功会把伤势拉回轻伤；失败会继续恶化为危重。',
+        ? '这是今晚最后一次把人从那条线上拽回来。救成了，伤势还能稳住；救不成，天亮前可能就没了。'
+        : '现在处理，还有机会把伤势压回轻伤；要是没稳住，今晚可能转成危重。',
       tone: critical ? 'severe' : 'risky',
     };
     if (choice.id === 'mortality-medicine') return {
-      tags: ['稳定处理', critical ? '危重→重伤' : '重伤→轻伤'],
-      summary: '不进行人物判定，支付药品后直接稳定伤势并清除未治疗计时。',
+      tags: ['拿药稳住', critical ? '危重→重伤' : '重伤→轻伤'],
+      summary: '把药用在现在，人今晚能稳下来。代价会直接从药箱里扣掉。',
       tone: 'stable',
     };
     if (choice.id === 'mortality-isolate') return {
       tags: critical ? ['不耗药', '可能尸变/死亡'] : ['不耗药', '可能转危重'],
       summary: critical
-        ? '危重伤员继续隔离到天亮会直接进入尸变死亡结果。'
-        : '当前不会死亡，但伤势会继续推进到危重。',
+        ? '今晚不再动药。已经危重的人，很可能等不到天亮。'
+        : '今晚先不动药，人不会立刻死，但伤势很可能继续往危重走。',
       tone: critical ? 'severe' : 'risky',
     };
   }
 
   if (event.id.startsWith('mortality-hope:')) {
     if (choice.id === 'mortality-talk') return {
-      tags: ['人物判定', '失败可能失踪'],
-      summary: '成功能挽留并恢复希望；失败时对方会在夜里离开并进入失踪状态。',
+      tags: ['要靠人劝住', '失败可能失踪'],
+      summary: '你得亲自把人留下。话说进去了，他会留下；说不进去，天亮前可能只剩一张空床。',
       tone: 'risky',
     };
     if (choice.id === 'mortality-support') return {
-      tags: ['稳定挽留', '口粮换安全'],
-      summary: '直接付出口粮换取稳定结果，不需要投骰，也不会让这个人今晚离开。',
+      tags: ['拿口粮留人', '今晚更稳'],
+      summary: '拿出吃的，把人先留住。今晚不用再赌一句话到底说没说进去。',
       tone: 'stable',
     };
     if (choice.id === 'mortality-leave') return {
       tags: ['不耗资源', '必定失踪'],
-      summary: '选择后这个人会在天亮前离开街区，并进入可搜救的失踪状态。',
+      summary: '什么也不拦。天亮前，这个人会离开长街，之后只能再想办法去找。',
       tone: 'severe',
     };
   }
@@ -145,10 +145,10 @@ export function nightChoicePreview(state: GameState, event: V060NightEvent, choi
   const tags: string[] = [];
   let tone: DecisionTone = effectiveChoice.strategy === 'resource' ? 'stable' : effectiveChoice.strategy === 'person' ? 'risky' : 'safe';
 
-  if (effectiveChoice.strategy === 'person') tags.push('人物判定');
-  if (effectiveChoice.strategy === 'resource') tags.push('稳定');
-  if (effectiveChoice.strategy === 'consequence') tags.push('保守/接受后果');
-  if (effectiveChoice.check?.role) tags.push(`${ROLE_LABEL[effectiveChoice.check.role]}岗位`);
+  if (effectiveChoice.strategy === 'person') tags.push('要靠人顶住');
+  if (effectiveChoice.strategy === 'resource') tags.push('拿东西换稳妥');
+  if (effectiveChoice.strategy === 'consequence') tags.push('先熬过眼前');
+  if (effectiveChoice.check?.role) tags.push(`${ROLE_LABEL[effectiveChoice.check.role]}更合适`);
   if (effectiveChoice.check?.mode === 'advantage') tags.push('优势');
   if (effectiveChoice.check?.mode === 'disadvantage') tags.push('劣势');
   tags.push(...costTags(effectiveChoice));
@@ -168,21 +168,21 @@ export function nightChoicePreview(state: GameState, event: V060NightEvent, choi
   let finalHordeSummary: string | null = null;
   if (isFinalHordeEventId(event.id)) {
     const stage = finalHordeStageNumber(event.id);
-    tags.push(`最终尸潮 ${stage ?? '?'}/6`);
+    tags.push(`最后一夜 ${stage ?? '?'}/6`);
     for (const modifier of finalHordeCheckModifiers(state, effectiveChoice.id)) {
       tags.push(`${modifier.label} ${modifier.value >= 0 ? '+' : ''}${modifier.value}`);
     }
     const legacy = finalHordeLegacyNotes(state);
-    finalHordeSummary = `这是 DAY29 固定终局阶段。${legacy.length ? `过去的选择正在生效：${legacy.slice(0, 3).join('；')}。` : '当前没有额外的长期成果加成。'}${effectiveChoice.check ? ' 判定仍会继续叠加人物专长、状态与设施。' : ''}`;
+    finalHordeSummary = `这是最后一夜的第 ${stage ?? '?'} 段。${legacy.length ? `过去留下的东西正在派上用场：${legacy.slice(0, 3).join('；')}。` : '眼下没有别的旧准备能替我们多挡一下。'}${effectiveChoice.check ? ' 真要靠人顶上时，专长、伤势和手边设施都会算数。' : ''}`;
   }
 
   const summary = special?.summary
     ?? finalHordeSummary
     ?? (effectiveChoice.check
-      ? `需要投骰。${effectiveChoice.check.role ? `${ROLE_LABEL[effectiveChoice.check.role]}岗位、对应人物状态与设施会影响判定。` : '人物状态与现场条件会影响判定。'}失败时会承担上方标出的风险。`
+      ? `${effectiveChoice.check.role ? `${ROLE_LABEL[effectiveChoice.check.role]}的人更适合扛这一下。` : ''}这条路要靠现场的人顶过去；失手时，上面标出的风险会真的落下来。`
       : effectiveChoice.strategy === 'resource'
-        ? '不需要投骰。支付标出的资源后直接得到稳定结果。'
-        : '不需要投骰，也通常不消耗关键资源，但会直接接受这个选择的长期或状态后果。');
+        ? '把上面这些东西拿出来，这条路更稳，不再把结果交给运气。'
+        : '眼前不再多花东西，也不让谁去赌这一把；代价会留到之后。');
 
   return { tags: unique(tags), summary, tone };
 }
@@ -192,8 +192,8 @@ export type ExpeditionDecision = 'push' | 'careful' | 'retreat';
 export function expeditionDecisionPreview(state: GameState, decision: ExpeditionDecision, risk: ExpeditionRisk): DecisionPreview {
   if (decision === 'retreat') {
     return {
-      tags: ['安全撤回', '无物资收益', '队员精力 -6'],
-      summary: '不进行探索判定。搜索队直接返回，今天的探索机会消耗掉，但不会因这次探索事件受伤、失踪或死亡。',
+      tags: ['安全撤回', '今天空手', '队员精力 -6'],
+      summary: '现在回头，今天就空手到这里。人会直接回来，代价只是白跑一趟和损失一点精力。',
       tone: 'safe',
     };
   }
@@ -203,33 +203,33 @@ export function expeditionDecisionPreview(state: GameState, decision: Expedition
   const locationId = state.expeditionState.locationId;
   const memoryNotes = locationId ? locationMemorySummary(state, locationId) : [];
   const tags = decision === 'push'
-    ? ['高收益', '2D6 -1', RISK_LABEL[risk]]
-    : ['普通收益', '2D6 +1', RISK_LABEL[risk]];
+    ? ['多拿一点', '2D6 -1', RISK_LABEL[risk]]
+    : ['稳着走', '2D6 +1', RISK_LABEL[risk]];
   if (specialtyBonus && event?.specialty) tags.push(`${ROLE_LABEL[event.specialty]}专长 +1`);
-  if (memoryNotes.some((note) => note.startsWith('已侦察'))) tags.push('地点记忆·已侦察');
-  if (memoryNotes.some((note) => note.startsWith('已清理'))) tags.push('地点记忆·已清理');
-  if (memoryNotes.some((note) => note.startsWith('已惊动'))) tags.push('地点记忆·已惊动');
+  if (memoryNotes.some((note) => note.startsWith('已侦察'))) tags.push('来过这里·看过路');
+  if (memoryNotes.some((note) => note.startsWith('已清理'))) tags.push('来过这里·清过路');
+  if (memoryNotes.some((note) => note.startsWith('已惊动'))) tags.push('来过这里·惊动过');
 
-  let danger = '失败会消耗更多精力，并可能造成伤势。';
+  let danger = '要是出岔子，人会更累，也可能带伤回来。';
   const tone: DecisionTone = risk === 'safe' ? 'stable' : risk === 'cautious' ? 'risky' : 'severe';
-  if (risk === 'dangerous') danger = '失败可能造成重伤；灾难结果会让后续医疗压力明显上升。';
-  if (risk === 'extreme' && state.day <= 5) danger = '这是极险路线。前 5 天仍有永久死亡保护，但失败依然可能造成严重伤势。';
+  if (risk === 'dangerous') danger = '这种地方一旦出岔子，人可能重伤，诊所今晚就得接手。';
+  if (risk === 'extreme' && state.day <= 5) danger = '这条路很险。真出事，最坏也足够把人拖成重伤。';
   if (risk === 'extreme' && state.day >= 6 && state.day <= 10) {
     tags.push('严重失败可能失踪');
-    danger = '极险探索在 DAY 6 起，严重失败可能让队员失踪。';
+    danger = '这种地方一旦出大事，人可能连回来的路都找不到。';
   }
   if (risk === 'extreme' && state.day >= 11) {
     tags.push('严重失败可能失踪/死亡');
-    danger = '极险探索在 DAY 11 起，严重失败可能失踪；双一且队员状态较差时可能直接死亡。';
+    danger = '这种地方一旦出大事，人可能失踪；状态太差时，甚至可能回不来。';
   }
 
-  const specialtyText = specialtyBonus && event?.specialty ? ` 当前事件匹配${ROLE_LABEL[event.specialty]}专长，搜索队额外获得 +1。` : '';
-  const memoryText = memoryNotes.length ? ` 这里记得你之前做过的事：${memoryNotes.slice(0, 2).join('；')}。` : '';
+  const specialtyText = specialtyBonus && event?.specialty ? ` 这次正好有${ROLE_LABEL[event.specialty]}的熟手同行（+1）。` : '';
+  const memoryText = memoryNotes.length ? ` 这里不是第一次来：${memoryNotes.slice(0, 2).join('；')}。` : '';
   return {
     tags,
     summary: decision === 'push'
-      ? `成功或大成功会额外获得主要物资；代价是判定 -1。${specialtyText}${memoryText}${danger}`
-      : `判定获得 +1，不追求额外的“继续深入”奖励。${specialtyText}${memoryText}${danger}`,
+      ? `往深处走，主要物资可能多带一份，但这一把更难（2D6 -1）。${specialtyText}${memoryText}${danger}`
+      : `不贪深处那一点，把路线走稳（2D6 +1）。${specialtyText}${memoryText}${danger}`,
     tone,
   };
 }
@@ -238,15 +238,15 @@ export type MissingSearchDecision = 'team' | 'radio';
 
 export function missingSearchPreview(state: GameState, survivorId: string, decision: MissingSearchDecision): DecisionPreview {
   const previousFailures = state.storyFlags.filter((flag) => flag.startsWith(`missing_search_failed:${survivorId}:`)).length;
-  const deathTag = previousFailures >= 1 ? '失败将确认死亡' : '失败会累计搜救失败';
+  const deathTag = previousFailures >= 1 ? '再失败就确认死亡' : '再找一次的机会还在';
 
   if (decision === 'radio') {
     const modifier = Math.max(0, state.buildings.radio - 1);
     return {
-      tags: ['电力 -5', `2D6 +${modifier}`, '不占用人员', deathTag],
+      tags: ['电力 -5', `2D6 +${modifier}`, '不用再派人出去', deathTag],
       summary: previousFailures >= 1
-        ? '这是第二次搜救机会。广播失败会直接确认失踪者死亡。'
-        : '广播亭等级提供判定修正；失败后仍可在之后再尝试一次搜救。',
+        ? '这是第二次找。要是广播里还是没有回应，就只能把这个名字记到纪念墙那边。'
+        : '用广播一遍遍喊名字。电台收拾得越好，越可能在杂音里等到回应；这次没找到，之后还来得及再找一次。',
       tone: previousFailures >= 1 ? 'severe' : 'risky',
     };
   }
@@ -257,12 +257,12 @@ export function missingSearchPreview(state: GameState, survivorId: string, decis
     .slice(0, 2);
   const modifier = state.buildings.searchStation + helpers.filter((survivor) => survivor.specialty === 'search' || survivor.specialty === 'watch').length;
   return {
-    tags: [`占用 ${helpers.length}/2 人`, helpers.length === 2 ? `2D6 +${modifier}` : '人员不足', '队员精力 -12', deathTag],
+    tags: [`要 ${helpers.length}/2 人`, helpers.length === 2 ? `2D6 +${modifier}` : '人手不够', '队员精力 -12', deathTag],
     summary: helpers.length < 2
-      ? '当前没有两名可行动人物，无法组织地面搜救。'
+      ? '现在凑不出两个还能行动的人，地面这条路走不了。'
       : previousFailures >= 1
-        ? `将由 ${helpers.map((helper) => helper.name).join('、')} 出发。这是第二次搜救；失败会确认失踪者死亡。`
-        : `将由 ${helpers.map((helper) => helper.name).join('、')} 出发。搜索站以及探索/守备专长会提高判定。`,
+        ? `会由 ${helpers.map((helper) => helper.name).join('、')} 出去。这已经是第二次找；再空手回来，就只能接受最坏的结果。`
+        : `会由 ${helpers.map((helper) => helper.name).join('、')} 沿路去找。熟路、会搜索或会守夜的人，更容易看见别人漏掉的痕迹。`,
     tone: helpers.length < 2 || previousFailures >= 1 ? 'severe' : 'risky',
   };
 }
