@@ -3,6 +3,7 @@ import { buildingEventWeightModifier } from './buildingEcology';
 import { communitySupportSummary } from './community';
 import { previewMeal } from './food';
 import { hopeBand } from './mortality';
+import './nightEventsExpansion';
 import type { V060NightEvent } from './nightEvents';
 import { pressureBand } from './socialPressure';
 
