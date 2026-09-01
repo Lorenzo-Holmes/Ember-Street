@@ -44,6 +44,9 @@ export function nightCausalSignals(state: GameState): string[] {
   if (poorMealForCausalSignal(state)) signals.push('今晚供餐不足：配给争执与低士气事件更容易出现');
   if (hope === 'low' || hope === 'collapse') signals.push('希望低迷：争执、离开与恐慌事件权重上升');
   if (assignedCount(state, 'radio')) signals.push('广播有人值守：远方信号与外界情报更容易出现');
+  if (state.storyFlags.includes('generator_backup')) signals.push('加油站带回的备用发电组件：断电类事故权重下降');
+  if (state.storyFlags.includes('working_vehicle_parts')) signals.push('修理店带回的完整部件：基础设施事故更容易被街区消化');
+  if (state.storyFlags.includes('final_horde_supplies') && state.day >= 24) signals.push('北仓库防护材料已经单独封存：DAY29 最终防守会获得额外准备');
   return signals.slice(0, 6);
 }
 
@@ -75,6 +78,9 @@ export function nightEventWeight(state: GameState, event: V060NightEvent): numbe
   if (state.civilianResidents >= 4 && ['nightmare-child', 'emergency-panic', 'emergency-missing-child'].includes(event.id)) weight += 2;
   if (hope === 'collapse' && ['argument-rations', 'missing-name', 'emergency-panic'].includes(event.id)) weight += 2;
   if (radio && ['water-on-radio'].includes(event.id)) weight += 1;
+
+  if (state.storyFlags.includes('generator_backup') && ['generator-drop', 'clinic-blackout', 'water-on-radio'].includes(event.id)) weight -= 2;
+  if (state.storyFlags.includes('working_vehicle_parts') && event.category === 'infrastructure') weight -= 1;
 
   return clamp(weight);
 }
