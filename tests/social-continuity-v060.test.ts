@@ -17,7 +17,7 @@ import {
 import { assignDayJob } from '../src/game/v060/dayManagement';
 import { recordDeath } from '../src/game/v060/memorial';
 import { loseCommunityResidents } from '../src/game/v060/mortality';
-import type { GameState, V060NightEvent } from '../src/game/types';
+import type { GameState } from '../src/game/types';
 import { nightEventWeight } from '../src/game/v060/causalNight';
 import { adjustPressure, applyMealPressure, pressureBand, socialStateOf } from '../src/game/v060/socialPressure';
 import type { V060NightEvent as NightEvent } from '../src/game/v060/nightEvents';
