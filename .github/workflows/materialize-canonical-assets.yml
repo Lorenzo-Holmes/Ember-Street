@@ -4,7 +4,7 @@ on:
   push:
     branches: [feat/ui-v1-canonical-assets]
     paths:
-      - '.asset-import/a01-a29-runtime.tar.gz.b64'
+      - '.asset-import/a01-a29-runtime.part-*'
 
 permissions:
   contents: write
@@ -19,14 +19,18 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Skip cleanup-triggered rerun
+      - name: Check transport chunks
         id: guard
         shell: bash
         run: |
-          if [ -f .asset-import/a01-a29-runtime.tar.gz.b64 ]; then
+          shopt -s nullglob
+          parts=(.asset-import/a01-a29-runtime.part-*)
+          if [ ${#parts[@]} -gt 0 ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "count=${#parts[@]}" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "count=0" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Decode approved A01-A29 runtime masters
@@ -34,18 +38,18 @@ jobs:
         shell: bash
         run: |
           mkdir -p public/assets/canonical
-          base64 -d .asset-import/a01-a29-runtime.tar.gz.b64 > /tmp/a01-a29-runtime.tar.gz
+          cat .asset-import/a01-a29-runtime.part-* | base64 -d > /tmp/a01-a29-runtime.tar.gz
           tar -xzf /tmp/a01-a29-runtime.tar.gz -C public/assets/canonical
           rm -f /tmp/a01-a29-runtime.tar.gz
           npm run audit:assets:strict
 
-      - name: Commit materialized binaries and remove transport pack
+      - name: Commit materialized binaries and remove transport chunks
         if: steps.guard.outputs.present == 'true'
         shell: bash
         run: |
-          rm -f .asset-import/a01-a29-runtime.tar.gz.b64
+          rm -f .asset-import/a01-a29-runtime.part-*
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A public/assets/canonical .asset-import/a01-a29-runtime.tar.gz.b64
+          git add -A public/assets/canonical .asset-import
           git commit -m "chore(visual): materialize approved A01-A29 runtime masters"
           git push origin HEAD:feat/ui-v1-canonical-assets
