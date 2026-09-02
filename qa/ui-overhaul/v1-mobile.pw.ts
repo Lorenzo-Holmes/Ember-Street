@@ -1,0 +1,114 @@
+import { mkdirSync } from 'node:fs';
+import { expect, test, type Page } from '@playwright/test';
+import { createV060InitialState } from '../../src/game/v060/campaign';
+import { CAMPAIGN_FIXED_EVENTS } from '../../src/game/v060/campaignEvents';
+import { scheduleNight } from '../../src/game/v060/nightScheduler';
+import type { GameState } from '../../src/game/types';
+
+const SAVE_KEY = 'ember-street-save-v3';
+const ACTIVE_KEY = 'ember-street-last-active-v1';
+const SCREENSHOT_DIR = 'qa/ui-overhaul/screenshots';
+mkdirSync(SCREENSHOT_DIR, { recursive: true });
+
+function routineV1State(seed = 971001): GameState {
+  const base = createV060InitialState(seed);
+  return {
+    ...base,
+    day: 6,
+    phase: 'street',
+    civilianResidents: 6,
+    communityState: { pendingResidents: 0, activeResidents: 6, supportMode: 'logistics', lastSupportDay: 6 },
+    buildings: { ...base.buildings, shelter: 2 },
+    storyFlags: [
+      ...base.storyFlags,
+      ...CAMPAIGN_FIXED_EVENTS.map((event) => `fixed_event_seen:${event.id}`),
+      'community_rotation_unlocked',
+    ],
+  };
+}
+
+async function installState(page: Page, state: GameState) {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.evaluate(({ saveKey, activeKey, gameState }) => {
+    localStorage.setItem(saveKey, JSON.stringify(gameState));
+    localStorage.setItem(activeKey, String(Date.now()));
+  }, { saveKey: SAVE_KEY, activeKey: ACTIVE_KEY, gameState: state });
+  await page.reload();
+  await expect(page.locator('main')).toBeVisible();
+}
+
+async function expectNoHorizontalOverflow(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+}
+
+test('V1 home is illustration-first and keeps the primary day action in the first mobile screen', async ({ page }) => {
+  await installState(page, routineV1State());
+  await expect(page.locator('.v1-home-page')).toBeVisible();
+  await expect(page.getByText('余烬长街', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /安排今天/ })).toBeVisible();
+  await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
+
+  const primary = await page.getByRole('button', { name: /安排今天/ }).boundingBox();
+  expect(primary).toBeTruthy();
+  expect(primary!.y).toBeLessThan(844);
+
+  const nav = page.locator('nav[aria-label="主导航"]');
+  await expect(nav.getByRole('button')).toHaveCount(4);
+  await expect(nav.getByRole('button', { name: '据点', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '探索', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '幸存者', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '记录', exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-home-390x844.png`, fullPage: true });
+});
+
+test('survivors and street residents remain separate and seven jobs stay behind survivor detail', async ({ page }) => {
+  await installState(page, routineV1State(971002));
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
+  await expect(page.getByText('幸存者', { exact: true }).first()).toBeVisible();
+  await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
+  await expect(page.locator('.v1s-jobs')).toHaveCount(0);
+
+  const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
+  await linxia.getByRole('button', { name: /查看/ }).click();
+  await expect(page.getByText('林夏', { exact: true })).toBeVisible();
+  await expect(page.locator('.v1s-jobs button')).toHaveCount(7);
+  await expect(page.getByRole('button', { name: /探索/ }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /休息/ }).first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+});
+
+test('records use logs, places, unlocked character stories and memorial instead of ending collection', async ({ page }) => {
+  await installState(page, routineV1State(971003));
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '记录', exact: true }).click();
+  await expect(page.getByRole('button', { name: '街区日志' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '地点' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '角色档案' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '纪念墙' })).toBeVisible();
+  await expect(page.getByText('结局图鉴')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+});
+
+test('exploration is location-first and never exposes A-series production ids', async ({ page }) => {
+  await installState(page, routineV1State(971004));
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '探索', exact: true }).click();
+  await expect(page.getByText('今天去哪？', { exact: true })).toBeVisible();
+  await expect(page.getByText('便利店', { exact: true }).first()).toBeVisible();
+  const bodyText = await page.locator('body').innerText();
+  expect(bodyText).not.toMatch(/\bA\d{2}\b/);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-explore-390x844.png`, fullPage: true });
+});
+
+test('night V1 keeps event art plus three real consequence-bearing choices', async ({ page }) => {
+  const base = routineV1State(971005);
+  const night = scheduleNight({ ...base, phase: 'night' });
+  expect(night.nightState.scheduledEventIds.length).toBeGreaterThan(0);
+  await installState(page, night);
+  await expect(page.locator('.v1n-art')).toBeVisible();
+  await expect(page.locator('.v1n-choices button')).toHaveCount(3);
+  await expect(page.locator('.v1n-choices small').first()).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-night-390x844.png`, fullPage: true });
+});
