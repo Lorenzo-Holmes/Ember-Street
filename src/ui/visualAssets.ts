@@ -11,13 +11,14 @@ export interface VisualAsset {
   continuityId?: string;
 }
 
-const canonicalPath = (id: string, slug: string) => `/assets/canonical/${id.toLowerCase()}-${slug}.webp`;
+const canonicalPath = (id: string, slug: string) => `/assets/canonical/${id.toLowerCase()}-${slug}.svg`;
 
 /**
  * Canonical art registry for Ember Street.
  *
  * A-numbers are production identifiers only; player-facing UI uses world/gameplay copy.
  * All A01-A29 runtime masters in this registry were explicitly confirmed by the user.
+ * Runtime SVG wrappers crop local WebP sprite sheets; no external resource is used.
  */
 export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A01', kind: 'character', title: '林夏', gameplayId: 'lin-xia', path: canonicalPath('A01', 'lin-xia'), status: 'locked' },
