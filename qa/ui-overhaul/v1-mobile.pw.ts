@@ -2,6 +2,8 @@ import { mkdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { createV060InitialState } from '../../src/game/v060/campaign';
 import { CAMPAIGN_FIXED_EVENTS } from '../../src/game/v060/campaignEvents';
+import { assignDayJob, lockDayAssignments } from '../../src/game/v060/dayManagement';
+import { drawExpeditionEvent, startExpedition } from '../../src/game/v060/expedition';
 import { scheduleNight } from '../../src/game/v060/nightScheduler';
 import type { GameState } from '../../src/game/types';
 
@@ -99,6 +101,27 @@ test('exploration is location-first and never exposes A-series production ids', 
   expect(bodyText).not.toMatch(/\bA\d{2}\b/);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-explore-390x844.png`, fullPage: true });
+});
+
+test('expedition can reopen assignments before departure but not after the team leaves', async ({ page }) => {
+  let prepared = routineV1State(971006);
+  prepared = assignDayJob(prepared, 'lin-xia', 'expedition');
+  prepared = { ...lockDayAssignments(prepared), phase: 'expedition' };
+  await installState(page, prepared);
+  const back = page.getByRole('button', { name: '← 重新安排', exact: true });
+  await expect(back).toBeVisible();
+  await back.click();
+  await expect(page.locator('.v1s-list')).toBeVisible();
+
+  let departed = routineV1State(971007);
+  departed = assignDayJob(departed, 'lin-xia', 'expedition');
+  departed = lockDayAssignments(departed);
+  departed = startExpedition(departed, ['lin-xia'], 'convenience-store');
+  departed = drawExpeditionEvent(departed);
+  departed = { ...departed, phase: 'expedition' };
+  await installState(page, departed);
+  await expect(page.getByText('探索中 · 已经离开据点', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '← 重新安排', exact: true })).toHaveCount(0);
 });
 
 test('night V1 keeps event art plus three real consequence-bearing choices', async ({ page }) => {
