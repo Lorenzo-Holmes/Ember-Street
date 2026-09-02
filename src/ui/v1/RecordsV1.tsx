@@ -11,7 +11,8 @@ interface RecordsV1Props { state: GameState; onBack: () => void; }
 type RecordsTab = 'log' | 'places' | 'profiles' | 'memorial';
 
 function MiniArt({ asset, label }: { asset?: VisualAsset; label: string }) {
-  return <div className="v1r-mini-art">{asset ? <div className="v1r-mini-art__image" style={visualAssetStyle(asset)} /> : null}<span>{label.slice(0, 1)}</span></div>;
+  const ratioClass = asset?.kind === 'character' ? 'portrait' : 'scene';
+  return <div className={`v1r-mini-art ${ratioClass}`}>{asset ? <div className="v1r-mini-art__image" style={visualAssetStyle(asset)} /> : null}<span>{label.slice(0, 1)}</span></div>;
 }
 
 export default function RecordsV1({ state, onBack }: RecordsV1Props) {
