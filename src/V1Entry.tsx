@@ -14,7 +14,7 @@ import {
   type CommunityDepartureResolution,
 } from './game/v060/communityDeparture';
 import { dayAttentionSummary } from './game/v060/dayAttention';
-import { lockDayAssignments, lockDayAssignmentsAndRoute } from './game/v060/dayManagement';
+import { lockDayAssignments, lockDayAssignmentsAndRoute, reopenDayAssignments } from './game/v060/dayManagement';
 import { drawExpeditionEvent, startExpedition } from './game/v060/expedition';
 import HomeBaseView, { type V1NavTarget } from './ui/v1/HomeBaseView';
 import ExploreV1, { type ExploreDecision } from './ui/v1/ExploreV1';
@@ -133,6 +133,12 @@ export default function V1Entry() {
       next = drawExpeditionEvent(next);
       commit({ ...next, phase: 'expedition' });
     };
+    const onBack = () => {
+      if (snapshot.expeditionState.departed) return;
+      const reopened = reopenDayAssignments(snapshot);
+      commit(reopened);
+      setNav('survivors');
+    };
     const onDecision = (decision: ExploreDecision) => {
       const partyIds = [...snapshot.expeditionState.activePartyIds];
       if (decision === 'retreat') {
@@ -164,7 +170,7 @@ export default function V1Entry() {
         },
       });
     };
-    return <ExploreV1 state={snapshot} onBack={() => setNav('home')} onStart={onStart} onDecision={onDecision}/>;
+    return <ExploreV1 state={snapshot} onBack={onBack} onStart={onStart} onDecision={onDecision}/>;
   }
 
   if (snapshot.phase !== 'street' && snapshot.phase !== 'assignment') {
