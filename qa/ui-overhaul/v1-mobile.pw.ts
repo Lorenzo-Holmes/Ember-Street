@@ -55,17 +55,17 @@ test('V1 home is illustration-first and keeps the primary day action in the firs
 
   const nav = page.locator('nav[aria-label="主导航"]');
   await expect(nav.getByRole('button')).toHaveCount(4);
-  await expect(nav.getByRole('button', { name: '据点' })).toBeVisible();
-  await expect(nav.getByRole('button', { name: '探索' })).toBeVisible();
-  await expect(nav.getByRole('button', { name: '幸存者' })).toBeVisible();
-  await expect(nav.getByRole('button', { name: '记录' })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '据点', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '探索', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '幸存者', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '记录', exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-home-390x844.png`, fullPage: true });
 });
 
 test('survivors and street residents remain separate and seven jobs stay behind survivor detail', async ({ page }) => {
   await installState(page, routineV1State(971002));
-  await page.getByRole('button', { name: '幸存者' }).click();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
   await expect(page.getByText('幸存者', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs')).toHaveCount(0);
@@ -81,7 +81,7 @@ test('survivors and street residents remain separate and seven jobs stay behind 
 
 test('records use logs, places, unlocked character stories and memorial instead of ending collection', async ({ page }) => {
   await installState(page, routineV1State(971003));
-  await page.getByRole('button', { name: '记录' }).click();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '记录', exact: true }).click();
   await expect(page.getByRole('button', { name: '街区日志' })).toBeVisible();
   await expect(page.getByRole('button', { name: '地点' })).toBeVisible();
   await expect(page.getByRole('button', { name: '角色档案' })).toBeVisible();
@@ -92,7 +92,7 @@ test('records use logs, places, unlocked character stories and memorial instead 
 
 test('exploration is location-first and never exposes A-series production ids', async ({ page }) => {
   await installState(page, routineV1State(971004));
-  await page.getByRole('button', { name: '探索' }).click();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '探索', exact: true }).click();
   await expect(page.getByText('今天去哪？', { exact: true })).toBeVisible();
   await expect(page.getByText('便利店', { exact: true }).first()).toBeVisible();
   const bodyText = await page.locator('body').innerText();
