@@ -1,0 +1,51 @@
+name: Materialize Canonical Assets
+
+on:
+  push:
+    branches: [feat/ui-v1-canonical-assets]
+    paths:
+      - '.asset-import/a01-a29-runtime.tar.gz.b64'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Skip cleanup-triggered rerun
+        id: guard
+        shell: bash
+        run: |
+          if [ -f .asset-import/a01-a29-runtime.tar.gz.b64 ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decode approved A01-A29 runtime masters
+        if: steps.guard.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p public/assets/canonical
+          base64 -d .asset-import/a01-a29-runtime.tar.gz.b64 > /tmp/a01-a29-runtime.tar.gz
+          tar -xzf /tmp/a01-a29-runtime.tar.gz -C public/assets/canonical
+          rm -f /tmp/a01-a29-runtime.tar.gz
+          npm run audit:assets:strict
+
+      - name: Commit materialized binaries and remove transport pack
+        if: steps.guard.outputs.present == 'true'
+        shell: bash
+        run: |
+          rm -f .asset-import/a01-a29-runtime.tar.gz.b64
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A public/assets/canonical .asset-import/a01-a29-runtime.tar.gz.b64
+          git commit -m "chore(visual): materialize approved A01-A29 runtime masters"
+          git push origin HEAD:feat/ui-v1-canonical-assets
