@@ -3,7 +3,7 @@ import type { GameState } from '../../game/types';
 import { EXPEDITION_LOCATIONS, currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore } from '../../game/v060/expedition';
 import { isLocationUnlocked } from '../../game/v060/campaignEvents';
 import { expeditionDecisionPreview } from '../../game/v060/decisionReadability';
-import { eventVisual, locationVisual } from '../visualAssets';
+import { eventVisual, locationVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
 import { resourceLabel } from './labels';
 import './explore-night.css';
 
@@ -16,8 +16,8 @@ interface ExploreV1Props {
   onDecision: (decision: ExploreDecision) => void;
 }
 
-function Art({ src, label }: { src?: string; label: string }) {
-  return <div className="v1e-art">{src ? <img src={src} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : null}<div><strong>{label}</strong><small>地点 / 事件插画</small></div></div>;
+function Art({ asset, label }: { asset?: VisualAsset; label: string }) {
+  return <div className="v1e-art" style={visualAssetStyle(asset)}>{!asset ? <div><strong>{label}</strong><small>插画暂缺</small></div> : null}</div>;
 }
 
 export default function ExploreV1({ state, onBack, onStart, onDecision }: ExploreV1Props) {
@@ -41,7 +41,7 @@ export default function ExploreV1({ state, onBack, onStart, onDecision }: Explor
     return (
       <main className="v1e-page">
         <header className="v1e-head"><span>探索中 · 已经离开据点</span><span>{location?.name ?? '街外'} · {risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</span></header>
-        <Art src={art?.path} label={event?.title ?? location?.name ?? '探索事件'} />
+        <Art asset={art} label={event?.title ?? location?.name ?? '探索事件'} />
         <section className="v1e-event-copy"><span>街外传回来的消息</span><h1>{event?.title ?? '前面没有声音'}</h1><p>{event?.body ?? '没人知道拐角后面有什么。'}</p></section>
         <div className="v1e-decisions">
           {decisions.map(([id, label, detail]) => {
@@ -79,7 +79,7 @@ export default function ExploreV1({ state, onBack, onStart, onDecision }: Explor
           const active = location.id === locationId;
           const risk = expeditionRiskLabel(expeditionRiskScore(state, party, location.id));
           const art = locationVisual(location.id);
-          return <button className={`v1e-location ${active ? 'active' : ''}`} key={location.id} onClick={() => setLocationId(location.id)}><Art src={art?.path} label={location.name}/><div className="v1e-location__copy"><div><strong>{location.name}</strong><em>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</em></div><p>{location.description}</p><small>可能找到：{resourceLabel(location.primary)} / {resourceLabel(location.secondary)}</small></div></button>;
+          return <button className={`v1e-location ${active ? 'active' : ''}`} key={location.id} onClick={() => setLocationId(location.id)}><Art asset={art} label={location.name}/><div className="v1e-location__copy"><div><strong>{location.name}</strong><em>{risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</em></div><p>{location.description}</p><small>可能找到：{resourceLabel(location.primary)} / {resourceLabel(location.secondary)}</small></div></button>;
         })}
       </div>
       <button className="v1e-primary" disabled={!party.length || !locations.length} onClick={() => onStart(party, locationId)}>确定路线 · 出发</button>
