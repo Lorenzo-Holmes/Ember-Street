@@ -49,7 +49,7 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A24', kind: 'event', title: '地下油罐还有压力', gameplayId: 'gas-tank-pressure', continuityId: 'gas-station', path: canonicalPath('A24', 'gas-tank-pressure'), status: 'locked' },
   { canonicalId: 'A25', kind: 'event', title: '急诊楼还有灯', gameplayId: 'hospital-er-light', continuityId: 'hospital', path: canonicalPath('A25', 'hospital-er-light'), status: 'locked' },
   { canonicalId: 'A26', kind: 'event', title: '最后一张发车表', gameplayId: 'bus-last-timetable', continuityId: 'bus-station', path: canonicalPath('A26', 'last-timetable'), status: 'locked' },
-  { canonicalId: 'A27', kind: 'event', title: '卷帘门后全是货架', continuityId: 'convenience-store', path: canonicalPath('A27', 'shelves-behind-shutter'), status: 'needs-correction' },
+  { canonicalId: 'A27', kind: 'event', title: '卷帘门后全是货架', gameplayId: 'warehouse-full-racks', continuityId: 'warehouse', path: canonicalPath('A27', 'shelves-behind-shutter'), status: 'needs-correction' },
   { canonicalId: 'A28', kind: 'event', title: '医院隔离病房', gameplayId: 'hospital-isolation-ward', continuityId: 'hospital', path: canonicalPath('A28', 'hospital-isolation-ward'), status: 'locked' },
   { canonicalId: 'A29', kind: 'event', title: '避难所加固材料箱', gameplayId: 'warehouse-protection-crate', continuityId: 'warehouse', path: canonicalPath('A29', 'fortification-materials-crate'), status: 'needs-correction' },
 ] as const;
