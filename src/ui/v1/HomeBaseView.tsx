@@ -159,12 +159,12 @@ export default function HomeBaseView({ state, onCommit, onNavigate }: HomeBaseVi
         {todayNotes.map((note) => <p key={note}>{note}</p>)}
       </section>
 
-      <CommunityRotation state={state} onCommit={onCommit} />
-
       <button className="v1-day-action" onClick={() => onNavigate('survivors')}>
         <strong>安排今天</strong>
         <span>先决定核心幸存者各自去哪里，再让时间往前走。</span>
       </button>
+
+      <CommunityRotation state={state} onCommit={onCommit} />
 
       <div className="v1-bottom-nav-spacer" />
       <BottomNav active="home" onNavigate={onNavigate} />
