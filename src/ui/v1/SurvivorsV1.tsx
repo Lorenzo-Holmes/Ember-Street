@@ -8,6 +8,7 @@ interface SurvivorsV1Props {
   state: GameState;
   onCommit: (next: GameState) => void;
   onBack: () => void;
+  onDone?: () => void;
 }
 
 const CONDITION: Record<SurvivorCondition, string> = { healthy: '健康', fatigued: '疲劳', minor: '轻伤', serious: '重伤', critical: '危重', missing: '失踪', dead: '死亡' };
@@ -44,7 +45,7 @@ function SurvivorDetail({ state, survivor, onCommit, onClose }: { state: GameSta
   );
 }
 
-export default function SurvivorsV1({ state, onCommit, onBack }: SurvivorsV1Props) {
+export default function SurvivorsV1({ state, onCommit, onBack, onDone }: SurvivorsV1Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = state.survivors.find((survivor) => survivor.id === selectedId);
   if (selected) return <SurvivorDetail state={state} survivor={selected} onCommit={onCommit} onClose={() => setSelectedId(null)}/>;
@@ -66,6 +67,7 @@ export default function SurvivorsV1({ state, onCommit, onBack }: SurvivorsV1Prop
           return <article className={unavailable ? 'muted' : ''} key={survivor.id}><Portrait survivor={survivor}/><div className="v1s-card-copy"><span>{CONDITION[survivor.condition ?? 'healthy']} · {survivor.trait ?? survivor.perk}</span><h2>{survivor.name}</h2><p>精力 {survivor.energy} · 信任 {survivor.trust ?? 0}</p><small>{unavailable ? CONDITION[survivor.condition ?? 'dead'] : `今天：${assignment ? JOBS.find((job) => job.id === assignment)?.label : '尚未安排 / 默认休息'}`}</small></div><button disabled={unavailable} onClick={() => setSelectedId(survivor.id)}>{unavailable ? '不可安排' : '查看 / 安排 ›'}</button></article>;
         })}
       </section>
+      {onDone ? <button className="v1s-done" onClick={onDone}>安排完成 · 看下一步</button> : null}
     </main>
   );
 }
