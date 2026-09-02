@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 export type VisualAssetKind = 'character' | 'location' | 'building' | 'event';
 export type VisualAssetStatus = 'locked' | 'needs-correction' | 'unresolved';
 
@@ -11,14 +13,44 @@ export interface VisualAsset {
   continuityId?: string;
 }
 
+interface SpriteGroup {
+  path: string;
+  columns: number;
+  rows: number;
+  ids: readonly VisualAsset['canonicalId'][];
+}
+
 const canonicalPath = (id: string, slug: string) => `/assets/canonical/${id.toLowerCase()}-${slug}.svg`;
+
+const SPRITES: readonly SpriteGroup[] = [
+  {
+    path: '/assets/canonical/canonical-characters.webp',
+    columns: 3,
+    rows: 2,
+    ids: ['A01', 'A02', 'A07', 'A08', 'A09', 'A10'],
+  },
+  {
+    path: '/assets/canonical/canonical-places.webp',
+    columns: 3,
+    rows: 4,
+    ids: ['A03', 'A04', 'A06', 'A11', 'A12', 'A13', 'A14', 'A15', 'A16', 'A17', 'A18'],
+  },
+  {
+    path: '/assets/canonical/canonical-events.webp',
+    columns: 3,
+    rows: 4,
+    ids: ['A05', 'A19', 'A20', 'A21', 'A22', 'A23', 'A24', 'A25', 'A26', 'A27', 'A28', 'A29'],
+  },
+] as const;
 
 /**
  * Canonical art registry for Ember Street.
  *
  * A-numbers are production identifiers only; player-facing UI uses world/gameplay copy.
  * All A01-A29 runtime masters in this registry were explicitly confirmed by the user.
- * Runtime SVG wrappers crop local WebP sprite sheets; no external resource is used.
+ * `path` keeps the one-file-per-A canonical wrapper mapping for audit/debugging.
+ * Runtime UI uses `visualAssetStyle()` to crop three local WebP sprite sheets directly,
+ * avoiding SVG nested-resource behavior in embedded WebViews.
  */
 export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A01', kind: 'character', title: '林夏', gameplayId: 'lin-xia', path: canonicalPath('A01', 'lin-xia'), status: 'locked' },
@@ -56,6 +88,23 @@ export const UNRESOLVED_CANONICAL_IDS = [] as const;
 
 function byGameplayId(kind: VisualAssetKind, gameplayId: string): VisualAsset | undefined {
   return CANONICAL_VISUAL_ASSETS.find((asset) => asset.kind === kind && asset.gameplayId === gameplayId && asset.status === 'locked');
+}
+
+export function visualAssetStyle(asset?: VisualAsset): CSSProperties | undefined {
+  if (!asset) return undefined;
+  const group = SPRITES.find((item) => item.ids.includes(asset.canonicalId));
+  if (!group) return undefined;
+  const index = group.ids.indexOf(asset.canonicalId);
+  const column = index % group.columns;
+  const row = Math.floor(index / group.columns);
+  const x = group.columns <= 1 ? 0 : (column / (group.columns - 1)) * 100;
+  const y = group.rows <= 1 ? 0 : (row / (group.rows - 1)) * 100;
+  return {
+    backgroundImage: `url(${group.path})`,
+    backgroundSize: `${group.columns * 100}% ${group.rows * 100}%`,
+    backgroundPosition: `${x}% ${y}%`,
+    backgroundRepeat: 'no-repeat',
+  };
 }
 
 export const characterVisual = (survivorId: string) => byGameplayId('character', survivorId);
