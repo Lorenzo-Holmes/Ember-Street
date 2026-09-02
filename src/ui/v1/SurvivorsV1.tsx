@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { DayAssignment, GameState, Survivor, SurvivorCondition } from '../../game/types';
 import { assignDayJob, canTakeDayAssignment, clearDayJob } from '../../game/v060/dayManagement';
-import { characterVisual } from '../visualAssets';
+import { characterVisual, visualAssetStyle } from '../visualAssets';
 import './survivors-records.css';
 
 interface SurvivorsV1Props {
@@ -24,7 +24,7 @@ const JOBS: Array<{ id: DayAssignment; label: string; note: string }> = [
 
 function Portrait({ survivor }: { survivor: Survivor }) {
   const asset = characterVisual(survivor.id);
-  return <div className="v1s-portrait">{asset ? <img src={asset.path} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : null}<span>{survivor.name.slice(0, 1)}</span></div>;
+  return <div className="v1s-portrait">{asset ? <div className="v1s-portrait__art" style={visualAssetStyle(asset)} /> : null}<span>{survivor.name.slice(0, 1)}</span></div>;
 }
 
 function SurvivorDetail({ state, survivor, onCommit, onClose }: { state: GameState; survivor: Survivor; onCommit: (next: GameState) => void; onClose: () => void }) {
