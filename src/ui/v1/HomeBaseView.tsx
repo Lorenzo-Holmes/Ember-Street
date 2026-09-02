@@ -55,18 +55,21 @@ function CommunityRotation({ state, onCommit }: Pick<HomeBaseViewProps, 'state' 
         <p className="v1-muted">居民还没有形成稳定轮值。完成社区事件《值班表》以后，5 名以上活跃居民可以每天集中支援一个方向。</p>
       ) : (
         <div className="v1-community__choices">
-          {modes.map(([mode, label, detail]) => (
-            <button
-              key={mode}
-              className={summary.supportMode === mode ? 'active' : ''}
-              disabled={state.dayState.assignmentsLocked}
-              onClick={() => onCommit(selectCommunitySupportMode(state, mode))}
-            >
-              <strong>{label}</strong>
-              <span>{detail}</span>
-              <small>{mode === 'logistics' ? `额外供餐约 ${summary.cookingCapacity.toFixed(1)} 人份` : mode === 'repair' ? `当前可提供防线 +${summary.repairDefense}` : `当前夜间风险约 -${Math.round(summary.nightRiskReduction * 100)}%`}</small>
-            </button>
-          ))}
+          {modes.map(([mode, label, detail]) => {
+            const preview = communitySupportSummary(selectCommunitySupportMode(state, mode));
+            return (
+              <button
+                key={mode}
+                className={summary.supportMode === mode ? 'active' : ''}
+                disabled={state.dayState.assignmentsLocked}
+                onClick={() => onCommit(selectCommunitySupportMode(state, mode))}
+              >
+                <strong>{label}</strong>
+                <span>{detail}</span>
+                <small>{mode === 'logistics' ? `选择后额外供餐约 ${preview.cookingCapacity.toFixed(1)} 人份` : mode === 'repair' ? `选择后可提供防线 +${preview.repairDefense}` : `选择后夜间风险约 -${Math.round(preview.nightRiskReduction * 100)}%`}</small>
+              </button>
+            );
+          })}
         </div>
       )}
     </section>
