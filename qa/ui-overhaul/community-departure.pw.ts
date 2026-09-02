@@ -50,7 +50,8 @@ test('mobile dawn surfaces resident departure before normal day management', asy
   expect(fits).toBe(true);
 
   await page.getByRole('button', { name: new RegExp(`拿出 ${pending!.rationCost} 份口粮`) }).click();
-  await expect(page.getByText('EMBER STREET', { exact: true })).toBeVisible();
+  await expect(page.getByText(pending!.title, { exact: true })).toHaveCount(0);
+  await expect(page.locator('main')).toBeVisible();
 
   const stored = await page.evaluate((saveKey) => JSON.parse(localStorage.getItem(saveKey) ?? '{}') as GameState, SAVE_KEY);
   expect(stored.civilianResidents).toBe(6);
