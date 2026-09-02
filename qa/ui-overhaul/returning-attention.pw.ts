@@ -45,7 +45,7 @@ function returningState(day: number, seed: number): GameState {
 }
 
 async function renderState(page: Page, state: GameState) {
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await page.evaluate(({ saveKey, activeKey, gameState }) => {
     localStorage.setItem(saveKey, JSON.stringify(gameState));
@@ -62,31 +62,21 @@ async function yOf(locator: ReturnType<Page['locator']>) {
   return box!.y;
 }
 
-test('routine DAY27 quiets already-settled community and social panels', async ({ page }) => {
+test('routine DAY27 keeps the primary action ahead of settled community detail', async ({ page }) => {
   await renderState(page, returningState(27, 972027));
-  const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
-  const community = page.locator('.v6-section').filter({ hasText: '街里的人手' }).first();
-  const social = page.locator('.v6-social-panel').first();
-  const building = page.locator('.v6-section').filter({ hasText: '街区建设' }).first();
-  const commit = page.getByRole('button', { name: /安排好了/ });
+  const primary = page.getByRole('button', { name: /安排今天/ });
+  const community = page.locator('.v1-community');
 
-  await expect(assignment).toBeVisible();
+  await expect(page.locator('.v1-home-page')).toBeVisible();
+  await expect(primary).toBeVisible();
   await expect(community).toBeVisible();
-  await expect(social).toBeVisible();
-  await expect(building).toBeVisible();
-  await expect(commit).toContainText(/还有 \d+ 处能收拾/);
+  await expect(page.locator('.v6-social-panel')).toHaveCount(0);
+  expect(await yOf(primary)).toBeLessThan(await yOf(community));
 
-  const assignmentY = await yOf(assignment);
-  const commitY = await yOf(commit);
-  expect(assignmentY).toBeLessThan(commitY);
-  expect(commitY).toBeLessThan(await yOf(building));
-  expect(commitY).toBeLessThan(await yOf(community));
-  expect(commitY).toBeLessThan(await yOf(social));
-
-  await page.screenshot({ path: `${SCREENSHOT_DIR}/returning-day27-routine-1440x900.png`, fullPage: true });
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/returning-day27-routine-v1-390x844.png`, fullPage: true });
 });
 
-test('an unresolved promise stays above assignment on DAY20', async ({ page }) => {
+test('an unresolved promise stays above legacy assignment until the social flow is migrated', async ({ page }) => {
   const base = returningState(20, 972020);
   const state: GameState = {
     ...base,
@@ -107,10 +97,9 @@ test('an unresolved promise stays above assignment on DAY20', async ({ page }) =
   const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
   await expect(promise).toBeVisible();
   expect(await yOf(promise)).toBeLessThan(await yOf(assignment));
-  await page.screenshot({ path: `${SCREENSHOT_DIR}/returning-day20-promise-1440x900.png`, fullPage: true });
 });
 
-test('a missing person stays ahead of routine assignment', async ({ page }) => {
+test('a missing person still falls back to the full search flow ahead of routine assignment', async ({ page }) => {
   const base = returningState(18, 972018);
   const state: GameState = {
     ...base,
@@ -123,30 +112,31 @@ test('a missing person stays ahead of routine assignment', async ({ page }) => {
   expect(await yOf(missing)).toBeLessThan(await yOf(assignment));
 });
 
-test('an unselected resident rotation stays actionable before assignment', async ({ page }) => {
+test('an unselected street-resident rotation remains actionable on the V1 home', async ({ page }) => {
   const base = returningState(18, 972118);
   const state: GameState = {
     ...base,
     communityState: { pendingResidents: 0, activeResidents: 6, supportMode: null },
   };
   await renderState(page, state);
-  const community = page.locator('.v6-section').filter({ hasText: '街里的人手' }).first();
-  const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
-  await expect(page.getByRole('button', { name: '去饭馆搭手' })).toBeVisible();
-  expect(await yOf(community)).toBeLessThan(await yOf(assignment));
+  const community = page.locator('.v1-community');
+  const logistics = community.locator('.v1-community__choices button').filter({ hasText: '后勤' }).first();
+  await expect(community).toBeVisible();
+  await expect(logistics).toBeEnabled();
+  await logistics.click();
+  await expect(logistics).toHaveClass(/active/);
 });
 
-test('critical wounds and build opportunities remain explicit before locking the day', async ({ page }) => {
+test('critical wounds and building work remain explicit before the day is locked', async ({ page }) => {
   const base = returningState(18, 972218);
   const state: GameState = {
     ...base,
     survivors: base.survivors.map((survivor, index) => index === 0 ? { ...survivor, condition: 'critical' as const } : survivor),
   };
   await renderState(page, state);
-  await expect(page.getByText(/1 人伤得太重，今天动不了/)).toBeVisible();
-  const commit = page.getByRole('button', { name: /安排好了/ });
-  await expect(commit).toContainText(/还有 \d+ 处能收拾/);
-  await commit.click();
-  await expect(page.getByText(/街里还有 \d+ 处地方今天能继续收拾/)).toBeVisible();
-  await expect(page.getByRole('button', { name: '← 再改一遍' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /查看六座设施/ })).toBeVisible();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
+  const critical = page.locator('.v1s-list article').filter({ hasText: '危重' }).first();
+  await expect(critical).toBeVisible();
+  await expect(critical.getByRole('button', { name: '不可安排' })).toBeDisabled();
 });
