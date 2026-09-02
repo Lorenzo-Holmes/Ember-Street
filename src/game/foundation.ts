@@ -43,7 +43,7 @@ export function createDefaultNightState(eventTotal = 5): NightState {
 }
 
 export function createDefaultCampaignStats(): CampaignStats {
-  return { rescued: 0, deaths: 0, missing: 0, expeditions: 0, locationsDiscovered: 0, nightEventsResolved: 0, emergencyEventsResolved: 0 };
+  return { rescued: 0, deaths: 0, missing: 0, civilianDepartures: 0, expeditions: 0, locationsDiscovered: 0, nightEventsResolved: 0, emergencyEventsResolved: 0 };
 }
 
 export function normalizeSurvivor(survivor: Survivor): Survivor {
