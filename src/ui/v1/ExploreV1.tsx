@@ -40,7 +40,7 @@ export default function ExploreV1({ state, onBack, onStart, onDecision }: Explor
     ];
     return (
       <main className="v1e-page">
-        <header className="v1e-head"><button onClick={onBack}>← 探索</button><span>{location?.name ?? '街外'} · {risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</span></header>
+        <header className="v1e-head"><span>探索中 · 已经离开据点</span><span>{location?.name ?? '街外'} · {risk === 'safe' ? '安全' : risk === 'cautious' ? '谨慎' : risk === 'dangerous' ? '危险' : '极险'}</span></header>
         <Art src={art?.path} label={event?.title ?? location?.name ?? '探索事件'} />
         <section className="v1e-event-copy"><span>街外传回来的消息</span><h1>{event?.title ?? '前面没有声音'}</h1><p>{event?.body ?? '没人知道拐角后面有什么。'}</p></section>
         <div className="v1e-decisions">
@@ -71,7 +71,7 @@ export default function ExploreV1({ state, onBack, onStart, onDecision }: Explor
   const partyNames = party.map((id) => state.survivors.find((survivor) => survivor.id === id)?.name).filter(Boolean).join('、');
   return (
     <main className="v1e-page">
-      <header className="v1e-head"><button onClick={onBack}>← 据点</button><span>白天 · 探索</span></header>
+      <header className="v1e-head"><button onClick={onBack}>← 重新安排</button><span>白天 · 探索</span></header>
       <section className="v1e-party-summary"><div><span>今天谁出去</span><strong>{partyNames || '还没有人'}</strong><small>最多两人。人物必须已经被安排为探索岗位。</small></div><button onClick={() => setChoosingParty(true)}>重新选择 ›</button></section>
       <section className="v1e-route-title"><span>今天去哪？</span><h1>只看一条路，也要先知道为什么值得去</h1></section>
       <div className="v1e-location-list">
