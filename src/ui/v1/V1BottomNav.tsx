@@ -1,4 +1,5 @@
 import type { V1NavTarget } from './HomeBaseView';
+import './integration.css';
 
 interface V1BottomNavProps {
   active: V1NavTarget;
