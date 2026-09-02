@@ -177,12 +177,10 @@ function TopBar({ state }: { state: GameState }) {
 
       <div className="v6-topbar__status">
         <span className="v6-status-chip">
-          <span className="chip-icon">👥</span>
           <span>街区</span>
           <span className="chip-value">{pop} 人</span>
         </span>
         <span className={`v6-status-chip${state.hope <= 15 ? ' v6-status-chip--danger' : ''}`}>
-          <span className="chip-icon">🕯</span>
           <span className="chip-value">{hopeNarrative(state.hope)}</span>
         </span>
       </div>
@@ -293,13 +291,11 @@ function CommunityBar({ state }: { state: GameState }) {
       </div>
       <div className="v6-community-bar__item">
         <span className="v6-community-bar__label">希望</span>
-        <span className="v6-community-bar__val">{state.hope}</span>
-        <span className="v6-community-bar__sub">{hopeNarrative(state.hope)}</span>
+        <span className="v6-community-bar__val">{hopeNarrative(state.hope)}</span>
       </div>
       <div className="v6-community-bar__item">
         <span className="v6-community-bar__label">防线</span>
-        <span className="v6-community-bar__val">{Math.round(state.defense)}</span>
-        <span className="v6-community-bar__sub">{defenseNarrative(state.defense)}</span>
+        <span className="v6-community-bar__val">{defenseNarrative(state.defense)}</span>
       </div>
     </div>
   );
