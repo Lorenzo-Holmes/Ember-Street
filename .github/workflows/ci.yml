@@ -40,5 +40,8 @@ jobs:
       - name: Production build
         run: npm run build
 
+      - name: Audit Xiaohongshu offline package
+        run: npm run audit:xhs
+
       - name: Validate Cloudflare deployment
         run: npx wrangler deploy --dry-run
