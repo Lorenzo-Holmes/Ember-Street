@@ -4,7 +4,7 @@ on:
   push:
     branches: [feat/ui-v1-canonical-assets]
     paths:
-      - '.asset-import/a01-a29-runtime.part-*'
+      - '.asset-import/READY'
 
 permissions:
   contents: write
@@ -25,12 +25,12 @@ jobs:
         run: |
           shopt -s nullglob
           parts=(.asset-import/a01-a29-runtime.part-*)
-          if [ ${#parts[@]} -gt 0 ]; then
+          if [ -f .asset-import/READY ] && [ ${#parts[@]} -gt 0 ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
             echo "count=${#parts[@]}" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "count=${#parts[@]}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Decode approved A01-A29 runtime masters
@@ -43,11 +43,11 @@ jobs:
           rm -f /tmp/a01-a29-runtime.tar.gz
           npm run audit:assets:strict
 
-      - name: Commit materialized binaries and remove transport chunks
+      - name: Commit materialized binaries and remove transport files
         if: steps.guard.outputs.present == 'true'
         shell: bash
         run: |
-          rm -f .asset-import/a01-a29-runtime.part-*
+          rm -f .asset-import/a01-a29-runtime.part-* .asset-import/READY
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A public/assets/canonical .asset-import
