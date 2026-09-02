@@ -2,7 +2,7 @@ name: UI Smoke
 
 on:
   push:
-    branches: [main, feat/v060-ui-overhaul-integration]
+    branches: [main, feat/v060-ui-overhaul-integration, feat/ui-v1-integration]
     paths:
       - 'src/**'
       - 'qa/ui-overhaul/**'
