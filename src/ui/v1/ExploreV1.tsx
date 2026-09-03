@@ -32,7 +32,8 @@ export default function ExploreV1({ state, onBack, onStart, onDecision }: Explor
     const activeLocationId = state.expeditionState.locationId ?? locationId;
     const location = EXPEDITION_LOCATIONS.find((item) => item.id === activeLocationId);
     const risk = expeditionRiskLabel(expeditionRiskScore(state, state.expeditionState.activePartyIds, activeLocationId));
-    const art = event ? eventVisual(event.id) : locationVisual(activeLocationId);
+    const locationArt = locationVisual(activeLocationId);
+    const art = event ? (eventVisual(event.id) ?? locationArt) : locationArt;
     const decisions: Array<[ExploreDecision, string, string]> = [
       ['push', '继续深入', '再往里面走，也许还能带回更多。'],
       ['careful', '谨慎搜索', '绕开动静最大的地方，不贪最后一点。'],
