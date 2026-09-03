@@ -82,7 +82,7 @@ function BuildingList({ state, onCommit, onBack }: Pick<HomeBaseViewProps, 'stat
         <button className="v1-back" onClick={onBack}>← 据点</button>
         <span>街区建设</span>
         <h1>把还能用的地方，一点点收拾回来</h1>
-        <p>六座设施仍然是完整的 Lv0–3 系统。没有对应正式插画的设施不会用空白大图冒充美术。</p>
+        <p>六座设施都得一点点收拾。能修成什么样，取决于手里的材料和今天还能动的人手。</p>
       </header>
 
       <div className="v1-building-list">
