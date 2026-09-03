@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { BuildingId, GameState } from '../../game/types';
 import { V060_BUILDINGS, canUpgradeBuilding, upgradeBuilding } from '../../game/v060/buildings';
 import { communitySupportSummary, selectCommunitySupportMode } from '../../game/v060/community';
-import { buildingVisual } from '../visualAssets';
+import { buildingVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
 import './home-base.css';
 
 export type V1NavTarget = 'home' | 'explore' | 'survivors' | 'records';
@@ -18,11 +18,10 @@ const BUILDING_CONDITION = ['还没收拾', '刚能用', '收拾得像样', '已
 const conditionLabel = (level: number) => BUILDING_CONDITION[Math.max(0, Math.min(3, level))];
 const corePresent = (state: GameState) => state.survivors.filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing').length;
 
-function ArtFrame({ src, label, className = '' }: { src?: string; label: string; className?: string }) {
+function ArtFrame({ asset, label, className = '' }: { asset?: VisualAsset; label: string; className?: string }) {
   return (
-    <div className={`v1-art-frame ${className}`} aria-label={label}>
-      {src ? <img src={src} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : null}
-      <div className="v1-art-frame__fallback"><span>{label}</span><small>正式插画资产位</small></div>
+    <div className={`v1-art-frame ${className}`} aria-label={label} style={visualAssetStyle(asset)}>
+      {!asset ? <div className="v1-art-frame__fallback"><span>{label}</span><small>插画暂缺</small></div> : null}
     </div>
   );
 }
@@ -83,7 +82,7 @@ function BuildingList({ state, onCommit, onBack }: Pick<HomeBaseViewProps, 'stat
         <button className="v1-back" onClick={onBack}>← 据点</button>
         <span>街区建设</span>
         <h1>把还能用的地方，一点点收拾回来</h1>
-        <p>六座设施仍然是完整的 Lv0–3 系统。这里不压成六个小 KPI，一次只让玩家看清一两处真正发生了什么。</p>
+        <p>六座设施仍然是完整的 Lv0–3 系统。没有对应正式插画的设施不会用空白大图冒充美术。</p>
       </header>
 
       <div className="v1-building-list">
@@ -94,8 +93,8 @@ function BuildingList({ state, onCommit, onBack }: Pick<HomeBaseViewProps, 'stat
           const check = canUpgradeBuilding(state, id);
           const asset = buildingVisual(id);
           return (
-            <article className="v1-building" key={id}>
-              <ArtFrame src={asset?.path} label={definition.name} className="v1-building__art" />
+            <article className={`v1-building ${asset ? '' : 'v1-building--text'}`} key={id}>
+              {asset ? <ArtFrame asset={asset} label={definition.name} className="v1-building__art" /> : null}
               <div className="v1-building__body">
                 <div className="v1-building__headline"><div><span>{definition.name}</span><h2>{level ? definition.levels[level - 1].title : '还没收拾'}</h2></div><b>{conditionLabel(level)}</b></div>
                 <p>{level ? definition.levels[level - 1].unlock : '现在只剩一副空架子。把这里重新收拾出来，夜里才多一种能依靠的东西。'}</p>
@@ -149,7 +148,7 @@ export default function HomeBaseView({ state, onCommit, onNavigate }: HomeBaseVi
       </section>
 
       <section className="v1-home-hero">
-        <ArtFrame src={shelterAsset?.path} label="余烬长街据点" className="v1-home-hero__art" />
+        <ArtFrame asset={shelterAsset} label="余烬长街据点" className="v1-home-hero__art" />
         <div className="v1-home-hero__copy">
           <span>余烬长街</span>
           <h1>{state.day === 29 ? '天黑前，把该做的都做完。' : `这条街今天还有 ${total} 个人。`}</h1>

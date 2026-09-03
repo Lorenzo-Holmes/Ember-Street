@@ -34,8 +34,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      - name: Audit canonical visual registry
-        run: npm run audit:assets
+      - name: Audit canonical visual package
+        run: npm run audit:assets:strict
 
       - name: Production build
         run: npm run build

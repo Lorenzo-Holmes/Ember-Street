@@ -1,0 +1,55 @@
+name: Materialize Canonical Assets
+
+on:
+  push:
+    branches: [feat/ui-v1-canonical-assets]
+    paths:
+      - '.asset-import/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check transport chunks
+        id: guard
+        shell: bash
+        run: |
+          shopt -s nullglob
+          parts=(.asset-import/a01-a29-runtime.part-*)
+          if [ -f .asset-import/READY ] && [ ${#parts[@]} -gt 0 ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "count=${#parts[@]}" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "count=${#parts[@]}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decode approved A01-A29 runtime masters
+        if: steps.guard.outputs.present == 'true'
+        shell: bash
+        run: |
+          mkdir -p public/assets/canonical
+          cat .asset-import/a01-a29-runtime.part-* | base64 -d > /tmp/a01-a29-runtime.tar.gz
+          tar -xzf /tmp/a01-a29-runtime.tar.gz -C public/assets/canonical
+          rm -f /tmp/a01-a29-runtime.tar.gz
+          npm run audit:assets:strict
+
+      - name: Commit materialized binaries and remove transport files
+        if: steps.guard.outputs.present == 'true'
+        shell: bash
+        run: |
+          rm -f .asset-import/a01-a29-runtime.part-* .asset-import/READY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A public/assets/canonical .asset-import
+          git commit -m "chore(visual): materialize approved A01-A29 runtime masters"
+          git push origin HEAD:feat/ui-v1-canonical-assets
