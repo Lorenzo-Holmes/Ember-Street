@@ -25,12 +25,16 @@ const blocked = assets.filter((asset) => asset.status === 'needs-correction');
 const blockedPresent = blocked.filter((asset) => asset.exists);
 const presentLocked = locked.filter((asset) => asset.exists);
 
-const sprites = ['canonical-characters.webp', 'canonical-places.webp', 'canonical-events.webp'].map((name) => ({
-  name,
-  absolute: join(assetDir, name),
-  exists: existsSync(join(assetDir, name)),
-}));
+const sprites = [
+  { name: 'canonical-characters.webp', minBytes: 20_000 },
+  { name: 'canonical-places.webp', minBytes: 12_000 },
+  { name: 'canonical-events.webp', minBytes: 12_000 },
+].map((sprite) => {
+  const absolute = join(assetDir, sprite.name);
+  return { ...sprite, absolute, exists: existsSync(absolute), size: existsSync(absolute) ? statSync(absolute).size : 0 };
+});
 const missingSprites = sprites.filter((sprite) => !sprite.exists);
+const suspiciousSprites = sprites.filter((sprite) => sprite.exists && sprite.size < sprite.minBytes);
 const wrapperIssues = [];
 for (const asset of presentLocked) {
   const svg = readFileSync(asset.absolute, 'utf8');
@@ -42,6 +46,7 @@ for (const asset of presentLocked) {
 console.log(`Canonical registry: ${assets.length} mapped assets + ${unresolved.length} unresolved ID(s)`);
 console.log(`Locked wrappers present: ${presentLocked.length}/${locked.length}`);
 console.log(`Runtime sprite sheets present: ${sprites.filter((sprite) => sprite.exists).length}/${sprites.length}`);
+for (const sprite of sprites) if (sprite.exists) console.log(`  - ${sprite.name}: ${(sprite.size / 1024).toFixed(1)} KiB`);
 
 if (missingLocked.length) {
   console.log('\nMissing locked wrappers:');
@@ -50,6 +55,10 @@ if (missingLocked.length) {
 if (missingSprites.length) {
   console.log('\nMissing runtime sprite sheets:');
   for (const sprite of missingSprites) console.log(`  - public/assets/canonical/${sprite.name}`);
+}
+if (suspiciousSprites.length) {
+  console.log('\nSuspiciously small runtime sprite sheets:');
+  for (const sprite of suspiciousSprites) console.log(`  - ${sprite.name}: ${sprite.size} bytes`);
 }
 if (blocked.length) {
   console.log('\nBlocked / needs-correction assets:');
@@ -61,7 +70,7 @@ if (wrapperIssues.length) {
   for (const issue of wrapperIssues) console.log(`  - ${issue}`);
 }
 
-const failed = missingLocked.length || missingSprites.length || blockedPresent.length || unresolved.length || wrapperIssues.length;
+const failed = missingLocked.length || missingSprites.length || suspiciousSprites.length || blockedPresent.length || unresolved.length || wrapperIssues.length;
 if (!failed) console.log('\nCanonical A01-A29 runtime package is complete and locally bundled.');
 if (strict && failed) {
   console.error('\nStrict canonical asset audit failed.');
