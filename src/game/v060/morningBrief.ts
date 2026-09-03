@@ -17,6 +17,7 @@ export function appendDawnBrief(before: GameState, after: GameState, title: stri
   const civilians = after.civilianResidents - before.civilianResidents;
   const deaths = after.campaignStats.deaths - before.campaignStats.deaths;
   const missing = after.campaignStats.missing - before.campaignStats.missing;
+  const departures = after.campaignStats.civilianDepartures - before.campaignStats.civilianDepartures;
   const pressure = socialStateOf(after).pressure - socialStateOf(before).pressure;
 
   if (hope) parts.push(`希望 ${signed(hope)}`);
@@ -28,6 +29,7 @@ export function appendDawnBrief(before: GameState, after: GameState, title: stri
   if (civilians) parts.push(`居民 ${signed(civilians)}`);
   if (deaths > 0) parts.push(`确认死亡 +${deaths}`);
   if (missing > 0) parts.push(`失踪 +${missing}`);
+  if (departures > 0) parts.push(`离开街区 +${departures}`);
 
   for (const survivor of after.survivors) {
     const previous = before.survivors.find((item) => item.id === survivor.id);

@@ -2,9 +2,10 @@ name: UI Smoke
 
 on:
   push:
-    branches: [main, feat/v060-ui-overhaul-integration]
+    branches: [main, feat/v060-ui-overhaul-integration, feat/ui-v1-integration, feat/ui-v1-canonical-assets]
     paths:
       - 'src/**'
+      - 'public/assets/canonical/**'
       - 'qa/ui-overhaul/**'
       - 'playwright.config.ts'
       - 'package.json'
@@ -13,6 +14,7 @@ on:
     branches: [main]
     paths:
       - 'src/**'
+      - 'public/assets/canonical/**'
       - 'qa/ui-overhaul/**'
       - 'playwright.config.ts'
       - 'package.json'

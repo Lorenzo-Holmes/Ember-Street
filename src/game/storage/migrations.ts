@@ -83,7 +83,8 @@ export function promoteV2ToV3(input: unknown): GameState | null {
   const campaignStats = {
     ...createDefaultCampaignStats(),
     rescued: Math.max(0, Math.floor(num(campaignInput.rescued, 0))), deaths: Math.max(0, Math.floor(num(campaignInput.deaths, 0))),
-    missing: Math.max(0, Math.floor(num(campaignInput.missing, 0))), expeditions: Math.max(0, Math.floor(num(campaignInput.expeditions, 0))),
+    missing: Math.max(0, Math.floor(num(campaignInput.missing, 0))), civilianDepartures: Math.max(0, Math.floor(num(campaignInput.civilianDepartures, 0))),
+    expeditions: Math.max(0, Math.floor(num(campaignInput.expeditions, 0))),
     locationsDiscovered: Math.max(0, Math.floor(num(campaignInput.locationsDiscovered, 0))),
     nightEventsResolved: Math.max(0, Math.floor(num(campaignInput.nightEventsResolved, 0))),
     emergencyEventsResolved: Math.max(0, Math.floor(num(campaignInput.emergencyEventsResolved, 0))),

@@ -3,6 +3,7 @@ import { SURVIVOR_ROSTER, forecastFor } from '../progression';
 import { nextRandom, normalizeSeed } from '../rng';
 import type { CheckOutcome, FinalHordeResult, GameState, Survivor, SurvivorCondition } from '../types';
 import { advanceCommunityDay, communityMedicalSupport, communityRepairSupport, createDefaultCommunityState, normalizeCommunityState, rescueCommunityResidents } from './community';
+import { pendingCommunityDeparture, queueCommunityDeparture } from './communityDeparture';
 import {
   evaluatePromiseProgress,
   fulfillPromiseForMeal,
@@ -316,6 +317,7 @@ export function advanceCampaignDay(input: GameState): GameState {
   };
   next = unlockNextDayAssignments(next);
   next = advanceCommunityDay(next);
-  next = queueLowHopeDeparture(next);
+  next = queueCommunityDeparture(next);
+  if (!pendingCommunityDeparture(next)) next = queueLowHopeDeparture(next);
   return recruitForDay(next, day);
 }

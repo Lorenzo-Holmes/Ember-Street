@@ -147,6 +147,7 @@ export interface CampaignStats {
   rescued: number;
   deaths: number;
   missing: number;
+  civilianDepartures: number;
   expeditions: number;
   locationsDiscovered: number;
   nightEventsResolved: number;

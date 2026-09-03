@@ -7,7 +7,13 @@ const KEY_V1 = 'ember-street-save-v1';
 const ACTIVE_KEY = 'ember-street-last-active-v1';
 const MAX_OFFLINE_MS = 3 * 60 * 60 * 1000;
 const MIN_OFFLINE_MS = 5 * 60 * 1000;
+export const GAME_SAVE_EVENT = 'ember-street-save-updated';
 let lastWriteAt = 0;
+
+function announceSaveChange(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new Event(GAME_SAVE_EVENT));
+}
 
 export function saveGame(state: GameState, force = false): void {
   if (typeof localStorage === 'undefined') return;
@@ -17,6 +23,7 @@ export function saveGame(state: GameState, force = false): void {
     localStorage.setItem(KEY_V3, JSON.stringify(state));
     localStorage.setItem(ACTIVE_KEY, String(now));
     lastWriteAt = now;
+    announceSaveChange();
   } catch { /* localStorage is optional */ }
 }
 
@@ -75,5 +82,6 @@ export function clearSave(): void {
     localStorage.removeItem(KEY_V2);
     localStorage.removeItem(KEY_V1);
     localStorage.removeItem(ACTIVE_KEY);
+    announceSaveChange();
   } catch { /* no-op */ }
 }
