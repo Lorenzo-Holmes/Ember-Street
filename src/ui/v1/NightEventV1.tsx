@@ -3,7 +3,7 @@ import { canTrustReroll, OUTCOME_LABEL, rerollLowestDie, rollPendingCheck } from
 import { effectiveNightChoiceCostLabel, enhanceFinalHordePreview } from '../../game/v060/day29Comprehension';
 import { nightChoicePreview } from '../../game/v060/decisionReadability';
 import { acceptNightCheckResult, canAffordNightChoice, chooseNightOption, currentNightEvent, scheduleNight } from '../../game/v060/nightScheduler';
-import { eventVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
+import { buildingVisual, eventVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
 import './explore-night.css';
 
 interface NightEventV1Props {
@@ -12,7 +12,7 @@ interface NightEventV1Props {
 }
 
 function NightArt({ asset, label }: { asset?: VisualAsset; label: string }) {
-  return <div className="v1n-art" style={visualAssetStyle(asset)}>{!asset ? <div><strong>{label}</strong><small>夜间事件暂无专属插画</small></div> : null}</div>;
+  return <div className="v1n-art" aria-label={label} style={visualAssetStyle(asset)}>{!asset ? <div><strong>{label}</strong><small>这一夜没有对应的专属画面</small></div> : null}</div>;
 }
 
 function DiceDecision({ state, onCommit }: NightEventV1Props) {
@@ -44,12 +44,13 @@ export default function NightEventV1({ state, onCommit }: NightEventV1Props) {
 
   const event = currentNightEvent(state);
   if (!event) return <main className="v1n-page"><header className="v1n-night-head"><div><span>NIGHT</span><strong>DAY {state.day}</strong></div></header><section className="v1n-opening"><h1>今晚暂时没有新的声音。</h1></section></main>;
-  const art = eventVisual(event.id);
+  const exactArt = eventVisual(event.id);
+  const art = exactArt ?? buildingVisual('shelter');
   return (
     <main className="v1n-page">
       <header className="v1n-night-head"><div><span>NIGHT</span><strong>DAY {state.day}</strong></div><div><b>{state.nightState.hordeActive ? '尸潮正在靠近' : '余烬长街 · 入夜'}</b><small>{state.nightState.eventIndex + 1}/{Math.max(1, state.nightState.eventTotal)}</small></div></header>
       <section className="v1n-resource-strip"><span>口粮 <b>{state.inventory.ration}</b></span><span>电力 <b>{state.inventory.power}</b></span><span>防线 <b>{Math.round(state.defense)}</b></span><span>希望 <b>{state.hope}</b></span></section>
-      <NightArt asset={art} label={event.title}/>
+      <NightArt asset={art} label={exactArt ? event.title : '余烬长街 · 夜里的据点'}/>
       <section className="v1n-event-copy"><span>夜里传来的</span><h1>{event.title}</h1><p>{event.body}</p>{event.quote ? <blockquote>{event.quote}</blockquote> : null}</section>
       <div className="v1n-choices">
         {event.choices.map((choice) => {
