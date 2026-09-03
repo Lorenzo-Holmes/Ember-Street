@@ -1,5 +1,5 @@
 import { mkdirSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { createV060InitialState } from '../../src/game/v060/campaign';
 import { CAMPAIGN_FIXED_EVENTS } from '../../src/game/v060/campaignEvents';
 import { assignDayJob, lockDayAssignments } from '../../src/game/v060/dayManagement';
@@ -44,12 +44,20 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 }
 
+async function expectCanonicalArt(locator: Locator) {
+  await expect(locator).toBeVisible();
+  const background = await locator.evaluate((element) => getComputedStyle(element).backgroundImage);
+  expect(background).toContain('/assets/canonical/');
+  expect(background).toContain('.webp');
+}
+
 test('V1 home is illustration-first and keeps the primary day action in the first mobile screen', async ({ page }) => {
   await installState(page, routineV1State());
   await expect(page.locator('.v1-home-page')).toBeVisible();
   await expect(page.getByText('余烬长街', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /安排今天/ })).toBeVisible();
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
+  await expectCanonicalArt(page.locator('.v1-home-hero__art'));
 
   const primary = await page.getByRole('button', { name: /安排今天/ }).boundingBox();
   expect(primary).toBeTruthy();
@@ -70,6 +78,8 @@ test('building page keeps six facilities without fake large-art placeholders', a
   await page.getByRole('button', { name: /查看六座设施/ }).click();
   await expect(page.locator('.v1-building')).toHaveCount(6);
   await expect(page.locator('.v1-building__art')).toHaveCount(1);
+  await expectCanonicalArt(page.locator('.v1-building__art'));
+  await expect(page.getByText('插画暂缺')).toHaveCount(0);
   await expect(page.getByText('搜索站', { exact: true })).toBeVisible();
   await expect(page.getByText('广播亭', { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
@@ -82,6 +92,7 @@ test('survivors and street residents remain separate and seven jobs stay behind 
   await expect(page.getByText('幸存者', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs')).toHaveCount(0);
+  await expectCanonicalArt(page.locator('.v1s-portrait').first());
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-survivors-390x844.png`, fullPage: true });
 
@@ -107,6 +118,7 @@ test('records use logs, places, unlocked character stories and memorial instead 
 
   await page.getByRole('button', { name: '角色档案' }).click();
   await expect(page.locator('.v1r-profiles')).toBeVisible();
+  await expectCanonicalArt(page.locator('.v1r-mini-art').first());
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-profiles-390x844.png`, fullPage: true });
 });
 
@@ -115,6 +127,7 @@ test('exploration is location-first and never exposes A-series production ids', 
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '探索', exact: true }).click();
   await expect(page.getByText('今天去哪？', { exact: true })).toBeVisible();
   await expect(page.getByText('便利店', { exact: true }).first()).toBeVisible();
+  await expectCanonicalArt(page.locator('.v1e-location .v1e-art').first());
   const bodyText = await page.locator('body').innerText();
   expect(bodyText).not.toMatch(/\bA\d{2}\b/);
   await expectNoHorizontalOverflow(page);
@@ -147,7 +160,7 @@ test('night V1 keeps event art plus three real consequence-bearing choices', asy
   const night = scheduleNight({ ...base, phase: 'night' });
   expect(night.nightState.scheduledEventIds.length).toBeGreaterThan(0);
   await installState(page, night);
-  await expect(page.locator('.v1n-art')).toBeVisible();
+  await expectCanonicalArt(page.locator('.v1n-art'));
   await expect(page.locator('.v1n-choices button')).toHaveCount(3);
   await expect(page.locator('.v1n-choices small').first()).toBeVisible();
   await expectNoHorizontalOverflow(page);
