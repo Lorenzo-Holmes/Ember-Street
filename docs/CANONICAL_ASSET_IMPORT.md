@@ -7,13 +7,14 @@ A01–A29 have been explicitly confirmed by the user as approved Ember Street pr
 1. Player UI never renders A-series identifiers. A-numbers exist only in production metadata and asset governance.
 2. Runtime visuals are entirely local under `public/assets/canonical/`. No CDN or runtime network dependency is permitted.
 3. All A01–A29 are `locked` for this release. Do not independently reclassify an approved image as needing correction based on an earlier draft discussion.
-4. Runtime uses three compressed WebP sprite sheets for package efficiency. One-file-per-A SVG wrappers remain as canonical mapping/debug artifacts, while React renders the WebP sprites directly through CSS background positioning for embedded-WebView compatibility.
+4. Runtime uses seven small WebP sprite sheets. The split keeps every binary below the repository connector's truncation threshold and is safer for the Xiaohongshu embedded WebView/package pipeline than the former three large sheets.
 5. Release validation must run:
    - `npm run audit:assets:strict`
    - `npm run build`
    - `npm run audit:xhs`
    - `npm run test:ui-smoke`
-6. Final visual QA uses real-image browser screenshots at 390×844, checking character crop, location focal point, event text contrast, first-screen CTA visibility, and absence of player-visible production IDs.
+6. The strict asset audit verifies not only file existence but also RIFF/WebP headers and declared-vs-actual byte length. A truncated WebP therefore fails CI.
+7. Final visual QA uses real-image browser screenshots at 390×844, checking character crop, location focal point, event text contrast, first-screen CTA visibility, and absence of player-visible production IDs.
 
 ## Canonical mapping
 
@@ -51,15 +52,17 @@ A01–A29 have been explicitly confirmed by the user as approved Ember Street pr
 
 ## Runtime files
 
-Compressed source sheets bundled into the mini-tool package:
+The local release package contains seven verified WebP sheets:
 
-- `public/assets/canonical/canonical-characters.webp`
-- `public/assets/canonical/canonical-places.webp`
-- `public/assets/canonical/canonical-events.webp`
+- `public/assets/canonical/characters-a.webp` — A01, A02, A07
+- `public/assets/canonical/characters-b.webp` — A08, A09, A10
+- `public/assets/canonical/places-a.webp` — A03, A04, A06, A11, A12, A13
+- `public/assets/canonical/places-b.webp` — A14, A15, A16, A17, A18
+- `public/assets/canonical/events-a.webp` — A05, A19, A20, A21, A22, A23
+- `public/assets/canonical/events-b1.webp` — A24, A25, A26
+- `public/assets/canonical/events-b2.webp` — A27, A28, A29
 
-Approximate runtime payload is about 0.6 MB for all 29 approved visual masters, rather than shipping every original PNG independently.
-
-A01–A29 also each have a small local SVG crop wrapper under `public/assets/canonical/`. These wrappers preserve a human-readable one-to-one file mapping and are checked by the asset audit. The actual V1 UI uses `visualAssetStyle()` in `src/ui/visualAssets.ts` to crop the sprite sheets directly.
+The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning. Obsolete one-file-per-A SVG wrappers and the former truncated large sprites are intentionally excluded from the runtime package.
 
 ## Source packages
 
@@ -68,4 +71,4 @@ The authoritative source uploads for this import were:
 - `a01-a21(2).zip`
 - `a22-a29 (2)(1).zip`
 
-Both packages were explicitly confirmed by the user as containing previously reviewed, compliant project imagery. Where a package contained early/reference and later clean variants, the runtime package uses one clean final master for that A-number while the source package remains the provenance record.
+Both packages were explicitly confirmed by the user as containing previously reviewed, compliant project imagery. Where a package contained early/reference and later clean variants, the runtime package uses the selected final master while the source package remains the provenance record.
