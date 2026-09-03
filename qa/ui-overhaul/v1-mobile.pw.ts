@@ -92,11 +92,12 @@ test('survivors and street residents remain separate and seven jobs stay behind 
   await expect(page.getByText('幸存者', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs')).toHaveCount(0);
-  await expectCanonicalArt(page.locator('.v1s-portrait').first());
+
+  const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
+  await expectCanonicalArt(linxia.locator('.v1s-portrait'));
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-survivors-390x844.png`, fullPage: true });
 
-  const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
   await linxia.getByRole('button', { name: /查看/ }).click();
   await expect(page.getByText('林夏', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs button')).toHaveCount(7);
@@ -118,7 +119,8 @@ test('records use logs, places, unlocked character stories and memorial instead 
 
   await page.getByRole('button', { name: '角色档案' }).click();
   await expect(page.locator('.v1r-profiles')).toBeVisible();
-  await expectCanonicalArt(page.locator('.v1r-mini-art').first());
+  const linxiaProfile = page.locator('.v1r-profiles > article').filter({ hasText: '林夏' }).first();
+  await expectCanonicalArt(linxiaProfile.locator('.v1r-mini-art'));
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-profiles-390x844.png`, fullPage: true });
 });
 
