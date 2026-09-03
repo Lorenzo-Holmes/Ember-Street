@@ -17,7 +17,7 @@ interface ExploreV1Props {
 }
 
 function Art({ asset, label }: { asset?: VisualAsset; label: string }) {
-  return <div className="v1e-art" style={visualAssetStyle(asset)}>{!asset ? <div><strong>{label}</strong><small>插画暂缺</small></div> : null}</div>;
+  return <div className="v1e-art" aria-label={label} style={visualAssetStyle(asset)}>{!asset ? <div><strong>{label}</strong><small>插画暂缺</small></div> : null}</div>;
 }
 
 export default function ExploreV1({ state, onBack, onStart, onDecision }: ExploreV1Props) {
@@ -73,7 +73,7 @@ export default function ExploreV1({ state, onBack, onStart, onDecision }: Explor
     <main className="v1e-page">
       <header className="v1e-head"><button onClick={onBack}>← 重新安排</button><span>白天 · 探索</span></header>
       <section className="v1e-party-summary"><div><span>今天谁出去</span><strong>{partyNames || '还没有人'}</strong><small>最多两人。人物必须已经被安排为探索岗位。</small></div><button onClick={() => setChoosingParty(true)}>重新选择 ›</button></section>
-      <section className="v1e-route-title"><span>今天去哪？</span><h1>只看一条路，也要先知道为什么值得去</h1></section>
+      <section className="v1e-route-title"><span>今天去哪？</span><h1>先看清这条路，再决定要不要去。</h1></section>
       <div className="v1e-location-list">
         {locations.map((location) => {
           const active = location.id === locationId;
