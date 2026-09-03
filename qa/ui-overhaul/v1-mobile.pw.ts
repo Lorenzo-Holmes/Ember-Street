@@ -65,12 +65,25 @@ test('V1 home is illustration-first and keeps the primary day action in the firs
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-home-390x844.png`, fullPage: true });
 });
 
+test('building page keeps six facilities without fake large-art placeholders', async ({ page }) => {
+  await installState(page, routineV1State(971008));
+  await page.getByRole('button', { name: /查看六座设施/ }).click();
+  await expect(page.locator('.v1-building')).toHaveCount(6);
+  await expect(page.locator('.v1-building__art')).toHaveCount(1);
+  await expect(page.getByText('搜索站', { exact: true })).toBeVisible();
+  await expect(page.getByText('广播亭', { exact: true })).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-buildings-390x844.png`, fullPage: true });
+});
+
 test('survivors and street residents remain separate and seven jobs stay behind survivor detail', async ({ page }) => {
   await installState(page, routineV1State(971002));
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
   await expect(page.getByText('幸存者', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs')).toHaveCount(0);
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-survivors-390x844.png`, fullPage: true });
 
   const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
   await linxia.getByRole('button', { name: /查看/ }).click();
@@ -90,6 +103,11 @@ test('records use logs, places, unlocked character stories and memorial instead 
   await expect(page.getByRole('button', { name: '纪念墙' })).toBeVisible();
   await expect(page.getByText('结局图鉴')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-390x844.png`, fullPage: true });
+
+  await page.getByRole('button', { name: '角色档案' }).click();
+  await expect(page.locator('.v1r-profiles')).toBeVisible();
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-profiles-390x844.png`, fullPage: true });
 });
 
 test('exploration is location-first and never exposes A-series production ids', async ({ page }) => {
