@@ -1,0 +1,71 @@
+name: Package Xiaohongshu Mini Tool
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Audit canonical visual package
+        run: npm run audit:assets:strict
+
+      - name: Production build
+        run: npm run build
+
+      - name: Audit Xiaohongshu offline package
+        run: npm run audit:xhs
+
+      - name: Create submission ZIP and checksum
+        shell: bash
+        run: |
+          SHORT_SHA="${GITHUB_SHA::8}"
+          PACKAGE="ember-street-xhs-${SHORT_SHA}.zip"
+          (cd dist && zip -q -r "../${PACKAGE}" .)
+          sha256sum "${PACKAGE}" > "${PACKAGE}.sha256"
+          {
+            echo "Ember Street / 余烬长街"
+            echo "Source commit: ${GITHUB_SHA}"
+            echo "Package: ${PACKAGE}"
+            echo "Built at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Contents: dist/ root (index.html + local assets only)"
+          } > release-manifest.txt
+          echo "PACKAGE=${PACKAGE}" >> "$GITHUB_ENV"
+
+      - name: Upload submission artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ember-street-xhs-${{ github.sha }}
+          path: |
+            ${{ env.PACKAGE }}
+            ${{ env.PACKAGE }}.sha256
+            release-manifest.txt
+          if-no-files-found: error
+          retention-days: 14
