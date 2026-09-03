@@ -82,7 +82,7 @@ function BuildingList({ state, onCommit, onBack }: Pick<HomeBaseViewProps, 'stat
         <button className="v1-back" onClick={onBack}>← 据点</button>
         <span>街区建设</span>
         <h1>把还能用的地方，一点点收拾回来</h1>
-        <p>六座设施仍然是完整的 Lv0–3 系统。这里不压成六个小 KPI，一次只让玩家看清一两处真正发生了什么。</p>
+        <p>六座设施仍然是完整的 Lv0–3 系统。没有对应正式插画的设施不会用空白大图冒充美术。</p>
       </header>
 
       <div className="v1-building-list">
@@ -93,8 +93,8 @@ function BuildingList({ state, onCommit, onBack }: Pick<HomeBaseViewProps, 'stat
           const check = canUpgradeBuilding(state, id);
           const asset = buildingVisual(id);
           return (
-            <article className="v1-building" key={id}>
-              <ArtFrame asset={asset} label={definition.name} className="v1-building__art" />
+            <article className={`v1-building ${asset ? '' : 'v1-building--text'}`} key={id}>
+              {asset ? <ArtFrame asset={asset} label={definition.name} className="v1-building__art" /> : null}
               <div className="v1-building__body">
                 <div className="v1-building__headline"><div><span>{definition.name}</span><h2>{level ? definition.levels[level - 1].title : '还没收拾'}</h2></div><b>{conditionLabel(level)}</b></div>
                 <p>{level ? definition.levels[level - 1].unlock : '现在只剩一副空架子。把这里重新收拾出来，夜里才多一种能依靠的东西。'}</p>
