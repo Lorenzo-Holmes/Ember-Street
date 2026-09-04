@@ -98,8 +98,14 @@ function communityState(seed = 960002): GameState {
     socialState: {
       ...normalizeSocialState(base.socialState),
       lastRequestDay: 12,
+      principles: ['everyone-shares'],
     },
-    storyFlags: [...base.storyFlags, 'community_rotation_unlocked'],
+    storyFlags: [
+      ...base.storyFlags,
+      'community_rotation_unlocked',
+      'principle:everyone-shares',
+      'principle_day:7',
+    ],
   };
 }
 
