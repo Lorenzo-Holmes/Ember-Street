@@ -95,6 +95,10 @@ function communityState(seed = 960002): GameState {
       supportMode: 'logistics',
       lastSupportDay: 12,
     },
+    socialState: {
+      ...normalizeSocialState(base.socialState),
+      lastRequestDay: 12,
+    },
     storyFlags: [...base.storyFlags, 'community_rotation_unlocked'],
   };
 }
