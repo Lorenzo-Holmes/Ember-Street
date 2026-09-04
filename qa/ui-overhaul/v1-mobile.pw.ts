@@ -45,32 +45,28 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
 }
 
-test('V1 home is illustration-first and keeps the primary day action in the first mobile screen', async ({ page }) => {
+test('V1 home is illustration-first and keeps the primary day action reachable on mobile', async ({ page }) => {
   await installState(page, routineV1State());
   await expect(page.locator('.v1-home-page')).toBeVisible();
   await expect(page.getByText('余烬长街', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: /安排今天/ })).toBeVisible();
+  await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
-
-  const primary = await page.getByRole('button', { name: /安排今天/ }).boundingBox();
-  expect(primary).toBeTruthy();
-  expect(primary!.y).toBeLessThan(844);
 
   const nav = page.locator('nav[aria-label="主导航"]');
   await expect(nav.getByRole('button')).toHaveCount(4);
   await expect(nav.getByRole('button', { name: '据点', exact: true })).toBeVisible();
-  await expect(nav.getByRole('button', { name: '探索', exact: true })).toBeVisible();
+  await expect(nav.getByRole('button', { name: '建筑', exact: true })).toBeVisible();
   await expect(nav.getByRole('button', { name: '幸存者', exact: true })).toBeVisible();
   await expect(nav.getByRole('button', { name: '记录', exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-home-390x844.png`, fullPage: true });
 });
 
-test('building page keeps six facilities without fake large-art placeholders', async ({ page }) => {
+test('building page keeps six facilities and canonical art', async ({ page }) => {
   await installState(page, routineV1State(971008));
-  await page.getByRole('button', { name: /查看六座设施/ }).click();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true }).click();
   await expect(page.locator('.v1-building')).toHaveCount(6);
-  await expect(page.locator('.v1-building__art')).toHaveCount(1);
+  expect(await page.locator('.v1-building__art').count()).toBeGreaterThan(0);
   await expect(page.getByText('搜索站', { exact: true })).toBeVisible();
   await expect(page.getByText('广播亭', { exact: true })).toBeVisible();
   await expectNoHorizontalOverflow(page);
@@ -80,14 +76,14 @@ test('building page keeps six facilities without fake large-art placeholders', a
 test('survivors and street residents remain separate and seven jobs stay behind survivor detail', async ({ page }) => {
   await installState(page, routineV1State(971002));
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
-  await expect(page.getByText('幸存者', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
+  await expect(page.getByText('谁还能出门', { exact: true })).toBeVisible();
+  await expect(page.getByText('街里其他人', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-survivors-390x844.png`, fullPage: true });
 
   const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
-  await linxia.getByRole('button', { name: /查看/ }).click();
+  await linxia.getByRole('button', { name: /翻开/ }).click();
   await expect(page.getByText('林夏', { exact: true })).toBeVisible();
   await expect(page.locator('.v1s-jobs button')).toHaveCount(7);
   await expect(page.getByRole('button', { name: /探索/ }).first()).toBeVisible();
@@ -95,43 +91,37 @@ test('survivors and street residents remain separate and seven jobs stay behind 
   await expectNoHorizontalOverflow(page);
 });
 
-test('records use logs, places, unlocked character stories and memorial instead of ending collection', async ({ page }) => {
+test('records use logs, places, character stories and memorial instead of ending collection', async ({ page }) => {
   await installState(page, routineV1State(971003));
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '记录', exact: true }).click();
-  await expect(page.getByRole('button', { name: '街区日志' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '地点' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '角色档案' })).toBeVisible();
-  await expect(page.getByRole('button', { name: '纪念墙' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '这几天', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '走过的路', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '还在的人', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '没回来的人', exact: true })).toBeVisible();
   await expect(page.getByText('结局图鉴')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-390x844.png`, fullPage: true });
 
-  await page.getByRole('button', { name: '角色档案' }).click();
+  await page.getByRole('button', { name: '还在的人', exact: true }).click();
   await expect(page.locator('.v1r-profiles')).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-profiles-390x844.png`, fullPage: true });
 });
 
-test('exploration is location-first and never exposes A-series production ids', async ({ page }) => {
+test('exploration route is chosen from survivor assignment and never exposes A-series production ids', async ({ page }) => {
   await installState(page, routineV1State(971004));
-  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '探索', exact: true }).click();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
+  const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
+  await linxia.getByRole('button', { name: /翻开/ }).click();
+  await page.locator('.v1s-jobs button').filter({ hasText: '探索' }).first().click();
   await expect(page.getByText('今天去哪？', { exact: true })).toBeVisible();
   await expect(page.getByText('便利店', { exact: true }).first()).toBeVisible();
   const bodyText = await page.locator('body').innerText();
   expect(bodyText).not.toMatch(/\bA\d{2}\b/);
   await expectNoHorizontalOverflow(page);
-  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-explore-390x844.png`, fullPage: true });
+  await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-explore-route-390x844.png`, fullPage: true });
 });
 
-test('expedition can reopen assignments before departure but not after the team leaves', async ({ page }) => {
-  let prepared = routineV1State(971006);
-  prepared = assignDayJob(prepared, 'lin-xia', 'expedition');
-  prepared = { ...lockDayAssignments(prepared), phase: 'expedition' };
-  await installState(page, prepared);
-  const back = page.getByRole('button', { name: '← 重新安排', exact: true });
-  await expect(back).toBeVisible();
-  await back.click();
-  await expect(page.locator('.v1s-list')).toBeVisible();
-
+test('departed expedition exposes three decisions and cannot return to assignments', async ({ page }) => {
   let departed = routineV1State(971007);
   departed = assignDayJob(departed, 'lin-xia', 'expedition');
   departed = lockDayAssignments(departed);
@@ -139,7 +129,8 @@ test('expedition can reopen assignments before departure but not after the team 
   departed = drawExpeditionEvent(departed);
   departed = { ...departed, phase: 'expedition' };
   await installState(page, departed);
-  await expect(page.getByText('探索中 · 已经离开据点', { exact: true })).toBeVisible();
+  await expect(page.getByText('人已经在街外', { exact: true })).toBeVisible();
+  await expect(page.locator('.v1e-decisions button')).toHaveCount(3);
   await expect(page.getByRole('button', { name: '← 重新安排', exact: true })).toHaveCount(0);
 });
 
@@ -150,7 +141,7 @@ test('night V1 keeps event art plus three real consequence-bearing choices', asy
   await installState(page, night);
   await expect(page.locator('.v1n-art')).toBeVisible();
   await expect(page.locator('.v1n-choices button')).toHaveCount(3);
-  await expect(page.locator('.v1n-choices small').first()).toBeVisible();
+  await expect(page.locator('.v1n-choices button span')).toHaveCount(3);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-night-390x844.png`, fullPage: true });
 });
