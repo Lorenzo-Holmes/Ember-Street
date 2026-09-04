@@ -36,12 +36,12 @@ test('assignment controls remain visually discoverable after opening a survivor'
     const rect = button.getBoundingClientRect();
     return {
       color: style.color,
-      borderWidth: style.borderTopWidth,
       height: rect.height,
+      width: rect.width,
     };
   });
 
   expect(visual.color).not.toBe('rgb(0, 0, 0)');
-  expect(visual.borderWidth).not.toBe('0px');
   expect(visual.height).toBeGreaterThanOrEqual(44);
+  expect(visual.width).toBeGreaterThan(120);
 });
