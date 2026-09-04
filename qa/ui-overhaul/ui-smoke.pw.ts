@@ -295,7 +295,7 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
 
   const lastLine = finalLastLineState();
   await renderState(page, lastLine);
-  await expect(page.getByRole('heading', { name: '第六阶段 · 最后一条线', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '第六阵 · 最后一条线', exact: true })).toBeVisible();
   await expect(page.getByText('所有还能站的人一起守住', { exact: true })).toBeVisible();
   await expect(page.getByText('把最后的建材和零件全部用掉', { exact: true })).toBeVisible();
   await expect(page.getByText('退进内街，先把人保住', { exact: true })).toBeVisible();
@@ -305,6 +305,6 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   expect(ending.day).toBe(30);
   expect(ending.phase).toBe('ending');
   await renderState(page, ending);
-  await expect(page.getByText('DAY 30', { exact: true })).toBeVisible();
+  await expect(page.getByText('第 30 天 · 最后一页', { exact: true })).toBeVisible();
   await capture(page, 'ending-1440x900');
 });
