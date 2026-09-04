@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { MissingPanel } from './V060AppHotfix';
+import { MissingPanel } from './components/v060/MissingPanel';
 import SocialStatusPanel from './components/v060/SocialStatusPanel';
 import { GAME_SAVE_EVENT, loadGame, saveGame } from './game/storage';
 import type { GameState } from './game/types';

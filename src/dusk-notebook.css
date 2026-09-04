@@ -55,7 +55,7 @@ body:has(.v6-shell--dusk) {
   right: 22px;
   height: 116px;
   pointer-events: none;
-  background-image: url('/assets/ui/notebook-binding-transparent.png');
+  background-image: url('/assets/ui/notebook-binding-transparent.webp');
   background-position: center 30%;
   background-size: 100% auto;
   background-repeat: no-repeat;
@@ -446,7 +446,7 @@ body:has(.v6-shell--dusk) {
   left: -2%;
   height: clamp(96px, 22cqw, 176px);
   opacity: .94;
-  background-image: url('/assets/ui/notebook-binding-transparent.png');
+  background-image: url('/assets/ui/notebook-binding-transparent.webp');
   background-position: center;
   background-size: 100% auto;
   background-repeat: no-repeat;

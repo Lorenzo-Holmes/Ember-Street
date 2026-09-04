@@ -34,14 +34,15 @@ const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).flatMap((entr
   entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
 const replacements = new Map();
 const optimized = [];
-for (const name of ['notebook-cover-worn.png', 'notebook-binding-transparent.png']) {
-  const input = path.join(outDir, 'assets', 'ui', name);
-  const output = input.replace(/\.png$/, '.webp');
-  const before = fs.statSync(input).size;
-  await sharp(input).resize({ width: 800, withoutEnlargement: true }).webp({ quality: 85, alphaQuality: 100, effort: 5 }).toFile(output);
-  replacements.set(name, path.basename(output));
-  optimized.push({ file: name, before, after: fs.statSync(output).size });
-  fs.unlinkSync(input); // Only generated copies in this newly created release directory.
+for (const name of ['notebook-cover-worn', 'notebook-binding-transparent']) {
+  const pngInput = path.join(outDir, 'assets', 'ui', `${name}.png`);
+  const output = path.join(outDir, 'assets', 'ui', `${name}.webp`);
+  if (!fs.existsSync(pngInput)) continue; // Source is already WebP; skip re-encode.
+  const before = fs.statSync(pngInput).size;
+  await sharp(pngInput).resize({ width: 800, withoutEnlargement: true }).webp({ quality: 85, alphaQuality: 100, effort: 5 }).toFile(output);
+  replacements.set(`${name}.png`, `${name}.webp`);
+  optimized.push({ file: `${name}.png`, before, after: fs.statSync(output).size });
+  fs.unlinkSync(pngInput); // Only generated copies in this newly created release directory.
 }
 for (const file of walk(outDir)) {
   if (!['.css', '.js', '.html'].includes(path.extname(file))) continue;

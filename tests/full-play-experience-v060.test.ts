@@ -4,7 +4,7 @@ import {
   buildingConditionLabel,
   mealCoverageLine,
   nightPreparationLine,
-} from '../src/V060AppHotfix';
+} from '../src/components/v060/copy';
 
 describe('v0.6 full-play player-facing language', () => {
   it('maps implementation specialties to lived labels', () => {

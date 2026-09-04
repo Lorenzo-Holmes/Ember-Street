@@ -2,7 +2,14 @@
 
 ## Runtime
 
-`src/main.tsx` mounts `V060App` and `v060.css`. The player path is fully v0.6; the former seven-slot App/engine runtime is removed.
+`src/main.tsx` mounts `V1Entry` plus the consolidated notebook theme CSS (`v060.css`, `v060.integration.css`, `v060.main-compat.css`, `typography.css`, `dusk-notebook.css`, `notebook-theme.css`, `ui/v1/social-notebook.css`). The player path is fully v0.6; the former seven-slot App/engine runtime is removed.
+
+UI layering:
+
+- `src/V1Entry.tsx` — session lifecycle (title screen, save-game hydration, phase router).
+- `src/ui/v1/*` — V1 mobile-first screens (home, survivors, buildings, records, explore, night events, story phases).
+- `src/components/v060/MissingPanel.tsx` — rescue-missing panel extracted from the legacy `V060AppHotfix` (that file was removed; only `MissingPanel` was still referenced).
+- `src/components/v060/copy.ts` — player-facing label helpers guarded by `tests/full-play-experience-v060.test.ts`.
 
 Core files:
 
