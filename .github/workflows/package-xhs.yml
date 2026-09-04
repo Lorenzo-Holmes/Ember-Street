@@ -15,7 +15,7 @@ permissions:
 jobs:
   package:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,8 +25,30 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
+
+      - name: Install font tooling
+        run: python -m pip install --disable-pip-version-check fonttools brotli
+
+      - name: Install Xiaohongshu validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          SKILL_URL='https://fe-static.xhscdn.com/mini-tool/20260831163932/minitool-zip-builder-1.6.0.skill'
+          SKILL_SHA256='29c04115fd89d7eab7b81775f4287ae20c569ad3794d25d8404dc0ec3ec3b65e'
+          SKILL_FILE="$RUNNER_TEMP/minitool-zip-builder-1.6.0.skill"
+          curl -fsSL "$SKILL_URL" -o "$SKILL_FILE"
+          echo "$SKILL_SHA256  $SKILL_FILE" | sha256sum -c -
+          mkdir -p .codex
+          python -m zipfile -e "$SKILL_FILE" .codex
+          test -s .codex/minitool-zip-builder/SKILL.md
+          test -f .codex/minitool-zip-builder/scripts/audit_artifact.py
 
       - name: Typecheck
         run: npm run typecheck
@@ -37,35 +59,40 @@ jobs:
       - name: Audit canonical visual package
         run: npm run audit:assets:strict
 
-      - name: Production build
-        run: npm run build
-
-      - name: Audit Xiaohongshu offline package
-        run: npm run audit:xhs
-
-      - name: Create submission ZIP and checksum
+      - name: Build and validate mini-tool package
         shell: bash
         run: |
+          set -euo pipefail
+          BUILD_LOG="$(npm run build:minitool)"
+          printf '%s\n' "$BUILD_LOG"
+          APP_DIRECTORY="$(printf '%s\n' "$BUILD_LOG" | sed -n 's/^MINITOOL_ARTIFACT=//p' | tail -n 1)"
+          test -n "$APP_DIRECTORY"
+          test -d "$APP_DIRECTORY"
+          node scripts/audit-minitool.mjs "$APP_DIRECTORY"
+          node scripts/package-minitool.mjs "$APP_DIRECTORY"
+
+          RELEASE_DIR="$(dirname "$APP_DIRECTORY")"
           SHORT_SHA="${GITHUB_SHA::8}"
-          PACKAGE="ember-street-xhs-${SHORT_SHA}.zip"
-          (cd dist && zip -q -r "../${PACKAGE}" .)
-          sha256sum "${PACKAGE}" > "${PACKAGE}.sha256"
+          PACKAGE_NAME="ember-street-xhs-${SHORT_SHA}.zip"
+          mkdir -p submission
+          cp "$RELEASE_DIR/ember-street-xhs.zip" "submission/$PACKAGE_NAME"
+          sha256sum "submission/$PACKAGE_NAME" > "submission/$PACKAGE_NAME.sha256"
+          cp "$RELEASE_DIR/validation.json" submission/validation.json
+          cp "$RELEASE_DIR/build-report.json" submission/build-report.json
           {
             echo "Ember Street / 余烬长街"
             echo "Source commit: ${GITHUB_SHA}"
-            echo "Package: ${PACKAGE}"
+            echo "Package: ${PACKAGE_NAME}"
+            echo "Build mode: dedicated Xiaohongshu mini-tool build"
+            echo "Validator: minitool-zip-builder 1.6.0"
             echo "Built at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-            echo "Contents: dist/ root (index.html + local assets only)"
-          } > release-manifest.txt
-          echo "PACKAGE=${PACKAGE}" >> "$GITHUB_ENV"
+            cat "submission/$PACKAGE_NAME.sha256"
+          } > submission/release-manifest.txt
 
       - name: Upload submission artifact
         uses: actions/upload-artifact@v4
         with:
           name: ember-street-xhs-${{ github.sha }}
-          path: |
-            ${{ env.PACKAGE }}
-            ${{ env.PACKAGE }}.sha256
-            release-manifest.txt
+          path: submission/
           if-no-files-found: error
           retention-days: 14
