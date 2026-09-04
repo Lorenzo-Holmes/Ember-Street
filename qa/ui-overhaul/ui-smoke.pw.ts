@@ -6,6 +6,7 @@ import { assignDayJob, lockDayAssignments } from '../../src/game/v060/dayManagem
 import { chooseNightOption, scheduleNight } from '../../src/game/v060/nightScheduler';
 import { normalizeSocialState } from '../../src/game/v060/socialPressure';
 import type { GameState } from '../../src/game/types';
+import { continueSavedSessionFromTitle } from './session-entry';
 
 const SAVE_KEY = 'ember-street-save-v3';
 const ACTIVE_KEY = 'ember-street-last-active-v1';
@@ -162,7 +163,7 @@ async function renderState(
     localStorage.setItem(activeKey, String(Date.now()));
   }, { saveKey: SAVE_KEY, activeKey: ACTIVE_KEY, gameState: state });
   await page.reload();
-  await expect(page.locator('main')).toBeVisible();
+  await continueSavedSessionFromTitle(page);
   await page.waitForTimeout(80);
 }
 
