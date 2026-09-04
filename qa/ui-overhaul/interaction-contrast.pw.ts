@@ -27,7 +27,7 @@ test('assignment controls remain visually discoverable after opening a survivor'
 
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
   const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
-  await linxia.getByRole('button', { name: /查看/ }).click();
+  await linxia.getByRole('button', { name: /翻开/ }).click();
 
   const firstJob = page.locator('.v1s-jobs > button:enabled').first();
   await expect(firstJob).toBeVisible();
