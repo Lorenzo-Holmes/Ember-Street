@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - qa/human-playtest-20260905
+      - qa/starvation-human-20260905
     paths:
       - 'qa/human-production/**'
       - 'playwright.human.config.ts'
@@ -41,7 +42,13 @@ jobs:
         run: curl --fail --silent --show-error --location --max-time 20 "$PRODUCTION_URL/" -o /tmp/ember-street-production.html
 
       - name: Run human strategy playtests
-        run: npx playwright test --config=playwright.human.config.ts
+        shell: bash
+        run: |
+          if [ "$GITHUB_REF_NAME" = "qa/starvation-human-20260905" ]; then
+            npx playwright test qa/human-production/starvation-scenario.pw.ts --config=playwright.human.config.ts
+          else
+            npx playwright test --config=playwright.human.config.ts
+          fi
 
       - name: Upload human playtest evidence
         if: always()
