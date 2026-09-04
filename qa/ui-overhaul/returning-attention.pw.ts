@@ -137,7 +137,7 @@ test('critical wounds and building work remain explicit before the day is locked
   const nav = page.locator('nav[aria-label="主导航"]');
   await expect(nav.getByRole('button', { name: '建筑', exact: true })).toBeVisible();
   await nav.getByRole('button', { name: '幸存者', exact: true }).click();
-  const critical = page.locator('.v1s-list article').filter({ hasText: '危重' }).first();
+  const critical = page.locator('.v1s-list article').filter({ hasText: '还没脱离危险' }).first();
   await expect(critical).toBeVisible();
   await critical.getByRole('button', { name: /翻开/ }).click();
   await expect(page.getByText('危重', { exact: true }).first()).toBeVisible();
