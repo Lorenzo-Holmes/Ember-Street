@@ -66,8 +66,8 @@ test('building page keeps six facilities and canonical shelter art', async ({ pa
   await installState(page, routineV1State(971008));
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true }).click();
   await expect(page.locator('.v1-building')).toHaveCount(6);
-  await expect(page.getByText('搜索站', { exact: true })).toBeVisible();
-  await expect(page.getByText('广播亭', { exact: true })).toBeVisible();
+  await expect(page.getByText('路线屋', { exact: true })).toBeVisible();
+  await expect(page.getByText('广播间', { exact: true })).toBeVisible();
   const shelter = page.locator('.v1-building').filter({ hasText: '宿营屋' }).first();
   await shelter.locator('.v1-building__summary').click();
   await expect(shelter.locator('.v1-building__art')).toBeVisible();
