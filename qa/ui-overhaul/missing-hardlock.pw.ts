@@ -13,6 +13,14 @@ function quietMissingState(seed: number): GameState {
     ...base,
     day: 6,
     phase: 'street',
+    socialState: {
+      pressure: 0,
+      activePromise: null,
+      fulfilledPromises: 0,
+      brokenPromises: 0,
+      principles: [],
+      lastRequestDay: 6,
+    },
     storyFlags: [
       ...base.storyFlags,
       ...CAMPAIGN_FIXED_EVENTS.map((event) => `fixed_event_seen:${event.id}`),
