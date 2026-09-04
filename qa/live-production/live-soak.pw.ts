@@ -6,6 +6,8 @@ import { continueSavedSessionFromTitle } from '../ui-overhaul/session-entry';
 const SAVE_KEY = 'ember-street-save-v3';
 const ACTIVE_KEY = 'ember-street-last-active-v1';
 
+type NightChoiceOrder = 'first' | 'last';
+
 async function installState(page: Page, state: GameState) {
   await page.goto('/');
   await page.evaluate(({ saveKey, activeKey, gameState }) => {
@@ -35,10 +37,13 @@ async function describeStuckPage(page: Page): Promise<string> {
   const state = await savedState(page);
   const buttons = await page.locator('button:visible').allTextContents();
   const headings = await page.locator('h1:visible, h2:visible, h3:visible').allTextContents();
+  const present = state?.survivors?.filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing').length ?? 0;
   return JSON.stringify({
     day: state?.day,
     phase: state?.phase,
-    living: state?.survivors?.filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing').length,
+    present,
+    civilians: state?.civilianResidents,
+    totalPopulation: present + (state?.civilianResidents ?? 0),
     ration: state?.inventory?.ration,
     power: state?.inventory?.power,
     defense: state?.defense,
@@ -47,13 +52,12 @@ async function describeStuckPage(page: Page): Promise<string> {
   });
 }
 
-test('live conservative player can keep progressing from DAY1 until the ending', async ({ page }) => {
-  test.setTimeout(180_000);
+async function runLiveSoak(page: Page, seed: number, nightChoiceOrder: NightChoiceOrder) {
   await page.setViewportSize({ width: 390, height: 844 });
   const runtimeErrors: string[] = [];
   page.on('pageerror', (error) => runtimeErrors.push(error.message));
 
-  await installState(page, createV060InitialState(998001));
+  await installState(page, createV060InitialState(seed));
   let lastLoggedDay = 0;
 
   for (let action = 0; action < 900; action += 1) {
@@ -61,14 +65,15 @@ test('live conservative player can keep progressing from DAY1 until the ending',
     if (state.day !== lastLoggedDay) {
       lastLoggedDay = state.day;
       const present = state.survivors.filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing').length;
-      console.log(`[live-soak] DAY ${state.day} phase=${state.phase} present=${present} ration=${state.inventory.ration} power=${state.inventory.power} defense=${Math.round(state.defense)} hope=${state.hope}`);
+      const total = present + state.civilianResidents;
+      console.log(`[live-soak seed=${seed}] DAY ${state.day} phase=${state.phase} present=${present} civilians=${state.civilianResidents} total=${total} ration=${state.inventory.ration} power=${state.inventory.power} defense=${Math.round(state.defense)} hope=${state.hope}`);
     }
 
     if (await visible(page.locator('.notebook-page--ending-v1'))) {
       expect(state.day).toBe(30);
       expect(state.phase).toBe('ending');
       expect(runtimeErrors).toEqual([]);
-      return;
+      return state;
     }
 
     if (await clickIfVisible(page.locator('.notebook-page--story-event .v1-phase-primary'))) continue;
@@ -100,7 +105,7 @@ test('live conservative player can keep progressing from DAY1 until the ending',
       const choices = page.locator('.v1n-choices button:enabled');
       const count = await choices.count();
       expect(count, `Night event lost every enabled choice: ${await describeStuckPage(page)}`).toBeGreaterThan(0);
-      await choices.last().click();
+      await (nightChoiceOrder === 'first' ? choices.first() : choices.last()).click();
       await page.waitForTimeout(35);
       continue;
     }
@@ -114,4 +119,11 @@ test('live conservative player can keep progressing from DAY1 until the ending',
   }
 
   throw new Error(`Live soak exceeded action budget: ${await describeStuckPage(page)}`);
-});
+}
+
+for (const [seed, order] of [[998001, 'last'], [998002, 'first'], [998003, 'last']] as const) {
+  test(`live conservative player seed ${seed} reaches the ending`, async ({ page }) => {
+    test.setTimeout(180_000);
+    await runLiveSoak(page, seed, order);
+  });
+}
