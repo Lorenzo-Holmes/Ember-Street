@@ -3,6 +3,7 @@ import type { BuildingId, GameState } from '../../game/types';
 import { V060_BUILDINGS, canUpgradeBuilding, upgradeBuilding } from '../../game/v060/buildings';
 import { buildingSceneStatus, buildingSceneStyle } from '../buildingVisuals';
 import './home-base.css';
+import './building-visuals.css';
 
 interface BuildingsV1Props {
   state: GameState;
