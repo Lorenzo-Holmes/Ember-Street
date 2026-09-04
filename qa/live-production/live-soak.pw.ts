@@ -80,13 +80,9 @@ test('live conservative player can keep progressing from DAY1 until the ending',
       if (await clickIfVisible(fallback)) continue;
     }
 
-    if (await visible(page.locator('.notebook-page--attention'))) {
-      if (await clickIfVisible(page.getByRole('button', { name: '今天先到这里，安排其他人', exact: true }))) continue;
-      const principle = page.locator('.v6-principle-choice').first();
-      if (await clickIfVisible(principle)) continue;
-      if (await clickIfVisible(page.getByRole('button', { name: '不答应', exact: true }))) continue;
-      if (await clickIfVisible(page.getByRole('button', { name: '答应下来', exact: true }))) continue;
-    }
+    if (await clickIfVisible(page.getByRole('button', { name: '今天先到这里，安排其他人', exact: true }))) continue;
+    if (await clickIfVisible(page.locator('.v6-principle-choice').first())) continue;
+    if (await clickIfVisible(page.locator('.v6-request-card button:enabled').last())) continue;
 
     if (await clickIfVisible(page.locator('.v1-home-page .v1-day-action'))) continue;
 
