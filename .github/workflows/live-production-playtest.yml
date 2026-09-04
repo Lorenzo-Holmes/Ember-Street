@@ -1,0 +1,44 @@
+name: Live Production Playtest
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-playtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PRODUCTION_URL: https://ember-street.1106314996.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify production endpoint
+        run: curl --fail --silent --show-error --location --max-time 20 "$PRODUCTION_URL/" -o /tmp/ember-street-production.html
+
+      - name: Run live production playtest
+        run: npx playwright test --config=playwright.production.config.ts
+
+      - name: Upload live playtest evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-production-playtest-evidence
+          path: |
+            test-results
+            playwright-production-report
+          if-no-files-found: warn
