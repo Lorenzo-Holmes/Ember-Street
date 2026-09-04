@@ -37,6 +37,9 @@ jobs:
       - name: Audit canonical visual package
         run: npm run audit:assets:strict
 
+      - name: Audit facility visual registry
+        run: npm run audit:building-art
+
       - name: Production build
         run: npm run build
 
