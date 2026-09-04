@@ -6,8 +6,10 @@ import { activePromiseSummary, pendingCommunityRequest } from './communityPromis
 import { pendingPrincipleDecision } from './principles';
 
 const BUILDING_IDS: BuildingId[] = ['searchStation', 'workshop', 'clinic', 'watchPost', 'shelter', 'radio'];
+const missingAttentionFlag = (day: number) => `missing_attention_ack:${day}`;
 
 export interface DayAttentionSummary {
+  /** Missing people that still require the forced morning attention screen today. */
   missingCount: number;
   criticalCount: number;
   socialNeedsAttention: boolean;
@@ -15,8 +17,19 @@ export interface DayAttentionSummary {
   buildableCount: number;
 }
 
+export function acknowledgeMissingAttention(state: GameState): GameState {
+  const flag = missingAttentionFlag(state.day);
+  if (state.storyFlags.includes(flag)) return state;
+  return {
+    ...state,
+    storyFlags: [...state.storyFlags, flag],
+    lastMessage: '今天先把剩下的人手安排好。没回来的人，明天还能继续找。',
+  };
+}
+
 export function dayAttentionSummary(state: GameState): DayAttentionSummary {
-  const missingCount = state.survivors.filter((survivor) => survivor.condition === 'missing').length;
+  const missingTotal = state.survivors.filter((survivor) => survivor.condition === 'missing').length;
+  const missingCount = state.storyFlags.includes(missingAttentionFlag(state.day)) ? 0 : missingTotal;
   const criticalCount = state.survivors.filter((survivor) => survivor.condition === 'critical').length;
   const hasMentalConcern = state.survivors
     .filter((survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing')
