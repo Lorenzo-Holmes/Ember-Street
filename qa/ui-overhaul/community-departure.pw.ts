@@ -44,14 +44,15 @@ test('mobile dawn surfaces resident departure before normal day management', asy
   await installState(page, state);
 
   await expect(page.getByText(pending!.title, { exact: true })).toBeVisible();
-  await expect(page.getByText('这是人口流失，不是死亡事件', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: new RegExp(`拿出 ${pending!.rationCost} 份口粮`) })).toBeVisible();
-  await expect(page.getByRole('button', { name: '让他们走' })).toBeVisible();
+  await expect(page.getByText('他们在等一句话', { exact: true })).toBeVisible();
+  await expect(page.getByText('要不要拿出口粮把人留下', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: new RegExp(`拿出 ${pending!.rationCost} 份口粮挽留`) })).toBeVisible();
+  await expect(page.getByRole('button', { name: /不再挽留/ })).toBeVisible();
 
   const fits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1);
   expect(fits).toBe(true);
 
-  await page.getByRole('button', { name: new RegExp(`拿出 ${pending!.rationCost} 份口粮`) }).click();
+  await page.getByRole('button', { name: new RegExp(`拿出 ${pending!.rationCost} 份口粮挽留`) }).click();
   await expect(page.getByText(pending!.title, { exact: true })).toHaveCount(0);
   await expect(page.locator('main')).toBeVisible();
 
