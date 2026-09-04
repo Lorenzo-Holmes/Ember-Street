@@ -37,11 +37,24 @@ jobs:
       - name: Audit canonical visual package
         run: npm run audit:assets:strict
 
-      - name: Production build
-        run: npm run build
+      - name: Production Xiaohongshu build
+        run: npm run build:xhs
+
+      - name: Optimize release-only notebook cover
+        shell: bash
+        run: |
+          ffmpeg -hide_banner -loglevel error -y \
+            -i dist/assets/ui/notebook-cover-worn.png \
+            -vf "scale=640:-2:flags=lanczos" \
+            -c:v libwebp -quality 80 \
+            dist/assets/ui/notebook-cover-worn.webp
+          find dist/assets -type f -name '*.css' -print0 | xargs -0 sed -i 's/notebook-cover-worn\.png/notebook-cover-worn.webp/g'
+          rm dist/assets/ui/notebook-cover-worn.png
 
       - name: Audit Xiaohongshu offline package
-        run: npm run audit:xhs
+        run: |
+          npm run audit:xhs
+          node .codex/skills/minitool-zip-builder/scripts/audit_artifact.mjs dist
 
       - name: Create submission ZIP and checksum
         shell: bash
@@ -49,12 +62,14 @@ jobs:
           SHORT_SHA="${GITHUB_SHA::8}"
           PACKAGE="ember-street-xhs-${SHORT_SHA}.zip"
           (cd dist && zip -q -r "../${PACKAGE}" .)
+          node .codex/skills/minitool-zip-builder/scripts/audit_artifact.mjs "${PACKAGE}"
           sha256sum "${PACKAGE}" > "${PACKAGE}.sha256"
           {
             echo "Ember Street / 余烬长街"
             echo "Source commit: ${GITHUB_SHA}"
             echo "Package: ${PACKAGE}"
             echo "Built at: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            echo "Skill: minitool-zip-builder 1.6.0"
             echo "Contents: dist/ root (index.html + local assets only)"
           } > release-manifest.txt
           echo "PACKAGE=${PACKAGE}" >> "$GITHUB_ENV"
