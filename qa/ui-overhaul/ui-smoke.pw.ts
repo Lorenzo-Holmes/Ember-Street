@@ -267,7 +267,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
     },
   };
   await renderState(page, nightResult);
-  await expect(page.getByText('天亮了。', { exact: true })).toBeVisible();
+  await expect(page.getByText('外面重新安静下来。', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '等天亮再清点', exact: true })).toBeVisible();
   await capture(page, 'night-result-1440x900');
 
   await renderState(page, communityState());
