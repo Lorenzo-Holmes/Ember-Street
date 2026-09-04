@@ -1,57 +1,9 @@
-@font-face {
-  font-family: "ZCOOL XiaoWei";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("../node_modules/@fontsource/zcool-xiaowei/files/zcool-xiaowei-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Noto Sans SC";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("../node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Noto Sans SC";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 700;
-  src: url("../node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-700-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 600;
-  src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "LXGW WenKai";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url("../node_modules/@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Ma Shan Zheng";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("../node_modules/@fontsource/ma-shan-zheng/files/ma-shan-zheng-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
 :root {
-  --font-game-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-game-display: "ZCOOL XiaoWei", "Noto Sans SC", serif;
-  --font-game-data: "IBM Plex Mono", "Noto Sans SC", monospace;
-  --font-notebook-body: "LXGW WenKai", "Noto Sans SC", serif;
-  --font-notebook-mark: "Ma Shan Zheng", "ZCOOL XiaoWei", serif;
+  --font-game-body: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-game-display: "STKaiti", "Kaiti SC", "KaiTi", "Songti SC", "SimSun", serif;
+  --font-game-data: "SFMono-Regular", Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-notebook-body: "Kaiti SC", "STKaiti", "KaiTi", "FangSong", "Microsoft YaHei", serif;
+  --font-notebook-mark: "STKaiti", "Kaiti SC", "KaiTi", "FangSong", serif;
 }
 
 body,
@@ -71,7 +23,6 @@ h3,
   font-family: var(--font-game-display);
   font-weight: 400;
   letter-spacing: 0.025em;
-  text-wrap: balance;
 }
 
 .v6-day-number,
