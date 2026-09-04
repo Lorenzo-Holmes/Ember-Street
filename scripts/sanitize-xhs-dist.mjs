@@ -12,9 +12,19 @@ html = html
   .replace(/\b(src|href)=["']\/(?!\/)/gi, '$1="./');
 writeFileSync(htmlPath, html);
 
-const jsFiles = readdirSync(assets)
-  .filter((name) => extname(name).toLowerCase() === '.js')
+const assetFiles = readdirSync(assets)
+  .filter((name) => ['.js', '.css'].includes(extname(name).toLowerCase()))
   .map((name) => join(assets, name));
+const jsFiles = assetFiles.filter((file) => extname(file).toLowerCase() === '.js');
+const cssFiles = assetFiles.filter((file) => extname(file).toLowerCase() === '.css');
+
+for (const file of cssFiles) {
+  let css = readFileSync(file, 'utf8');
+  // CSS bundles live in dist/assets/. Public files are copied to dist/assets/...;
+  // turn root-absolute public URLs into paths relative to the CSS bundle.
+  css = css.replace(/url\(\s*(["']?)\/assets\//gi, 'url($1./');
+  writeFileSync(file, css);
+}
 
 for (const file of jsFiles) {
   let code = readFileSync(file, 'utf8');
@@ -35,4 +45,4 @@ for (const file of jsFiles) {
   if (patched) writeFileSync(file, code);
 }
 
-console.log(`Sanitized Xiaohongshu dist: ${jsFiles.length} JS file(s), offline-only classic entry.`);
+console.log(`Sanitized Xiaohongshu dist: ${jsFiles.length} JS and ${cssFiles.length} CSS file(s), offline-only classic entry.`);
