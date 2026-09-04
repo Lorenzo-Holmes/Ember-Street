@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - qa/human-playtest-20260905
+      - qa/location-value-human-20260905
     paths:
       - 'qa/human-production/**'
       - 'playwright.human.config.ts'
