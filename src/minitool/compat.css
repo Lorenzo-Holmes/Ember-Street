@@ -1,0 +1,23 @@
+/* Local fallback rules; normal desktop/mobile web builds do not import this file. */
+html.mt-runtime { touch-action: manipulation; }
+.mt-runtime body { -webkit-touch-callout: none; }
+.mt-runtime .v1-title-screen { min-height: 100vh; min-height: var(--app-height, 100vh); padding: 16px 12px; }
+.mt-runtime .v1-title-book { width: calc(100vw - 24px); max-width: 480px; }
+@supports (width: min(100px, 100vw)) {
+  .mt-runtime .v1-title-book { width: min(480px, calc(100vw - 24px), max(280px, calc((var(--app-height, 100vh) - 32px) * .666667))); }
+}
+.mt-runtime .notebook-page { width: calc(100% - 22px); max-width: 520px; }
+.mt-runtime .v1-bottom-nav { width: calc(100% - 16px); max-width: 520px; }
+.mt-runtime .v1-player-menu { top: 10px; top: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); }
+.mt-runtime .v1-bottom-nav { padding-bottom: 3px; padding-bottom: calc(3px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+.mt-runtime .v1-title-screen { padding-top: 16px; padding-top: calc(16px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); padding-bottom: 16px; padding-bottom: calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+.mt-runtime button:focus { outline: 2px dashed #713d2d; outline-offset: 2px; }
+.mt-runtime button:active { opacity: .85; }
+.mt-runtime img { max-width: 100%; }
+.mt-runtime .v1-menu-sheet { width: calc(100vw - 32px); max-width: 460px; max-height: calc(100vh - 48px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.mt-runtime .mt-gap-row > * + * { margin-left: var(--mt-gap, 0px); }
+.mt-runtime .mt-gap-column > * + * { margin-top: var(--mt-gap, 0px); }
+.mt-runtime .mt-gap-row > *, .mt-runtime .mt-gap-column > * { min-width: 0; }
+.v1-menu-sheet--fallback:not([open]) { display: none; }
+.v1-menu-fallback-shade { position: fixed; z-index: 119; left: 0; right: 0; top: 0; bottom: 0; background: rgba(11, 7, 5, .7); }
+.v1-menu-sheet--fallback[open] { display: block; position: fixed; z-index: 120; left: 50%; top: 50%; right: auto; bottom: auto; transform: translate(-50%, -50%); margin: 0; box-shadow: 0 0 0 100vmax rgba(11, 7, 5, .7); }

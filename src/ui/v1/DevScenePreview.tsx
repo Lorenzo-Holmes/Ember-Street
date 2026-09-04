@@ -6,7 +6,7 @@ import { ENDINGS } from '../../game/v060/endings';
 import { ALL_V060_NIGHT_EVENTS } from '../../game/v060/nightEvents';
 import { chooseNightOption, scheduleNight } from '../../game/v060/nightScheduler';
 
-export type PreviewScene = 'home' | 'defense' | 'defense-dusk' | 'defense-dawn' | 'event' | 'missing' | 'dusk' | 'night' | 'dice' | 'horde' | 'night-summary' | 'dawn' | 'ending';
+export type PreviewScene = 'home' | 'defense' | 'defense-dusk' | 'defense-dawn' | 'event' | 'social' | 'request' | 'missing' | 'dusk' | 'night' | 'dice' | 'horde' | 'night-summary' | 'dawn' | 'ending';
 
 const SCENES: Array<[PreviewScene, string]> = [
   ['home', '据点'],
@@ -14,6 +14,8 @@ const SCENES: Array<[PreviewScene, string]> = [
   ['defense-dusk', '低防线黄昏'],
   ['defense-dawn', '防线清点'],
   ['event', '特殊事件'],
+  ['social', '街区规矩'],
+  ['request', '门口的请求'],
   ['missing', '有人未归'],
   ['dusk', '黄昏'],
   ['night', '夜间事件'],
@@ -49,6 +51,18 @@ function previewBase(day = 8): GameState {
 
 export function createPreviewState(scene: PreviewScene): GameState {
   if (scene === 'home') return createV060InitialState(606060);
+  if (scene === 'social' || scene === 'request') {
+    const base = previewBase(scene === 'social' ? 14 : 9);
+    return {
+      ...base,
+      phase: 'street',
+      hope: scene === 'social' ? 12 : 46,
+      defense: scene === 'request' ? 38 : base.defense,
+      socialState: { ...base.socialState!, pressure: scene === 'social' ? 6 : 2, principles: ['triage-first'] },
+      dayState: { ...base.dayState, assignmentsLocked: false },
+      storyFlags: [...base.storyFlags, ...CAMPAIGN_FIXED_EVENTS.map((event) => `fixed_event_seen:${event.id}`)],
+    };
+  }
   if (scene === 'defense' || scene === 'defense-dusk' || scene === 'defense-dawn') {
     const base = previewBase(9);
     return {

@@ -10,6 +10,8 @@ describe('v1 development scene previews', () => {
       'defense-dusk': 'dusk',
       'defense-dawn': 'summary',
       event: 'street',
+      social: 'street',
+      request: 'street',
       missing: 'assignment',
       dusk: 'dusk',
       night: 'night',

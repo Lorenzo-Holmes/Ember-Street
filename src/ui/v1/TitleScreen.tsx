@@ -10,10 +10,33 @@ export function NotebookDialog({ title, children, onClose }: {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current;
-    element?.showModal();
-    return () => element?.close();
+    if (!element) return;
+    const nativeDialog = typeof element.showModal === 'function';
+    let shade: HTMLDivElement | null = null;
+    if (nativeDialog) element.showModal();
+    else {
+      element.classList.add('v1-menu-sheet--fallback');
+      element.setAttribute('open', '');
+      element.setAttribute('aria-modal', 'true');
+      shade = document.createElement('div');
+      shade.className = 'v1-menu-fallback-shade';
+      shade.setAttribute('aria-hidden', 'true');
+      document.body.appendChild(shade);
+      element.querySelector<HTMLButtonElement>('[autofocus], button')?.focus();
+    }
+    return () => { if (nativeDialog) element.close(); else element.removeAttribute('open'); shade?.remove(); };
   }, []);
   return <dialog className="v1-menu-sheet" ref={dialog} aria-label={title}
+    onKeyDown={(event) => {
+      if (!event.currentTarget.classList.contains('v1-menu-sheet--fallback')) return;
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); }
+      if (event.key === 'Tab') {
+        const buttons = event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)');
+        const first = buttons[0], last = buttons[buttons.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    }}
     onCancel={(event) => { event.preventDefault(); onClose(); }}>
     <h2>{title}</h2>{children}
   </dialog>;
@@ -40,7 +63,7 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
   const [error, setError] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
+    window.scrollTo({ top: 0, behavior: 'auto' });
     heading.current?.focus({ preventScroll: true });
     const refresh = () => setSave(inspectGameSave());
     window.addEventListener('storage', refresh);

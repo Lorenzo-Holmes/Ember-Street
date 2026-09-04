@@ -7,6 +7,9 @@
     "dev": "vite",
     "dev:codespaces": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
+    "build:minitool": "tsc -b && node scripts/build-minitool.mjs",
+    "audit:minitool": "node scripts/audit-minitool.mjs",
+    "package:minitool": "node scripts/package-minitool.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui-smoke": "playwright test",
@@ -28,6 +31,10 @@
     "react-dom": "19.2.8"
   },
   "devDependencies": {
+    "acorn": "8.18.0",
+    "lightningcss": "1.33.0",
+    "postcss": "8.5.26",
+    "sharp": "0.35.2",
     "@playwright/test": "1.55.0",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",

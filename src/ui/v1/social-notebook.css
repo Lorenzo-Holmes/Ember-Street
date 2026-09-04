@@ -1,0 +1,284 @@
+/* Social records are ink on the existing page, not a second card surface.
+   Keep these rules scoped: other legacy survivor cards have their own theme. */
+.notebook-page .v6-social-panel {
+  --social-ink: #342c22;
+  --social-pencil: #473b2c;
+  --social-red: #6c302b;
+  --social-rule: rgba(63, 48, 31, .38);
+  padding: 0 2px 18px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.notebook-page .v6-social-panel .v6-section__head {
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--social-rule);
+}
+
+.notebook-page .v6-social-panel .v6-section__head h2 {
+  margin: 4px 0 0;
+  font-size: 1.3rem;
+  line-height: 1.5;
+}
+
+.notebook-page .v6-social-panel .v6-promise-tally {
+  flex-wrap: wrap;
+  font-size: .86rem;
+  line-height: 1.6;
+}
+
+.notebook-page .v6-social-panel .v6-social-metrics {
+  display: block;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.notebook-page .v6-social-panel .v6-metric-card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 16px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed var(--social-rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.notebook-page .v6-social-panel .v6-metric-header span {
+  color: var(--social-pencil) !important;
+  font-family: var(--font-notebook-mark);
+  font-size: .98rem;
+  font-weight: 400;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.notebook-page .v6-social-panel .v6-metric-card strong {
+  color: var(--social-ink);
+  font-family: var(--font-notebook-mark);
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.notebook-page .v6-social-panel .v6-metric-card small {
+  grid-column: 1 / -1;
+  color: var(--social-ink) !important;
+  font-size: .94rem;
+  line-height: 1.75;
+}
+
+.notebook-page .v6-social-panel .v6-principle-ledger {
+  display: block;
+  margin: 0;
+  padding: 18px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--social-rule);
+}
+
+.notebook-page .v6-social-panel .v6-principle-ledger__label {
+  display: block;
+  padding: 0;
+  font-size: .88rem;
+  color: var(--social-pencil) !important;
+}
+
+.notebook-page .v6-social-panel .v6-principle-ledger__items {
+  display: block;
+  margin-top: 5px;
+}
+
+.notebook-page .v6-social-panel .v6-stamp--principle {
+  display: block;
+  max-width: 100%;
+  margin: 5px 0 0;
+  padding: 0;
+  color: var(--social-red) !important;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-notebook-mark);
+  font-size: 1.12rem;
+  font-weight: 400;
+  line-height: 1.6;
+  letter-spacing: .04em;
+  text-shadow: .4px .3px rgba(77, 30, 24, .15);
+  transform: none;
+}
+
+.notebook-page .v6-social-panel .v6-stamp--principle::before {
+  content: '✓ ';
+}
+
+.notebook-page .v6-social-panel .v1-social-entry {
+  display: block;
+  margin: 22px 0 0;
+  padding: 0 0 18px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed var(--social-rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* The reused survivor wrapper otherwise draws a green status stripe. */
+.notebook-page .v6-social-panel .v1-social-entry::before {
+  content: none;
+}
+
+.notebook-page .v6-social-panel .v1-social-entry__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 16px;
+}
+
+.notebook-page .v6-social-panel .v1-social-entry__head > div {
+  flex: 1 1 230px;
+  min-width: 0;
+}
+
+.notebook-page .v6-social-panel .v1-social-entry__eyebrow,
+.notebook-page .v6-social-panel .v6-principle-stamp {
+  color: var(--social-red) !important;
+  font-family: var(--font-notebook-mark);
+  font-size: .94rem;
+  line-height: 1.6;
+  letter-spacing: .04em;
+}
+
+.notebook-page .v6-social-panel .v1-social-entry__head h3 {
+  margin: 6px 0 0;
+  color: var(--social-ink);
+  font-size: 1.3rem;
+  line-height: 1.55;
+}
+
+.notebook-page .v6-social-panel .v6-principle-stamp {
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  transform: rotate(-2deg);
+}
+
+.notebook-page .v6-social-panel .v6-principle-body,
+.notebook-page .v6-social-panel .v1-social-entry__detail {
+  margin: 14px 0;
+  color: var(--social-ink) !important;
+  font-size: 1rem;
+  line-height: 1.85;
+}
+
+.notebook-page .v6-social-panel .v6-principle-choice-grid,
+.notebook-page .v6-social-panel .v6-job-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  margin-top: 12px;
+  border-top: 1px dashed var(--social-rule);
+}
+
+.notebook-page .v6-social-panel .v6-principle-choice,
+.notebook-page .v6-social-panel .v6-btn-pledge,
+.notebook-page .v6-social-panel .v6-btn-decline {
+  display: block;
+  width: 100%;
+  min-height: 48px;
+  padding: 16px 8px 16px 30px;
+  color: var(--social-ink);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px dashed var(--social-rule);
+  border-radius: 0;
+  box-shadow: none;
+  font-family: var(--font-notebook-mark);
+  font-size: 1.1rem;
+  font-weight: 400;
+  transform: none;
+  transition: color .15s ease;
+}
+
+.notebook-page .v6-social-panel button::before {
+  top: 20px;
+  left: 3px;
+  color: var(--social-pencil);
+  transform: rotate(-5deg);
+}
+
+.notebook-page .v6-social-panel .v6-principle-choice strong {
+  display: block;
+  color: var(--social-ink);
+  font-family: var(--font-notebook-mark);
+  font-size: 1.15rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+
+.notebook-page .v6-social-panel .v6-principle-choice span,
+.notebook-page .v6-social-panel .v6-principle-choice small {
+  display: block;
+  margin-top: 5px;
+  font-family: var(--font-notebook-body);
+  font-size: .94rem;
+  line-height: 1.75;
+  color: var(--social-ink) !important;
+}
+
+.notebook-page .v6-social-panel .v6-principle-choice small {
+  color: var(--social-red) !important;
+  font-size: .9rem;
+}
+
+.notebook-page .v6-social-panel button:hover,
+.notebook-page .v6-social-panel button:hover strong,
+.notebook-page .v6-social-panel button:focus-visible strong,
+.notebook-page .v6-social-panel button:active strong {
+  color: var(--social-red);
+}
+
+.notebook-page .v6-social-panel button:focus-visible {
+  outline: 2px dashed var(--social-red);
+  outline-offset: -3px;
+}
+
+.notebook-page .v6-social-panel .v6-principle-hint,
+.notebook-page .v6-social-panel .v6-request-hint,
+.notebook-page .v6-social-panel .v6-promise-note {
+  display: block;
+  margin: 12px 0 0;
+  color: var(--social-pencil) !important;
+  font-size: .88rem;
+  font-style: normal;
+  line-height: 1.7;
+}
+
+.notebook-page .v6-social-panel .v6-request-promise-box,
+.notebook-page .v6-social-panel .v6-message--social {
+  margin: 14px 0;
+  padding: 8px 0;
+  background: transparent;
+  border: 0;
+  border-top: 1px dashed var(--social-rule);
+  border-radius: 0;
+  box-shadow: none;
+  font-size: .94rem;
+  line-height: 1.75;
+}
+
+.notebook-page .v6-social-panel .v6-request-promise-box span,
+.notebook-page .v6-social-panel .v6-message--social {
+  color: var(--social-ink) !important;
+}

@@ -103,17 +103,14 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
       )}
 
       {principle && !compact && (
-        <article className="v6-survivor v6-principle-card" style={{ marginTop: 12 }}>
-          <div className="v6-survivor__top">
-            <div className="v6-survivor__profile">
-              <span className="v6-survivor__avatar-tag">规</span>
-              <div>
-                <h3>第 {principle.day} 天写下</h3>
-                <div className="v6-survivor__trait">{principle.title}</div>
-              </div>
+        <article className="v6-survivor v6-principle-card v1-social-entry">
+          <header className="v1-social-entry__head">
+            <div>
+              <span className="v1-social-entry__eyebrow">第 {principle.day} 天 · 街里的规矩</span>
+              <h3>{principle.title}</h3>
             </div>
-            <span className="v6-principle-stamp">今晚要定</span>
-          </div>
+            <span className="v6-principle-stamp">今天要说定</span>
+          </header>
           <p className="v6-principle-body">{principle.body}</p>
           <div className="v6-principle-choice-grid">
             {principle.choices.map((choice) => (
@@ -133,42 +130,33 @@ export default function SocialStatusPanel({ state, onCommit, compact = false }: 
       )}
 
       {active && (
-        <article className="v6-survivor v6-promise-active" style={{ marginTop: 12 }}>
-          <div className="v6-survivor__top">
-            <div className="v6-survivor__profile">
-              <span className="v6-survivor__avatar-tag">记</span>
-              <div>
-                <h3>还没做到 · 《{active.title}》</h3>
-                <div className="v6-survivor__trait">{active.detail}</div>
-              </div>
+        <article className="v6-survivor v6-promise-active v1-social-entry">
+          <header className="v1-social-entry__head">
+            <div>
+              <span className="v1-social-entry__eyebrow">记在本上的承诺</span>
+              <h3>还没做到 · 《{active.title}》</h3>
             </div>
-            <div className="v6-survivor__energy">
-              <div className="v6-energy-header">
-                <span className="v6-survivor__energy-label">还剩</span>
-                <span className="v6-survivor__energy-val">{active.remainingDays} 天</span>
-              </div>
-            </div>
-          </div>
+            <span className="v6-principle-stamp">还剩 {active.remainingDays} 天</span>
+          </header>
+          <p className="v1-social-entry__detail">{active.detail}</p>
           <p className="v6-promise-note">只看最后做没做到。路上出一次岔子，不算食言。</p>
         </article>
       )}
 
       {!active && request && !principle && !compact && (
-        <article className="v6-survivor v6-request-card" style={{ marginTop: 12 }}>
-          <div className="v6-survivor__top">
-            <div className="v6-survivor__profile">
-              <span className="v6-survivor__avatar-tag">问</span>
-              <div>
-                <h3>门口等答复 · 《{request.title}》</h3>
-                <div className="v6-survivor__trait">{request.body}</div>
-              </div>
+        <article className="v6-survivor v6-request-card v1-social-entry">
+          <header className="v1-social-entry__head">
+            <div>
+              <span className="v1-social-entry__eyebrow">门口等答复</span>
+              <h3>{request.title}</h3>
             </div>
-          </div>
+          </header>
+          <p className="v1-social-entry__detail">{request.body}</p>
           <div className="v6-request-promise-box">
             <strong>他们要你答应：</strong>
             <span>{request.promiseText}</span>
           </div>
-          <div className="v6-job-grid" style={{ marginTop: 10 }}>
+          <div className="v6-job-grid">
             <button className="v6-btn-pledge" onClick={() => onCommit(acceptCommunityRequest(state, request.id))}>
               答应下来
             </button>

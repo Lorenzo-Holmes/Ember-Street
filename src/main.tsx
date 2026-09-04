@@ -7,6 +7,7 @@ import './v060.main-compat.css';
 import './typography.css';
 import './dusk-notebook.css';
 import './notebook-theme.css';
+import './ui/v1/social-notebook.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

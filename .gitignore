@@ -7,3 +7,10 @@ dist
 coverage
 *.log
 .DS_Store
+
+# Local QA, generated releases and downloaded validation tools
+/.playwright-cli/
+/output/
+*.tsbuildinfo
+/.codex/minitool-zip-builder/
+/.codex/minitool-zip-builder-*.skill
