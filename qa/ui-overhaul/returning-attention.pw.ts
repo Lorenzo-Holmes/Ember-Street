@@ -65,11 +65,11 @@ async function yOf(locator: ReturnType<Page['locator']>) {
 
 test('routine DAY27 keeps the primary action ahead of settled community detail', async ({ page }) => {
   await renderState(page, returningState(27, 972027));
-  const primary = page.getByRole('button', { name: /安排今天/ });
+  const primary = page.locator('.v1-day-action');
   const community = page.locator('.v1-community');
 
   await expect(page.locator('.v1-home-page')).toBeVisible();
-  await expect(primary).toBeVisible();
+  await expect(primary).toContainText('今天谁去哪里');
   await expect(community).toBeVisible();
   await expect(page.locator('.v6-social-panel')).toHaveCount(0);
   expect(await yOf(primary)).toBeLessThan(await yOf(community));
@@ -77,7 +77,7 @@ test('routine DAY27 keeps the primary action ahead of settled community detail',
   await page.screenshot({ path: `${SCREENSHOT_DIR}/returning-day27-routine-v1-390x844.png`, fullPage: true });
 });
 
-test('an unresolved promise stays above legacy assignment until the social flow is migrated', async ({ page }) => {
+test('an unresolved promise does not block routine day management', async ({ page }) => {
   const base = returningState(20, 972020);
   const state: GameState = {
     ...base,
@@ -94,23 +94,22 @@ test('an unresolved promise stays above legacy assignment until the social flow 
     },
   };
   await renderState(page, state);
-  const promise = page.locator('.v6-social-panel').filter({ hasText: '我们答应过的' }).first();
-  const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
-  await expect(promise).toBeVisible();
-  expect(await yOf(promise)).toBeLessThan(await yOf(assignment));
+  await expect(page.locator('.v1-home-page')).toBeVisible();
+  await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
+  await expect(page.locator('.v6-social-panel')).toHaveCount(0);
 });
 
-test('a missing person still falls back to the full search flow ahead of routine assignment', async ({ page }) => {
+test('a missing person takes over the morning before routine assignment', async ({ page }) => {
   const base = returningState(18, 972018);
   const state: GameState = {
     ...base,
     survivors: base.survivors.map((survivor, index) => index === 0 ? { ...survivor, condition: 'missing' as const } : survivor),
   };
   await renderState(page, state);
-  const missing = page.locator('.v6-section').filter({ hasText: '还有人没回来' }).first();
-  const assignment = page.locator('.v6-section').filter({ hasText: '今日派遣' }).first();
-  await expect(missing).toBeVisible();
-  expect(await yOf(missing)).toBeLessThan(await yOf(assignment));
+  await expect(page.getByText('有人没回来', { exact: true })).toBeVisible();
+  await expect(page.getByText('天亮了，床还是空的', { exact: true })).toBeVisible();
+  await expect(page.locator('.v1-day-action')).toHaveCount(0);
+  await expect(page.locator('nav[aria-label="主导航"]')).toHaveCount(0);
 });
 
 test('an unselected street-resident rotation remains actionable on the V1 home', async ({ page }) => {
@@ -135,11 +134,12 @@ test('critical wounds and building work remain explicit before the day is locked
     survivors: base.survivors.map((survivor, index) => index === 0 ? { ...survivor, condition: 'critical' as const } : survivor),
   };
   await renderState(page, state);
-  await expect(page.getByRole('button', { name: /查看六座设施/ })).toBeVisible();
-  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
+  const nav = page.locator('nav[aria-label="主导航"]');
+  await expect(nav.getByRole('button', { name: '建筑', exact: true })).toBeVisible();
+  await nav.getByRole('button', { name: '幸存者', exact: true }).click();
   const critical = page.locator('.v1s-list article').filter({ hasText: '危重' }).first();
   await expect(critical).toBeVisible();
-  await critical.getByRole('button', { name: /查看/ }).click();
-  await expect(page.getByText('危重', { exact: true })).toBeVisible();
+  await critical.getByRole('button', { name: /翻开/ }).click();
+  await expect(page.getByText('危重', { exact: true }).first()).toBeVisible();
   await expect(page.locator('.v1s-jobs button:enabled')).toHaveCount(0);
 });
