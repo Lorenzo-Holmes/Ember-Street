@@ -1,13 +1,6 @@
 name: Live Production Playtest
 
 on:
-  push:
-    branches:
-      - qa/live-production-regression-20260904
-    paths:
-      - 'qa/live-production/**'
-      - 'playwright.production.config.ts'
-      - '.github/workflows/live-production-playtest.yml'
   workflow_dispatch:
 
 permissions:
