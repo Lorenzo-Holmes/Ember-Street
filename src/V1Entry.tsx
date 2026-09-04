@@ -14,7 +14,7 @@ import {
   type CommunityDepartureResolution,
 } from './game/v060/communityDeparture';
 import { pendingCommunityRequest } from './game/v060/communityPromises';
-import { dayAttentionSummary } from './game/v060/dayAttention';
+import { acknowledgeMissingAttention, dayAttentionSummary } from './game/v060/dayAttention';
 import { assignExpeditionRoute, incompleteExpeditionSurvivorIds, lockDayAssignmentsAndRoute } from './game/v060/dayManagement';
 import { drawExpeditionEvent, startExpedition } from './game/v060/expedition';
 import { loadMetaProgress, recordEnding, type MetaProgress } from './game/v060/endings';
@@ -103,7 +103,13 @@ function DayAttentionScreen({ state, onCommit, kind }: { state: GameState; onCom
           <p>{isMissing ? '脚印和广播都还能找，不能再拖。' : '处理完，再把今天的人手写下来。'}</p>
       </header>
       {isMissing
-        ? <MissingPanel state={state} setState={onCommit}/>
+        ? <>
+          <MissingPanel state={state} setState={onCommit}/>
+          <section className="v6-section v6-missing-continue">
+            <p className="v6-message">搜救一天只能做一次；眼下做不了，也得先让街里的人继续干活。明天还会再提醒。</p>
+            <button className="v6-cta" onClick={() => onCommit(acknowledgeMissingAttention(state))}>今天先到这里，安排其他人</button>
+          </section>
+        </>
         : <SocialStatusPanel state={state} onCommit={onCommit}/>}
     </main>
   );
