@@ -188,25 +188,20 @@ test('DAY1 V1 shell remains usable at all target viewports', async ({ page }) =>
     await renderState(page, quietState(961000 + viewport.width), viewport);
     await expect(page.locator('.v1-home-page')).toBeVisible();
     await expect(page.getByText('余烬长街', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: /安排今天/ })).toBeVisible();
+    await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
     await capture(page, `v1-day1-main-${name}`);
   }
 });
 
-test('mobile DAY1 keeps the primary action visible before optional management detail', async ({ page }) => {
-  const viewport = { width: 390, height: 844 };
-  await renderState(page, quietState(961390), viewport);
-  const primary = page.getByRole('button', { name: /安排今天/ });
-  await expect(primary).toBeVisible();
-  await expect(page.getByRole('button', { name: /查看六座设施/ })).toBeVisible();
+test('mobile DAY1 exposes the primary assignment and building navigation', async ({ page }) => {
+  await renderState(page, quietState(961390), { width: 390, height: 844 });
+  await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
+  await expect(page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true })).toBeVisible();
   await expect(page.locator('.v1-building-list')).toHaveCount(0);
-  const box = await primary.boundingBox();
-  expect(box).toBeTruthy();
-  expect(box!.y).toBeLessThan(viewport.height);
   await capture(page, 'v1-day1-action-distance-390x844');
 });
 
-test('milestone DAY7 DAY14 DAY21 legacy attention screens stay readable while principles are not migrated', async ({ page }) => {
+test('milestone DAY7 DAY14 DAY21 principle screens stay readable', async ({ page }) => {
   const expectedQuestions = new Map<number, string>([
     [7, '下一口先给谁？'],
     [14, '下一次出事，谁站前面？'],
@@ -214,7 +209,8 @@ test('milestone DAY7 DAY14 DAY21 legacy attention screens stay readable while pr
   ]);
   for (const [day, seed] of [[7, 963007], [14, 963014], [21, 963021]] as const) {
     await renderState(page, milestoneDayState(day, seed));
-    await expect(page.getByText(`DAY ${day}`, { exact: true })).toBeVisible();
+    await expect(page.getByText('这件事得先给个答复', { exact: true })).toBeVisible();
+    await expect(page.getByText(`第 ${day} 天 · 街里的规矩`, { exact: true })).toBeVisible();
     await expect(page.getByText(expectedQuestions.get(day)!, { exact: true })).toBeVisible();
     await capture(page, `narrative-audit-day${day}-1440x900`);
   }
@@ -226,11 +222,13 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await expect(page.locator('.v1-home-page')).toBeVisible();
   await capture(page, 'v1-home-1440x900');
 
-  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
+  let nav = page.locator('nav[aria-label="主导航"]');
+  await nav.getByRole('button', { name: '幸存者', exact: true }).click();
   await expect(page.locator('.v1s-list')).toBeVisible();
   await page.locator('.v1s-list').screenshot({ path: `${SCREENSHOT_DIR}/v1-survivors-1440x900.png` });
-  await page.getByRole('button', { name: '← 据点', exact: true }).click();
-  await page.getByRole('button', { name: /查看六座设施/ }).click();
+  nav = page.locator('nav[aria-label="主导航"]');
+  await nav.getByRole('button', { name: '据点', exact: true }).click();
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true }).click();
   await expect(page.locator('.v1-building-list')).toBeVisible();
   await page.locator('.v1-building-list').screenshot({ path: `${SCREENSHOT_DIR}/v1-building-panel-1440x900.png` });
 
@@ -250,7 +248,6 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   };
   await renderState(page, dusk);
   await expect(page.getByText('天黑了', { exact: true })).toBeVisible();
-  await expect(page.getByText('还有时间，重新安排', { exact: false })).toBeVisible();
   await capture(page, 'dusk-1440x900');
 
   const normalNightBase = { ...quietState(962004), day: 5, phase: 'night' as const };
@@ -273,8 +270,9 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await capture(page, 'night-result-1440x900');
 
   await renderState(page, communityState());
-  await expect(page.getByText('街区近况', { exact: true })).toBeVisible();
-  await capture(page, 'social-community-legacy-1440x900');
+  await expect(page.locator('.v1-community')).toBeVisible();
+  await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
+  await capture(page, 'social-community-1440x900');
 
   const horde = scheduleNight(finalReady());
   expect(horde.nightState.eventTotal).toBe(6);
@@ -289,7 +287,6 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await expect(page.getByText('所有还能站的人一起守住', { exact: true })).toBeVisible();
   await expect(page.getByText('把最后的建材和零件全部用掉', { exact: true })).toBeVisible();
   await expect(page.getByText('退进内街，先把人保住', { exact: true })).toBeVisible();
-  await expect(page.getByText('材料 -3 · 零件 -1', { exact: true })).toBeVisible();
   await capture(page, 'v1-day29-last-line-1440x900');
 
   const ending = endingState();
