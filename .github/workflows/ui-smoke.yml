@@ -38,10 +38,13 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run visual smoke
         run: npm run test:ui-smoke
-      - name: Upload UI screenshots
+      - name: Upload UI smoke evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-overhaul-screenshots
-          path: qa/ui-overhaul/screenshots
-          if-no-files-found: error
+          name: ui-smoke-evidence
+          path: |
+            qa/ui-overhaul/screenshots
+            test-results
+            playwright-report
+          if-no-files-found: warn
