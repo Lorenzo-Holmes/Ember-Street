@@ -40,17 +40,6 @@ jobs:
       - name: Production Xiaohongshu build
         run: npm run build:xhs
 
-      - name: Optimize release-only notebook cover
-        shell: bash
-        run: |
-          ffmpeg -hide_banner -loglevel error -y \
-            -i dist/assets/ui/notebook-cover-worn.png \
-            -vf "scale=640:-2:flags=lanczos" \
-            -c:v libwebp -quality 80 \
-            dist/assets/ui/notebook-cover-worn.webp
-          find dist/assets -type f -name '*.css' -print0 | xargs -0 sed -i 's/notebook-cover-worn\.png/notebook-cover-worn.webp/g'
-          rm dist/assets/ui/notebook-cover-worn.png
-
       - name: Audit Xiaohongshu offline package
         run: |
           npm run audit:xhs
