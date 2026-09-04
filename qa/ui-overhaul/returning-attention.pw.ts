@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { createV060InitialState } from '../../src/game/v060/campaign';
 import { CAMPAIGN_FIXED_EVENTS } from '../../src/game/v060/campaignEvents';
 import type { GameState, StreetPrincipleId } from '../../src/game/types';
+import { continueSavedSessionFromTitle } from './session-entry';
 
 const SAVE_KEY = 'ember-street-save-v3';
 const ACTIVE_KEY = 'ember-street-last-active-v1';
@@ -52,7 +53,7 @@ async function renderState(page: Page, state: GameState) {
     localStorage.setItem(activeKey, String(Date.now()));
   }, { saveKey: SAVE_KEY, activeKey: ACTIVE_KEY, gameState: state });
   await page.reload();
-  await expect(page.locator('main')).toBeVisible();
+  await continueSavedSessionFromTitle(page);
   await page.waitForTimeout(80);
 }
 

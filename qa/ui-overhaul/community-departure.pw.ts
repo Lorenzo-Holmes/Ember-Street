@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import { createV060InitialState } from '../../src/game/v060/campaign';
 import { pendingCommunityDeparture, queueCommunityDeparture } from '../../src/game/v060/communityDeparture';
 import type { GameState } from '../../src/game/types';
+import { continueSavedSessionFromTitle } from './session-entry';
 
 const SAVE_KEY = 'ember-street-save-v3';
 const ACTIVE_KEY = 'ember-street-last-active-v1';
@@ -31,6 +32,7 @@ async function installState(page: import('@playwright/test').Page, state: GameSt
     localStorage.setItem(activeKey, String(Date.now()));
   }, { saveKey: SAVE_KEY, activeKey: ACTIVE_KEY, gameState: state });
   await page.reload();
+  await continueSavedSessionFromTitle(page);
 }
 
 test('mobile dawn surfaces resident departure before normal day management', async ({ page }) => {

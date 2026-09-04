@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { createV060InitialState } from '../../src/game/v060/campaign';
 import { CAMPAIGN_FIXED_EVENTS } from '../../src/game/v060/campaignEvents';
+import { continueSavedSessionFromTitle } from './session-entry';
 
 const SAVE_KEY = 'ember-street-save-v3';
 const ACTIVE_KEY = 'ember-street-last-active-v1';
@@ -22,6 +23,7 @@ test('assignment controls remain visually discoverable after opening a survivor'
     localStorage.setItem(activeKey, String(Date.now()));
   }, { gameState: state, saveKey: SAVE_KEY, activeKey: ACTIVE_KEY });
   await page.reload();
+  await continueSavedSessionFromTitle(page);
 
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
   const linxia = page.locator('.v1s-list article').filter({ hasText: '林夏' }).first();
