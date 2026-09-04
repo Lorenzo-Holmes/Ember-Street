@@ -62,13 +62,15 @@ test('V1 home is illustration-first and keeps the primary day action reachable o
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-home-390x844.png`, fullPage: true });
 });
 
-test('building page keeps six facilities and canonical art', async ({ page }) => {
+test('building page keeps six facilities and canonical shelter art', async ({ page }) => {
   await installState(page, routineV1State(971008));
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true }).click();
   await expect(page.locator('.v1-building')).toHaveCount(6);
-  expect(await page.locator('.v1-building__art').count()).toBeGreaterThan(0);
   await expect(page.getByText('搜索站', { exact: true })).toBeVisible();
   await expect(page.getByText('广播亭', { exact: true })).toBeVisible();
+  const shelter = page.locator('.v1-building').filter({ hasText: '宿营屋' }).first();
+  await shelter.locator('.v1-building__summary').click();
+  await expect(shelter.locator('.v1-building__art')).toBeVisible();
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-buildings-390x844.png`, fullPage: true });
 });
@@ -94,15 +96,15 @@ test('survivors and street residents remain separate and seven jobs stay behind 
 test('records use logs, places, character stories and memorial instead of ending collection', async ({ page }) => {
   await installState(page, routineV1State(971003));
   await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '记录', exact: true }).click();
-  await expect(page.getByRole('button', { name: '这几天', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '走过的路', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '还在的人', exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: '没回来的人', exact: true })).toBeVisible();
+  await expect(page.locator('.v1r-page')).toBeVisible();
+  const tabs = page.locator('.v1r-tabs button');
+  await expect(tabs).toHaveCount(4);
+  expect(await tabs.allTextContents()).toEqual(['这几天', '走过的路', '还在的人', '没回来的人']);
   await expect(page.getByText('结局图鉴')).toHaveCount(0);
   await expectNoHorizontalOverflow(page);
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-390x844.png`, fullPage: true });
 
-  await page.getByRole('button', { name: '还在的人', exact: true }).click();
+  await tabs.nth(2).click();
   await expect(page.locator('.v1r-profiles')).toBeVisible();
   await page.screenshot({ path: `${SCREENSHOT_DIR}/v1-records-profiles-390x844.png`, fullPage: true });
 });
