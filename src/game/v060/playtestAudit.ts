@@ -109,7 +109,11 @@ function chooseLocation(state: GameState, policy: AuditPolicy): string | null {
   const visited = new Set(state.storyFlags.filter((f) => f.startsWith('visited:')).map((f) => f.slice(8)));
   let best: { id: string; score: number } | null = null;
   for (const loc of availableExpeditionLocations(state)) {
-    const score = resourceNeed(state, loc.primary) * 2.2 + resourceNeed(state, loc.secondary) + (visited.has(loc.id) ? 0 : 2.5) - loc.danger * styleRisk;
+    const score = resourceNeed(state, loc.primary) * 2.2
+      + resourceNeed(state, loc.secondary)
+      + (loc.tertiary ? resourceNeed(state, loc.tertiary) * 0.55 : 0)
+      + (visited.has(loc.id) ? 0 : 2.5)
+      - loc.danger * styleRisk;
     if (!best || score > best.score) best = { id: loc.id, score };
   }
   return best?.id ?? null;

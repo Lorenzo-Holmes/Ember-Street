@@ -92,12 +92,12 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'clinic-blackout', category: 'infrastructure', minDay: 5, maxDay: 28, title: '诊疗站突然断电',
+    id: 'clinic-blackout', category: 'infrastructure', minDay: 5, maxDay: 28, title: '诊疗室突然断电',
     body: '里面还有伤员。备用灯只够照亮一张床。',
     requiredBuildings: { clinic: 1 },
     choices: [
       checked('rewire', '现场接回线路', '让维修的人沿墙找到断点，在手电光下把线重新接上。', 'repair', { power: 2, hope: 1 }, { actorCondition: 'minor', hope: -1 }),
-      resource('battery', '启用备用电源', '从街区电力里切出一条单独线路，把诊疗站先点亮。', { power: 10 }, { hope: 1 }),
+      resource('battery', '接上备用电源', '从街区电力里切出一条单独线路，把诊疗室先点亮。', { power: 10 }, { hope: 1 }),
       consequence('triage', '只保最重要的设备', '只给最危险的床位供电，其余治疗今晚只能靠手电和备用灯。', { hope: -1, addFlags: ['clinic_night_compromise'] }),
     ],
   },
@@ -111,13 +111,13 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'water-on-radio', category: 'infrastructure', minDay: 12, maxDay: 28, title: '广播亭开始漏水',
+    id: 'water-on-radio', category: 'infrastructure', minDay: 12, maxDay: 28, title: '广播间开始漏水',
     body: '雨沿着电缆滴进桌面。信号还在，但继续工作有短路风险。',
     requiredBuildings: { radio: 1 },
     choices: [
       checked('protect', '让广播值守者抢救设备', '把还在工作的设备一件件挪开，先护住天线和主机。', 'radio', { hope: 1, addFlags: ['radio_saved_in_rain'] }, { power: -5, actorCondition: 'minor' }),
       resource('cover', '用材料封住漏点', '拿板材和防水布把漏点封住，让桌面和线缆先保持干燥。', { materials: 2 }, { hope: 1 }),
-      consequence('off', '今晚关闭广播亭', '关机、拔线，把桌面擦干。今晚之后的频道只能等天亮再听。', { addFlags: ['radio_silent_night'] }),
+      consequence('off', '今晚关掉广播间', '关机、拔线，把桌面擦干。今晚之后的频道只能等天亮再听。', { addFlags: ['radio_silent_night'] }),
     ],
   },
   {
@@ -181,7 +181,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     choices: [
       checked('balance', '让维修岗位重新分配负载', '把广播、诊疗和外围灯一条线一条线降功率，尽量不让任何一处彻底断掉。', 'repair', { power: 3 }, { power: -5 }),
       resource('parts', '换上备用稳压组件', '拆下发热的稳压件，换上仓房里的备用组件。', { parts: 1 }, { power: 6 }),
-      consequence('lights-off', '优先保医疗，关闭外围灯', '把外围灯全关掉，把剩下的电优先留给诊疗站。', { defense: -3, addFlags: ['medical_power_priority'] }),
+      consequence('lights-off', '先保住伤员，关掉外围灯', '把外围灯全关掉，把剩下的电优先留给诊疗室。', { defense: -3, addFlags: ['medical_power_priority'] }),
     ],
   },
   {
@@ -240,7 +240,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     id: 'horde-approach', category: 'horde', minDay: 1, maxDay: 29, title: '尸潮正在接近',
     body: '远处的黑影已经连成一片。声音还没到，地面先开始轻微震动。',
     choices: [
-      checked('read-route', '让守夜岗判断主攻方向', '爬上最高的瞭望点，看清尸群最密的那一股正朝哪条街挤。', 'watch', { defense: 7, addFlags: ['horde_route_read'] }, { defense: -4 }),
+      checked('read-route', '让街口岗判断来路', '爬上最高的瞭望点，看清尸群最密的那一股正朝哪条街挤。', 'watch', { defense: 7, addFlags: ['horde_route_read'] }, { defense: -4 }),
       resource('all-lights', '打开所有探照灯', '把能亮的灯全打开，换来几分钟更清楚的视野。', { power: 12 }, { defense: 6 }),
       consequence('blackout', '关闭外围灯火', '让外围彻底黑下去，少一点目标，也让屋里的人看不见外面还有多少。', { hope: -2, defense: 2, addFlags: ['horde_blackout'] }),
     ],
@@ -256,7 +256,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
   },
   {
     id: 'horde-clinic', category: 'horde', minDay: 10, maxDay: 29, title: '伤员一下子多了起来',
-    body: '诊疗站门口排起了人。程医生只能先处理最危险的几个。',
+    body: '诊疗室门口排起了人。程医生只能先处理最危险的几个。',
     requiredSurvivorIds: ['cheng'],
     requiredBuildings: { clinic: 1 },
     choices: [
@@ -305,7 +305,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-clinic-fire', category: 'emergency', minDay: 7, maxDay: 29, title: '⚠ 诊疗站起火',
+    id: 'emergency-clinic-fire', category: 'emergency', minDay: 7, maxDay: 29, title: '诊疗室起火',
     body: '旧线路短路，墙后已经有明火。伤员还在里面。',
     requiredBuildings: { clinic: 1 },
     choices: [

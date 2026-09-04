@@ -142,7 +142,7 @@ describe('DAY29 six-stage final horde', () => {
     const event = finalHordeEventById('final-horde-last-line')!;
     const choice = event.choices.find((item) => item.id === 'final-last-hold')!;
     const preview = nightChoicePreview(state, event, choice);
-    expect(preview.tags).toContain('最后一夜 6/6');
+    expect(preview.tags).toContain('尸潮压到 · 最后一条线');
     expect(preview.tags).toContain('北仓库防护物资 +2');
     expect(preview.summary).toContain('过去留下的东西正在派上用场');
   });

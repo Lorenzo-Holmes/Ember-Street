@@ -144,9 +144,9 @@ describe('v0.6 causal density', () => {
     };
     const next = appendDawnBrief(before, after, '围栏外有人敲门');
     expect(next.dawnBrief).toHaveLength(1);
-    expect(next.dawnBrief?.[0]).toContain('希望 -2');
-    expect(next.dawnBrief?.[0]).toContain('防线 -5');
-    expect(next.dawnBrief?.[0]).toContain('林夏：健康→轻伤');
+    expect(next.dawnBrief?.[0]).toContain('大家更不愿提明天了');
+    expect(next.dawnBrief?.[0]).toContain('防线受损（−5）');
+    expect(next.dawnBrief?.[0]).toContain('林夏的情况变了——健康到了轻伤');
     expect(appendDawnBrief(next, next, '没有变化').dawnBrief).toEqual(next.dawnBrief);
   });
 });

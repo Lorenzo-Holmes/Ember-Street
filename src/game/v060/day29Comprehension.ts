@@ -3,7 +3,6 @@ import type { DecisionPreview, DecisionTone } from './decisionReadability';
 import {
   effectiveFinalHordeChoice,
   finalHordeLegacyNotes,
-  finalHordeStageNumber,
   isFinalHordeEventId,
 } from './finalHorde';
 import type { NightChoice, V060NightEvent } from './nightEvents';
@@ -43,8 +42,8 @@ const CONCESSION_COPY: Record<string, { tags: string[]; summary: string; tone: D
     tone: 'stable',
   },
   'final-last-retreat': {
-    tags: ['不再赌最后一把', '先保住人', '主动放弃外层'],
-    summary: '不再为外层最后几米冒险，把人全部收进内街。这一阶段不掷骰，也不再烧库存；代价是主动承认外层守不住。前二十八天已经伤得太重的话，这一步也不会凭空把整条街救回来。',
+    tags: ['先撤进内街', '先保住人', '主动放弃外层'],
+    summary: '不再为外层最后几米冒险，把人全部收进内街。这里不用再拿东西，也不让谁留在外面冒险；代价是放弃外层。前些天留下的损失太重，这一步也救不回整条街。',
     tone: 'stable',
   },
 };
@@ -64,7 +63,7 @@ export function effectiveNightChoiceCostLabel(state: GameState, rawChoice: Night
   if (!choice.cost) return '';
   return (Object.entries(choice.cost) as Array<[keyof typeof COST_LABEL, number | undefined]>)
     .filter(([, value]) => Boolean(value))
-    .map(([key, value]) => `${COST_LABEL[key]} -${value}`)
+    .map(([key, value]) => `要用${COST_LABEL[key]} ${value}`)
     .join(' · ');
 }
 
@@ -77,9 +76,8 @@ export function enhanceFinalHordePreview(
   if (!isFinalHordeEventId(event.id)) return base;
 
   const choice = effectiveFinalHordeChoice(state, rawChoice);
-  const stage = finalHordeStageNumber(event.id);
   const legacy = finalHordeLegacyNotes(state);
-  const stageTag = `最后一夜 ${stage ?? '?'}/6`;
+  const stageTag = `尸潮压到 · ${event.title.replace(/^第[^·]+阵\s*·\s*/, '')}`;
   const legacyTail = legacy.length
     ? ` 过去留下的准备正在帮忙：${legacy.slice(0, 2).join('；')}。`
     : ' 眼下没有别的旧准备能替这一段多挡一下。';
@@ -87,8 +85,8 @@ export function enhanceFinalHordePreview(
   if (choice.strategy === 'person') {
     return {
       tone: 'risky',
-      tags: unique([...base.tags, stageTag, '省下库存', '结果交给人']),
-      summary: `不烧这一段的保底物资，把结果交给还站得住的人。专长、伤势、设施和过去的准备都会算在这一把里；守住了最省仓房，失手也会直接落在人身上。${legacyTail}`,
+      tags: unique([...base.tags, stageTag, '不用再拿东西', '得让人顶上']),
+      summary: `不动仓房里的东西，让还站得住的人去顶。熟手、伤势和以前修好的地方都能帮上忙；真守不住，代价会直接落在人身上。${legacyTail}`,
     };
   }
 
@@ -96,10 +94,10 @@ export function enhanceFinalHordePreview(
     const discounted = reducedByPastPreparation(rawChoice, choice);
     return {
       tone: 'stable',
-      tags: unique([...base.tags, stageTag, '不掷骰', '用库存换确定', discounted ? '过去准备省下物资' : '']),
+      tags: unique([...base.tags, stageTag, '不用冒险', '直接拿东西顶住', discounted ? '以前的准备省下一些' : '']),
       summary: discounted
-        ? `把现在标出的东西直接拿出来，这一段不再交给骰子。过去的准备已经替这一步省下一部分东西，现在这笔就是还要从仓房拿走的量。${legacyTail}`
-        : `把现在标出的东西直接拿出来，这一段不再交给骰子。没有额外的旧准备替这一步省库存。${legacyTail}`,
+        ? `把标出的东西直接拿出来，不再让人冒险。以前留下的准备已经省下一部分，现在写着的就是还要从仓房拿走的量。${legacyTail}`
+        : `把标出的东西直接拿出来，不再让人冒险。没有别的旧准备能替这一步省下东西。${legacyTail}`,
     };
   }
 
@@ -107,13 +105,13 @@ export function enhanceFinalHordePreview(
   if (concession) {
     return {
       tone: concession.tone,
-      tags: unique([...base.tags, stageTag, '不掷骰', ...concession.tags]),
+      tags: unique([...base.tags, stageTag, '不用冒险', ...concession.tags]),
       summary: concession.summary,
     };
   }
 
   return {
     ...base,
-    tags: unique([...base.tags, stageTag, '不掷骰']),
+    tags: unique([...base.tags, stageTag, '不用冒险']),
   };
 }

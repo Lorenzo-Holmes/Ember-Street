@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { advanceCampaignDay, createV060InitialState, searchForMissing } from '../src/game/v060/campaign';
 import { pendingCampaignEvent, resolveCampaignEvent } from '../src/game/v060/campaignEvents';
-import { assignDayJob, canTakeDayAssignment, lockDayAssignments, lockDayAssignmentsAndRoute, openExpeditionEvent, reopenDayAssignments } from '../src/game/v060/dayManagement';
+import { assignDayJob, assignExpeditionRoute, canTakeDayAssignment, lockDayAssignments, lockDayAssignmentsAndRoute, openExpeditionEvent, reopenDayAssignments } from '../src/game/v060/dayManagement';
 import { canStartExpedition, currentExpeditionEvent, drawExpeditionEvent, isLocationUnlocked, retreatExpedition, startExpedition } from '../src/game/v060/expedition';
 
 function expeditionReady() {
   let state = createV060InitialState(606060);
-  state = assignDayJob(state, 'lin-xia', 'expedition');
+  state = assignExpeditionRoute(state, 'lin-xia', 'convenience-store');
   return lockDayAssignmentsAndRoute(state);
 }
 

@@ -20,6 +20,7 @@ import { recordDeath, recoverMissing } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from './mortality';
 import { hasPrinciple } from './principles';
 import { applyDailySocialPressure, applyMealPressure, createDefaultSocialState, normalizeSocialState } from './socialPressure';
+import { recoverTrustFromCare, specialtyAvailable, trustCheckModifier, trustWorkFactor } from './trust';
 
 const STARTERS = ['lin-xia', 'zhou', 'ahe'];
 const JOIN_DAYS: Record<number, string> = { 6: 'cheng', 12: 'aliang', 18: 'xiaoman' };
@@ -94,7 +95,7 @@ export function upgradeSaveToV060(input: GameState): GameState {
     nightState: createDefaultNightState(),
     pendingCheck: null,
     storyFlags: [...new Set([...input.storyFlags, 'v060_started'])],
-    lastMessage: '存档已迁移到 v0.6 · 七格物资已并入街区库存。',
+    lastMessage: '旧账本里的东西已经重新清点，全都并进仓房。',
   };
 }
 
@@ -124,15 +125,16 @@ function medicalStep(condition: SurvivorCondition | undefined): SurvivorConditio
 
 function resolveMedicalWork(state: GameState): GameState {
   if (state.buildings.clinic <= 0) return state;
-  const workers = state.survivors.filter((s) => state.dayAssignments[s.id] === 'medical' && s.condition !== 'dead' && s.condition !== 'missing').length;
+  const medicalWorkers = state.survivors.filter((s) => state.dayAssignments[s.id] === 'medical' && s.condition !== 'dead' && s.condition !== 'missing');
+  const workerCapacity = medicalWorkers.reduce((sum, survivor) => sum + trustWorkFactor(survivor), 0);
   const communityCapacity = communityMedicalSupport(state);
-  if (!workers && !communityCapacity) return state;
+  if (!medicalWorkers.length && !communityCapacity) return state;
   const severity: Record<string, number> = { critical: 4, serious: 3, minor: 2, fatigued: 1, healthy: 0 };
   const candidates = state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing' && (severity[s.condition ?? 'healthy'] ?? 0) > 0)
     .sort((a, b) => (severity[b.condition ?? 'healthy'] ?? 0) - (severity[a.condition ?? 'healthy'] ?? 0));
   let medicine = state.inventory.medicine;
   const treated = new Set<string>();
-  const maxTreat = Math.min(workers, state.buildings.clinic >= 3 ? 2 : 1);
+  const maxTreat = Math.min(medicalWorkers.length ? Math.max(1, Math.floor(workerCapacity)) : 0, state.buildings.clinic >= 3 ? 2 : 1);
   for (const survivor of candidates.slice(0, maxTreat)) {
     if (medicine <= 0 && (survivor.condition === 'serious' || survivor.condition === 'critical')) continue;
     if (survivor.condition === 'serious' || survivor.condition === 'critical') medicine -= 1;
@@ -146,7 +148,9 @@ function resolveMedicalWork(state: GameState): GameState {
     inventory: { ...state.inventory, medicine },
     survivors: state.survivors.map((s) => treated.has(s.id) ? { ...s, condition: medicalStep(s.condition) } : s),
   };
-  return clearUntreatedRisk(treatedState, treated);
+  let caredFor = clearUntreatedRisk(treatedState, treated);
+  for (const survivorId of treated) caredFor = recoverTrustFromCare(caredFor, survivorId, 'medical');
+  return caredFor;
 }
 
 function resolveRadioWork(state: GameState): GameState {
@@ -169,7 +173,7 @@ function resolveRadioWork(state: GameState): GameState {
       ...next,
       hope: clamp(next.hope + 1),
       storyFlags: [...new Set([...next.storyFlags, aidFlag])],
-      dawnBrief: [...(next.dawnBrief ?? []), '街区原则《等待外援》：广播仍与外界保持联系，希望 +1。'],
+      dawnBrief: [...(next.dawnBrief ?? []), '街区原则《等待外援》：广播与外界仍有联系。'],
     };
   }
   return next;
@@ -179,8 +183,8 @@ export function finalizeDay(state: GameState): GameState {
   if (state.expeditionState.departed) return { ...state, lastMessage: '搜索队还没有回来。' };
   let next = state.dayState.assignmentsLocked ? state : lockDayAssignments(state);
   next = spendEnergyForJobs(next);
-  const watch = Object.values(next.dayAssignments).filter((job) => job === 'watch').length;
-  const repair = Object.values(next.dayAssignments).filter((job) => job === 'repair').length;
+  const watch = next.survivors.filter((survivor) => next.dayAssignments[survivor.id] === 'watch').reduce((sum, survivor) => sum + trustWorkFactor(survivor), 0);
+  const repair = next.survivors.filter((survivor) => next.dayAssignments[survivor.id] === 'repair').reduce((sum, survivor) => sum + trustWorkFactor(survivor), 0);
   next = { ...next, defense: clamp(next.defense + watch * 4 + repair * 2 + communityRepairSupport(next)) };
   next = evaluatePromiseProgress(next);
   next = resolveMedicalWork(next);
@@ -215,14 +219,18 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
   const stanceModifier = stance === 'careful' ? 1 : -1;
   const event = currentExpeditionEvent(state);
   const specialtyModifier = expeditionSpecialtyBonus(state, event);
-  const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier + specialtyModifier;
+  const partyTrustModifiers = state.expeditionState.activePartyIds.map((id) => {
+    const survivor = state.survivors.find((item) => item.id === id);
+    return survivor ? trustCheckModifier(survivor) : 0;
+  });
+  const trustModifier = partyTrustModifiers.some((value) => value < 0) ? Math.min(...partyTrustModifiers) : Math.max(0, ...partyTrustModifiers);
+  const total = dice[0] + dice[1] + riskModifier + mealModifier + stanceModifier + specialtyModifier + trustModifier;
   const twist = dice[0] === 6 && dice[1] === 6 ? 'double-six' : dice[0] === 1 && dice[1] === 1 ? 'double-one' : undefined;
   const outcome: CheckOutcome = twist === 'double-one' ? 'failure' : twist === 'double-six' ? 'critical' : total <= 6 ? 'failure' : total <= 9 ? 'partial' : total <= 11 ? 'success' : 'critical';
   let withStory = applyExpeditionStoryOutcome({ ...state, rngState }, event, outcome);
   if (stance === 'push' && (outcome === 'success' || outcome === 'critical')) withStory = addBonusLoot(withStory, 2);
   const next = resolveExpeditionOutcome(withStory, outcome, twist);
-  const specialtyText = specialtyModifier ? ' · 专长 +1' : '';
-  return { ...next, lastMessage: `${next.lastMessage} · 2D6 ${dice.join('+')} = ${total}${specialtyText}` };
+  return next;
 }
 
 export function retreatCurrentExpedition(state: GameState): GameState { return retreatExpedition(state); }
@@ -240,8 +248,8 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
   if (method === 'team') {
     const helpers = state.survivors.filter((s) => s.id !== survivorId && survivorAvailableForDay(s) && !state.dayState.committedSurvivorIds.includes(s.id))
       .sort((a, b) => b.energy - a.energy).slice(0, 2);
-    if (helpers.length < 2) return { ...state, lastMessage: '至少需要两名可行动的人去寻找失踪者。' };
-    modifier = state.buildings.searchStation + helpers.filter((s) => s.specialty === 'search' || s.specialty === 'watch').length;
+    if (helpers.length < 2) return { ...state, lastMessage: '现在凑不出两个人沿路去找。' };
+    modifier = state.buildings.searchStation + helpers.filter((s) => (s.specialty === 'search' || s.specialty === 'watch') && specialtyAvailable(s)).length;
     const helperIds = helpers.map((s) => s.id);
     next = {
       ...state,
@@ -249,7 +257,7 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
       dayState: { ...state.dayState, committedSurvivorIds: [...state.dayState.committedSurvivorIds, ...helperIds] },
     };
   } else {
-    if (state.buildings.radio <= 0 || state.inventory.power < 5) return { ...state, lastMessage: '广播搜救需要广播亭和 5 点电力。' };
+  if (state.buildings.radio <= 0 || state.inventory.power < 5) return { ...state, lastMessage: '广播间还不能用，或者电不够撑到回应。' };
     modifier = Math.max(0, state.buildings.radio - 1);
     next = { ...state, inventory: { ...state.inventory, power: state.inventory.power - 5 } };
   }
@@ -265,13 +273,13 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
   next = { ...next, rngState, storyFlags: flags };
   if (total >= 8) {
     const recovered = recoverMissing(next, survivorId, total >= 11 ? 'minor' : 'serious');
-    return { ...recovered, lastMessage: `${missing.name}被找回来了 · 搜救 2D6 ${dice.join('+')} +${modifier} = ${total}` };
+    return { ...recovered, lastMessage: `${missing.name}被找回来了。人还活着。` };
   }
 
   const previousFailures = next.storyFlags.filter((value) => value.startsWith(`missing_search_failed:${survivorId}:`)).length;
   next = { ...next, storyFlags: [...next.storyFlags, `missing_search_failed:${survivorId}:${state.day}`] };
   if (previousFailures >= 1) return recordDeath(next, survivorId, '失踪后搜救失败');
-  return { ...next, lastMessage: `没有找到${missing.name} · 搜救 2D6 ${dice.join('+')} +${modifier} = ${total}` };
+  return { ...next, lastMessage: `还是没有找到${missing.name}。能跟上的痕迹又少了一些。` };
 }
 
 export function finalHordeResultFor(state: GameState): FinalHordeResult {

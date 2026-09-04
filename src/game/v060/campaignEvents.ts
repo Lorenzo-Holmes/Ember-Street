@@ -21,7 +21,7 @@ export interface CampaignFixedEvent {
 }
 
 const BUILDING_EVENTS: CampaignFixedEvent[] = [
-  { id: 'building-search-station', kind: 'building', buildingId: 'searchStation', title: '把地图铺开', body: '搜索站终于能用了。几张捡来的街区图被钉在墙上，所有外出的人都会先在这里把自己走过的路画下来。', actionLabel: '把地图钉上墙' },
+  { id: 'building-search-station', kind: 'building', buildingId: 'searchStation', title: '把地图铺开', body: '路线屋的墙不再空着。几张捡来的街区图钉在一起，出去的人会先把自己走过的路画下来。', actionLabel: '把地图钉上墙' },
   { id: 'building-shelter', kind: 'building', buildingId: 'shelter', title: '今晚有屋檐', body: '宿营屋清出第一块能真正睡人的地方。炉子被挪到通风口边，街区第一次有了“回家”的样子。', actionLabel: '把铺盖搬进去' },
   { id: 'building-workshop', kind: 'building', buildingId: 'workshop', title: '坏掉的东西还能修', body: '最后一张工作台被扶正。扳手、钳子和拆下来的零件终于有了固定位置，防线不必再靠临时补丁撑着。', actionLabel: '把工具挂起来' },
   { id: 'building-clinic', kind: 'building', buildingId: 'clinic', title: '留一张干净的床', body: '诊疗角被隔出一块干净区域。灯还不算亮，但药品和绷带终于不用再堆在纸箱里。', actionLabel: '把药和绷带放好' },

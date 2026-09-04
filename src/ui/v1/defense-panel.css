@@ -1,0 +1,25 @@
+.notebook-page .v1-defense-panel {
+  margin: 14px 0;
+  padding: 13px 5px;
+  border-top: 1px solid rgba(55,46,33,.45);
+  border-bottom: 1px dashed rgba(55,46,33,.4);
+  color: #30291f;
+}
+.notebook-page .v1-defense-panel header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.notebook-page .v1-defense-panel header span { color: #6b3b30 !important; font-size: .82rem; }
+.notebook-page .v1-defense-panel h2 { margin: 2px 0 0; font-size: 1.3rem; }
+.notebook-page .v1-defense-panel__value { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 3px 5px; }
+.notebook-page .v1-defense-panel__value strong { font-family: var(--font-notebook-mark); font-size: 2rem; font-weight: 400; }
+.notebook-page .v1-defense-panel__value small { color: #443b2e !important; font-size: .9rem; }
+.notebook-page .v1-defense-panel__value em { flex-basis: 100%; font-size: .88rem; font-style: normal; text-align: right; }
+.notebook-page .v1-defense-panel.is-low .v1-defense-panel__value { color: #6b332d; }
+.notebook-page .v1-defense-panel p { margin: 9px 0 0; color: #3c3328 !important; font-size: .88rem; line-height: 1.65; }
+.notebook-page .v1-defense-panel__duty { display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.notebook-page .v1-defense-panel.is-low .v1-defense-panel__risk { color: #6b332d !important; }
+.notebook-page .v1-defense-panel summary { width: fit-content; padding: 10px 0 3px; color: #4e3b2d; font-size: .82rem; cursor: pointer; text-decoration: underline dashed; text-underline-offset: 4px; }
+.notebook-page .v1-defense-panel ul { margin: 8px 0 0; padding-left: 18px; }
+.notebook-page .v1-defense-panel li { margin: 5px 0; font-size: .86rem; line-height: 1.65; }
+.notebook-page .v1-defense-panel__ledger { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 20px; margin: 10px 0 0; }
+.notebook-page .v1-defense-panel__ledger > div { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 8px 0; border-bottom: 1px dashed rgba(55,46,33,.3); }
+.notebook-page .v1-defense-panel dt { font-size: .86rem; }
+.notebook-page .v1-defense-panel dd { margin: 0; font-size: 1.1rem; }

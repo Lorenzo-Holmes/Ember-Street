@@ -1,0 +1,3 @@
+.v1e-page {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}

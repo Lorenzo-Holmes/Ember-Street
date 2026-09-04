@@ -115,7 +115,7 @@ function residentLossNarrative(cause: string, loss: number): string {
   if (cause.includes('坍塌')) return `倒下来的墙没有给人反应时间。清理碎石时，街区确认失去了${countText}。`;
   if (cause.includes('北门')) return `北门缺口被堵住以后，地上留下了来不及带走的东西。${countText}没能退回来。`;
   if (cause.includes('尸群')) return `尸群退开后，清点人数少了${countText}。他们原本只是帮着搬障碍和递工具。`;
-  if (cause.includes('医疗')) return `诊疗站重新安静下来时，${countText}已经没有呼吸。有人替他们把毯子拉到了肩上。`;
+  if (cause.includes('医疗')) return `诊疗室重新安静下来时，${countText}已经没有呼吸。有人替他们把毯子拉到了肩上。`;
   return `${cause}之后，街区少了${countText}。他们不是一个数字，而是每天一起吃饭、搬东西、守门的人。`;
 }
 

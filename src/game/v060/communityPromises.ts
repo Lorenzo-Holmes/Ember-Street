@@ -48,7 +48,7 @@ function medicalRequest(state: GameState): CommunityRequest | null {
     kind: 'medical-care',
     title: '至少让人看看他的伤',
     body: `${target.name}的伤已经不是睡一晚就能熬过去的。大家没要求奇迹，只是不想明晚还看着同一块绷带继续往外渗。`,
-    promiseText: '最迟明天，让诊所真正腾出一个人处理伤员。',
+      promiseText: '最迟明天，让诊疗室真正腾出一个人处理伤员。',
     deadlineDays: 1,
     targetId: target.id,
   };
@@ -125,9 +125,9 @@ export function acceptCommunityRequest(state: GameState, requestId: string): Gam
   };
   return {
     ...state,
-    socialState: { ...social, activePromise: promise, lastRequestDay: state.day, lastOutcome: `这件事答应下来了：${request.promiseText}` },
+    socialState: { ...social, activePromise: promise, lastRequestDay: state.day, lastOutcome: `这句话已经写下：${request.promiseText}` },
     storyFlags: [...new Set([...state.storyFlags, `promise_accepted:${promise.id}`])],
-    lastMessage: `你把话说出口了：《${request.title}》——${request.promiseText}`,
+    lastMessage: `你答应了《${request.title}》：${request.promiseText}`,
   };
 }
 
@@ -140,9 +140,9 @@ export function declineCommunityRequest(state: GameState, requestId: string): Ga
   return {
     ...pressured,
     hope: clampHope(pressured.hope - 1),
-    socialState: { ...nextSocial, lastRequestDay: state.day, lastOutcome: `你没有答应《${request.title}》。散开的人比来时更安静。` },
+    socialState: { ...nextSocial, lastRequestDay: state.day, lastOutcome: `没有答应《${request.title}》。提出这件事的人随后离开。` },
     storyFlags: [...new Set([...pressured.storyFlags, `promise_refused:${request.kind}:${state.day}`])],
-    lastMessage: `这次你没有把话应下来。希望 -1 · 压力上升`,
+    lastMessage: `你没有答应《${request.title}》。`,
   };
 }
 
@@ -152,7 +152,7 @@ function fulfillActivePromise(state: GameState, detail: string): GameState {
   if (!promise) return state;
   const pressured = adjustPressure({ ...state, socialState: social }, -1, `promise-fulfilled-${promise.kind}`);
   const nextSocial = socialStateOf(pressured);
-  const entry = `✓ 《${promise.title}》没有白答应：${detail} · 希望 +2 · 压力下降`;
+  const entry = `✓ 《${promise.title}》做到了：${detail}`;
   return appendBrief({
     ...pressured,
     hope: clampHope(pressured.hope + 2),
@@ -173,7 +173,7 @@ function breakActivePromise(state: GameState): GameState {
   if (!promise) return state;
   const pressured = adjustPressure({ ...state, socialState: social }, 2, `promise-broken-${promise.kind}`);
   const nextSocial = socialStateOf(pressured);
-  const entry = `✕ 《${promise.title}》最后还是没做到。以后再答应什么，会有人先想起这一次。 · 希望 -3 · 压力明显上升`;
+  const entry = `✕ 《${promise.title}》没做到。街里的人都记得。`;
   return appendBrief({
     ...pressured,
     hope: clampHope(pressured.hope - 3),
@@ -191,13 +191,13 @@ function breakActivePromise(state: GameState): GameState {
 export function fulfillPromiseForMeal(state: GameState): GameState {
   const promise = socialStateOf(state).activePromise;
   if (!promise || promise.kind !== 'hot-meal' || !HOT_MEALS.has(state.mealState.quality)) return state;
-  return fulfillActivePromise(state, `DAY ${state.day}，饭馆的锅终于重新冒了热气`);
+    return fulfillActivePromise(state, `第 ${state.day} 天，饭馆端出了一顿热饭。`);
 }
 
 export function fulfillPromiseForSearch(state: GameState, survivorId: string): GameState {
   const promise = socialStateOf(state).activePromise;
   if (!promise || promise.kind !== 'search-missing' || promise.targetId !== survivorId) return state;
-  return fulfillActivePromise(state, '人真的出去找过了。有没有找到，是另一回事');
+    return fulfillActivePromise(state, '人已经出去找过。即使没把人带回来，也不算没有去找。');
 }
 
 export function fulfillPromiseForMedicalAssignment(state: GameState): GameState {
@@ -205,17 +205,17 @@ export function fulfillPromiseForMedicalAssignment(state: GameState): GameState 
   if (!promise || promise.kind !== 'medical-care') return state;
   const assigned = Object.values(state.dayAssignments).some((assignment) => assignment === 'medical');
   if (!assigned) return state;
-  return fulfillActivePromise(state, '今天诊所里一直有人守着伤员');
+    return fulfillActivePromise(state, '诊疗室今天一直有人守着伤员。');
 }
 
 export function evaluatePromiseProgress(state: GameState): GameState {
   const promise = socialStateOf(state).activePromise;
   if (!promise) return state;
   if (promise.kind === 'restore-defense' && state.defense >= (promise.targetValue ?? 60)) {
-    return fulfillActivePromise(state, `街口重新补到了 ${Math.round(state.defense)}，晚上终于有人敢把鞋脱了再睡`);
+    return fulfillActivePromise(state, `街口防线已恢复至 ${Math.round(state.defense)}。`);
   }
   if (promise.kind === 'shelter' && state.buildings.shelter >= (promise.targetValue ?? 2)) {
-    return fulfillActivePromise(state, '宿营屋和饭馆重新腾出了位置，夜里不用再轮着靠墙睡');
+    return fulfillActivePromise(state, '宿营屋和饭馆已经腾出足够位置。');
   }
   return state;
 }
@@ -231,11 +231,11 @@ export function activePromiseSummary(state: GameState): { title: string; detail:
   const promise = socialStateOf(state).activePromise;
   if (!promise) return null;
   const remainingDays = Math.max(0, promise.deadlineDay - state.day);
-  let detail = `最迟到 DAY ${promise.deadlineDay}，这句话得有个交代。`;
+  let detail = `最迟到第 ${promise.deadlineDay} 天，这句话得有个交代。`;
   if (promise.kind === 'hot-meal') detail = '至少让大家吃上一顿真正冒热气的饭。';
   if (promise.kind === 'search-missing') detail = '至少真的出去找一次。找不找得到，不拿结果来算食言。';
   if (promise.kind === 'restore-defense') detail = `把街口重新补到 ${promise.targetValue ?? 60}。`;
-  if (promise.kind === 'medical-care') detail = '至少让诊所真正腾出一个人照看伤员。';
+  if (promise.kind === 'medical-care') detail = '至少让诊疗室真正腾出一个人照看伤员。';
   if (promise.kind === 'shelter') detail = '把宿营屋和饭馆再收拾一层，让更多人能睡下、吃上。';
   return { title: promise.title, detail, remainingDays };
 }

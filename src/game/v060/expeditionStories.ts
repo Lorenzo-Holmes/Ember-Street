@@ -10,6 +10,7 @@ export interface ExpeditionLocation {
   danger: 1 | 2 | 3 | 4 | 5;
   primary: ExpeditionResource;
   secondary: ExpeditionResource;
+  tertiary?: ExpeditionResource;
   description: string;
   features: string[];
   signatureEventId: string;
@@ -44,13 +45,13 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
     localEventIds: ['convenience-cold-cases', 'convenience-backdoor-key'],
   },
   {
-    id: 'west-pharmacy', name: '西街药店', unlockDay: 2, danger: 2, primary: 'medicine', secondary: 'ration',
+    id: 'west-pharmacy', name: '西街药店', unlockDay: 2, danger: 2, primary: 'medicine', secondary: 'ration', tertiary: 'materials',
     description: '玻璃门碎了一半。橱窗早空了，但后面的地下室一直没人进去确认。',
     features: ['地下室没确认过', '可能还有药柜', '楼梯很窄'], signatureEventId: 'pharmacy-cold-storage',
     localEventIds: ['pharmacy-unlabeled-bottles', 'pharmacy-antibiotic-crate'],
   },
   {
-    id: 'apartment-402', name: '废弃居民楼', unlockDay: 4, danger: 2, primary: 'ration', secondary: 'materials',
+    id: 'apartment-402', name: '废弃居民楼', unlockDay: 4, danger: 2, primary: 'ration', secondary: 'materials', tertiary: 'parts',
     description: '四楼窗帘动过。楼道狭窄，房间很多，真出事时能退的路却不多。',
     features: ['四楼可能有人', '住户家里有余粮', '楼梯有裂缝'], signatureEventId: 'apartment-door-402',
     localEventIds: ['apartment-child-backpack', 'apartment-rooftop-light'],
@@ -68,7 +69,7 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
     localEventIds: ['school-last-lesson', 'school-radio-tape'],
   },
   {
-    id: 'subway', name: '地铁入口', unlockDay: 11, danger: 4, primary: 'parts', secondary: 'medicine',
+    id: 'subway', name: '地铁入口', unlockDay: 11, danger: 4, primary: 'parts', secondary: 'medicine', tertiary: 'materials',
     description: '入口被撬开一道缝。地下有风，说明深处可能还有出口；也说明进去以后会离地面很远。',
     features: ['隧道里有风', '可能通向别处', '黑暗里没有近退路'], signatureEventId: 'subway-wind',
     localEventIds: ['subway-platform-light', 'subway-maintenance-map'],
@@ -80,19 +81,19 @@ export const EXPEDITION_LOCATIONS: ExpeditionLocation[] = [
     localEventIds: ['gas-leaking-floor', 'gas-backup-generator'],
   },
   {
-    id: 'hospital', name: '医院', unlockDay: 17, danger: 5, primary: 'medicine', secondary: 'parts',
+    id: 'hospital', name: '医院', unlockDay: 17, danger: 5, primary: 'medicine', secondary: 'parts', tertiary: 'materials',
     description: '急诊楼还有一层备用灯。药柜不会少，走廊里的尸影也从来没真正散过。',
     features: ['急诊楼还有电', '药柜可能完整', '尸影很多'], signatureEventId: 'hospital-er-light',
     localEventIds: ['hospital-isolation-ward', 'hospital-blood-bank'],
   },
   {
-    id: 'bus-station', name: '公交总站', unlockDay: 21, danger: 4, primary: 'materials', secondary: 'ration',
+    id: 'bus-station', name: '公交总站', unlockDay: 21, danger: 4, primary: 'materials', secondary: 'ration', tertiary: 'parts',
     description: '废弃车辆把站场切成很多狭窄通道。南出口还被人重新做过路线标记。',
     features: ['南出口被圈过', '车里可能有人', '站场通道很乱'], signatureEventId: 'bus-last-timetable',
     localEventIds: ['bus-locked-coach', 'bus-driver-map'],
   },
   {
-    id: 'warehouse', name: '北仓库', unlockDay: 24, danger: 5, primary: 'materials', secondary: 'parts',
+    id: 'warehouse', name: '北仓库', unlockDay: 24, danger: 5, primary: 'materials', secondary: 'parts', tertiary: 'ration',
     description: '送货单上的坐标是真的。那里还有成排货架，也已经靠近尸群最近几天迁移的方向。',
     features: ['货架可能还是满的', '有工业电池', '靠近尸群迁移方向'], signatureEventId: 'warehouse-full-racks',
     localEventIds: ['warehouse-forklift-battery', 'warehouse-protection-crate'],
@@ -118,8 +119,8 @@ export const LOCATION_EXPEDITION_EVENTS: ExpeditionEvent[] = [
 
   // 药店
   { id: 'pharmacy-cold-storage', title: '地下室的冷藏柜', body: '地下室仍有密封药柜，但台阶上的血迹一直延伸到黑暗里。药就在下面，血迹也在下面。', riskBias: 1, tags: ['medicine', 'infection', 'signature'], locationIds: ['west-pharmacy'], firstVisitOnly: true, specialty: 'medical', successFlags: ['scouted:west-pharmacy'] },
-  { id: 'pharmacy-unlabeled-bottles', title: '没有标签的药瓶', body: '一箱散装药瓶被水泡掉了标签。懂药的人也许能分出来，不懂的人最好别把未知东西带回诊疗站。', riskBias: 0, tags: ['medicine', 'uncertain'], locationIds: ['west-pharmacy'], specialty: 'medical', bonusInventory: { medicine: 2 } },
-  { id: 'pharmacy-antibiotic-crate', title: '完整的抗生素箱', body: '一只密封运输箱卡在最里面的柜台后。诊疗站现在有冷藏和干燥位置，这批药终于能完整带回去。', riskBias: 1, tags: ['medicine', 'rare'], locationIds: ['west-pharmacy'], requiredBuilding: { id: 'clinic', level: 2 }, excludedFlags: ['antibiotic_stock'], specialty: 'medical', successFlags: ['antibiotic_stock'], bonusInventory: { medicine: 3 }, weight: 0.55 },
+  { id: 'pharmacy-unlabeled-bottles', title: '没有标签的药瓶', body: '一箱散装药瓶被水泡掉了标签。懂药的人也许能分出来，不懂的人最好别把未知东西带回诊疗室。', riskBias: 0, tags: ['medicine', 'uncertain'], locationIds: ['west-pharmacy'], specialty: 'medical', bonusInventory: { medicine: 2 } },
+  { id: 'pharmacy-antibiotic-crate', title: '完整的抗生素箱', body: '一只密封运输箱卡在最里面的柜台后。诊疗室现在有冷藏和干燥位置，这批药终于能完整带回去。', riskBias: 1, tags: ['medicine', 'rare'], locationIds: ['west-pharmacy'], requiredBuilding: { id: 'clinic', level: 2 }, excludedFlags: ['antibiotic_stock'], specialty: 'medical', successFlags: ['antibiotic_stock'], bonusInventory: { medicine: 3 }, weight: 0.55 },
 
   // 居民楼
   { id: 'apartment-door-402', title: '402 的门后', body: '有人在门后回应，楼梯却已经裂开。门后的人在催，屋里散落的食物也就在眼前。', riskBias: 1, tags: ['rescue', 'survivor', 'signature'], locationIds: ['apartment-402'], firstVisitOnly: true, specialty: 'search', rescueResidents: 1 },
@@ -149,7 +150,7 @@ export const LOCATION_EXPEDITION_EVENTS: ExpeditionEvent[] = [
   // 医院
   { id: 'hospital-er-light', title: '急诊楼还有灯', body: '备用电源居然还亮着一层楼。亮着的走廊后面是药房，也是一直没有散尽的尸影。', riskBias: 3, tags: ['medicine', 'horde', 'signature'], locationIds: ['hospital'], firstVisitOnly: true, specialty: 'medical', successFlags: ['hospital_route_observed'] },
   { id: 'hospital-isolation-ward', title: '隔离病房', body: '门后的药柜基本完整，病房里的东西却一直在撞门。药离手只有几米，撞门声也只有几米。', riskBias: 3, tags: ['medicine', 'infection', 'horde'], locationIds: ['hospital'], specialty: 'medical', bonusInventory: { medicine: 3 }, failureFlags: ['danger:hospital'] },
-  { id: 'hospital-blood-bank', title: '血库备用电源', body: '诊疗站现在有地方接这些设备，也有条件保存带回去的药。只要能把箱子搬过医院走廊，它们就不会白留在这里。', riskBias: 2, tags: ['medicine', 'rare'], locationIds: ['hospital'], requiredBuilding: { id: 'clinic', level: 2 }, excludedFlags: ['medical_cache'], specialty: 'medical', successFlags: ['medical_cache', 'scouted:hospital'], bonusInventory: { medicine: 4, power: 4 }, weight: 0.55 },
+  { id: 'hospital-blood-bank', title: '血库备用电源', body: '诊疗室现在有地方接这些设备，也有条件保存带回去的药。只要能把箱子搬过医院走廊，它们就不会白留在这里。', riskBias: 2, tags: ['medicine', 'rare'], locationIds: ['hospital'], requiredBuilding: { id: 'clinic', level: 2 }, excludedFlags: ['medical_cache'], specialty: 'medical', successFlags: ['medical_cache', 'scouted:hospital'], bonusInventory: { medicine: 4, power: 4 }, weight: 0.55 },
 
   // 公交总站
   { id: 'bus-last-timetable', title: '最后一张发车表', body: '墙上的发车表被人用笔重新标过。几条线路旁写着“封死”，南向路线却被圈了两次。', riskBias: 1, tags: ['route', 'signature'], locationIds: ['bus-station'], firstVisitOnly: true, specialty: 'radio', successFlags: ['evacuation_route_known'] },
@@ -202,7 +203,10 @@ export function genericEventsForLocation(state: GameState, locationId: string): 
 
 export function expeditionSpecialtyBonus(state: GameState, event: ExpeditionEvent | null | undefined): number {
   if (!event?.specialty) return 0;
-  return state.expeditionState.activePartyIds.some((id) => state.survivors.find((survivor) => survivor.id === id)?.specialty === event.specialty) ? 1 : 0;
+  return state.expeditionState.activePartyIds.some((id) => {
+    const survivor = state.survivors.find((item) => item.id === id);
+    return Boolean(survivor && survivor.specialty === event.specialty && (survivor.trust ?? 0) >= 0);
+  }) ? 1 : 0;
 }
 
 function clampInventory(value: number): number {

@@ -22,6 +22,12 @@ const CATEGORY_LABEL = {
   emergency: '突然响起来',
 } as const;
 
+function nightProgressLabel(index: number, total: number, horde: boolean): string {
+  if (horde) return index + 1 >= Math.max(1, total) ? '天快亮了，尸潮还没退' : '尸潮还在撞门';
+  const progress = (index + 1) / Math.max(1, total);
+  return progress <= 0.34 ? '入夜不久' : progress <= 0.67 ? '夜已经深了' : '天快亮了';
+}
+
 function commit(next: GameState, setState: (state: GameState) => void) {
   saveGame(next, true);
   setState(next);
@@ -37,23 +43,23 @@ function DicePanel({ state, setState }: { state: GameState; setState: (state: Ga
 
   return (
     <section className="v060-check" aria-label="夜间骰子判定">
-      <div className="v060-event__kicker">办法已经选了 · 剩下的交给运气</div>
+      <div className="v060-event__kicker">办法已经选了，接下来只能看结果</div>
       <h2>{check.label}</h2>
       <p className="v060-check__mode">
         {check.mode === 'advantage'
-          ? '优势 · 3D6 取高二'
+          ? '这次更有把握 · 掷三枚，留下最高两枚'
           : check.mode === 'disadvantage'
-            ? '劣势 · 3D6 取低二'
-            : '标准 · 2D6'}
+            ? '这次很难办 · 掷三枚，留下最低两枚'
+            : '只能试一次 · 掷两枚'}
       </p>
 
       {!check.dice ? (
         <div className="v060-dice-unrolled">
           <p className="v060-dice-warning">
-            办法已经选了。骰子落下以后，就当这件事真的发生过。
+            结果落下以后，不能再改。
           </p>
           <button className="v060-primary v060-btn-roll" onClick={roll}>
-            🎲 掷下去
+            试一次
           </button>
         </div>
       ) : (
@@ -83,11 +89,11 @@ function DicePanel({ state, setState }: { state: GameState; setState: (state: Ga
           <div className="v060-check__actions">
             {canTrustReroll(state) && (
               <button className="v060-secondary" onClick={reroll}>
-                信任 3 · 再给最低一颗一次机会
+                有人愿意替你再试一次
               </button>
             )}
             <button className="v060-primary" onClick={accept}>
-              就按这个结果继续
+              把结果记下
             </button>
           </div>
         </div>
@@ -105,7 +111,7 @@ function V060NightHeader({ state }: { state: GameState }) {
       </div>
       <div className="v060-night__header-center">
         <span className={state.nightState.hordeActive ? 'is-horde' : ''}>
-          {state.nightState.hordeActive ? '⚠ 尸潮正在靠近' : '余烬长街 · 入夜'}
+          {state.nightState.hordeActive ? '尸潮正在靠近' : '余烬长街 · 入夜'}
         </span>
         <small>
           {state.nightState.hordeActive
@@ -124,7 +130,7 @@ function V060NightHeader({ state }: { state: GameState }) {
 export default function V060NightScene({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
   if (!state.nightState.scheduledEventIds.length && state.phase === 'night') {
     return (
-      <main className="game-shell game-shell--night v6-shell v060-night">
+      <main className="game-shell game-shell--night v6-shell v060-night notebook-page notebook-page--night">
         <header className="v060-night__header">
           <div className="v060-night__header-day">
             <span>NIGHT</span>
@@ -137,10 +143,10 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
         </header>
         <section className="v060-night__opening">
           <span>DUSK · 街口已经封上</span>
-          <h1>今晚的人都在该在的地方了。</h1>
-          <p>再换人已经来不及。饭锅、门板、诊所和广播——白天留下什么，夜里就只能靠什么。</p>
+          <h1>最后一扇门已经关好。</h1>
+          <p>谁守街口、谁留在诊疗室、饭和电还剩多少，现在都不能再改。</p>
           <button className="v060-primary" onClick={() => commit(scheduleNight(state), setState)}>
-            🌑 熄掉多余的灯
+            关掉外面的灯
           </button>
         </section>
       </main>
@@ -149,7 +155,7 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
 
   if (state.pendingCheck) {
     return (
-      <main className="game-shell game-shell--night v6-shell v060-night">
+      <main className="game-shell game-shell--night v6-shell v060-night notebook-page notebook-page--night">
         <V060NightHeader state={state} />
         <DicePanel state={state} setState={setState} />
       </main>
@@ -158,20 +164,20 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
 
   if (state.phase === 'night-summary') {
     return (
-      <main className="game-shell game-shell--night v6-shell v060-night">
+      <main className="game-shell game-shell--night v6-shell v060-night notebook-page notebook-page--night notebook-page--night-summary">
         <V060NightHeader state={state} />
         <section className="v060-night__opening">
-          <span>DAWN · 外面安静下来了</span>
+          <span>天亮 · 外面安静下来了</span>
           <h1>天亮了。</h1>
           <p>
-            这一夜总共响过 {state.nightState.resolutions.length} 次动静。
+            这一夜留下的事都已经记下。
             {state.nightState.hordeActive
               ? '尸潮已经退去，留下的损失要到白天才能看清。'
               : '街道重新安静下来。'}
           </p>
           <button
             className="v060-primary"
-            onClick={() => commit({ ...state, phase: 'summary', lastMessage: `DAY ${state.day} · 天亮了` }, setState)}
+            onClick={() => commit({ ...state, phase: 'summary', lastMessage: `第 ${state.day} 天 · 天亮了` }, setState)}
           >
             去看看天亮以后
           </button>
@@ -183,7 +189,7 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
   const event = currentNightEvent(state);
   if (!event) {
     return (
-      <main className="game-shell game-shell--night v6-shell v060-night">
+      <main className="game-shell game-shell--night v6-shell v060-night notebook-page notebook-page--night">
         <V060NightHeader state={state} />
         <section className="v060-night__opening">
           <h1>今晚暂时没有新的声音。</h1>
@@ -196,7 +202,7 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
   const mainResolved = state.nightState.scheduledEventIds.filter((id) => state.nightState.resolutions.includes(id)).length;
 
   return (
-    <main className={`game-shell game-shell--night v6-shell v060-night${isEmergency ? ' v060-night--emergency' : ''}`}>
+    <main className={`game-shell game-shell--night v6-shell v060-night notebook-page notebook-page--night${isEmergency ? ' v060-night--emergency' : ''}`}>
       <V060NightHeader state={state} />
 
       <section className="v060-night__resources" aria-label="夜间剩余物资">
@@ -211,7 +217,7 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
 
       <section className={`v060-event v060-event--${event.category}`}>
         <div className="v060-event__kicker">
-          夜里传来的 · {CATEGORY_LABEL[event.category]}{isEmergency ? ' · 现在就得管' : ''}
+          夜里发生的 · {CATEGORY_LABEL[event.category]}{isEmergency ? ' · 现在就得管' : ''}
         </div>
         <h1>{event.title}</h1>
         <p>{event.body}</p>
@@ -239,9 +245,9 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
                   </div>
                   <small className="v060-preview-summary">{preview.summary}</small>
                   <small className="v060-choice-cost">
-                    {choice.check ? `🎲 ${choice.check.label}` : cost || '不用再拿东西'}
+                    {choice.check ? `要靠${choice.check.label}` : cost || '不用再拿东西'}
                     {cost && choice.check ? ` · ${cost}` : ''}
-                    {!affordable ? ' · 东西不够' : ''}
+                    {!affordable ? ' · 手里不够' : ''}
                   </small>
                 </div>
               </button>
@@ -254,8 +260,8 @@ export default function V060NightScene({ state, setState }: { state: GameState; 
         <div>
           <strong>
             {isEmergency
-              ? '⚠ 突然的动静'
-              : `第 ${Math.min(mainResolved + 1, state.nightState.eventTotal)} 件 / 今晚 ${state.nightState.eventTotal} 件`}
+              ? '突然的动静'
+              : nightProgressLabel(mainResolved, state.nightState.eventTotal, state.nightState.hordeActive)}
           </strong>
           <span>{state.nightState.hordeActive ? '尸潮还在往街口压' : '远处偶尔还有影子从路口经过'}</span>
         </div>

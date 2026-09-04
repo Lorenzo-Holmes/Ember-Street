@@ -1,9 +1,10 @@
 import { createDefaultCampaignStats, createDefaultDayState, createDefaultExpeditionState, createDefaultMealState, createDefaultNightState, normalizeSurvivor } from '../foundation';
-import { forecastFor } from '../progression';
+import { SURVIVOR_ROSTER, forecastFor } from '../progression';
 import { normalizeSeed } from '../rng';
-import type { Buildings, DayAssignment, GameState, Survivor } from '../types';
+import type { Buildings, DayAssignment, ExpeditionPlan, GameState, Survivor } from '../types';
 import { normalizeCommunityState } from '../v060/community';
 import { normalizeSocialState } from '../v060/socialPressure';
+import { normalizeDefenseNight } from '../v060/defenseFeedback';
 
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {};
 const num = (value: unknown, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -18,11 +19,12 @@ function legacySurvivors(value: unknown): Survivor[] {
     const injury = String(item.injury ?? 'healthy');
     const condition = item.condition ?? (injury === 'serious' ? 'serious' : injury === 'minor' ? 'minor' : num(item.energy, 70) < 40 ? 'fatigued' : 'healthy');
     const specialty = String(item.specialty ?? 'rest') as Survivor['specialty'];
+    const canonical = SURVIVOR_ROSTER.find((survivor) => survivor.id === String(item.id));
     return [normalizeSurvivor({
       id: String(item.id), name: String(item.name), specialty,
       energy: clamp(num(item.energy, 70)), mood: (item.mood === 'low' || item.mood === 'bright') ? item.mood : 'steady',
-      perk: String(item.perk ?? item.trait ?? '活下去'), trait: String(item.trait ?? item.perk ?? '活下去'),
-      trust: clamp(num(item.trust, 0), 0, 3) as 0 | 1 | 2 | 3,
+      perk: String(item.perk ?? item.trait ?? '活下去'), trait: canonical?.trait ?? String(item.trait ?? item.perk ?? '活下去'),
+      trust: clamp(num(item.trust, 0), -3, 3) as Survivor['trust'],
       condition: condition as Survivor['condition'],
     })];
   });
@@ -37,6 +39,25 @@ function legacyAssignments(value: unknown): Record<string, DayAssignment> {
     if (['expedition', 'repair', 'medical', 'watch', 'radio', 'cook', 'rest'].includes(job)) output[id] = job as DayAssignment;
   }
   return output;
+}
+
+function legacyExpeditionRoutes(value: unknown): Record<string, string> {
+  const source = asRecord(value);
+  return Object.fromEntries(Object.entries(source).flatMap(([survivorId, locationId]) => {
+    const route = String(locationId ?? '').trim();
+    return route ? [[survivorId, route]] : [];
+  }));
+}
+
+function legacyExpeditionQueue(value: unknown): ExpeditionPlan[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw, index) => {
+    const item = asRecord(raw);
+    const locationId = String(item.locationId ?? '').trim();
+    const partyIds = Array.isArray(item.partyIds) ? item.partyIds.map(String).filter(Boolean) : [];
+    if (!locationId || !partyIds.length) return [];
+    return [{ id: String(item.id ?? `route-${index}-${locationId}`), locationId, partyIds }];
+  });
 }
 
 function legacyBuildings(value: unknown, searchStationRepaired: unknown): Buildings {
@@ -108,10 +129,18 @@ export function promoteV2ToV3(input: unknown): GameState | null {
     communityState: normalizeCommunityState(legacy.communityState, civilianResidents),
     socialState: normalizeSocialState(legacy.socialState),
     dayAssignments: version === 3 ? legacyAssignments(legacy.dayAssignments) : legacyAssignments(legacy.assignments),
-    dayState: { ...createDefaultDayState(), ...asRecord(legacy.dayState), committedSurvivorIds: Array.isArray(asRecord(legacy.dayState).committedSurvivorIds) ? (asRecord(legacy.dayState).committedSurvivorIds as unknown[]).map(String) : [] },
+    dayState: {
+      ...createDefaultDayState(),
+      ...asRecord(legacy.dayState),
+      committedSurvivorIds: Array.isArray(asRecord(legacy.dayState).committedSurvivorIds) ? (asRecord(legacy.dayState).committedSurvivorIds as unknown[]).map(String) : [],
+      expeditionRoutes: legacyExpeditionRoutes(asRecord(legacy.dayState).expeditionRoutes),
+      expeditionQueue: legacyExpeditionQueue(asRecord(legacy.dayState).expeditionQueue),
+    },
     expeditionState: { ...createDefaultExpeditionState(), ...asRecord(legacy.expeditionState) } as GameState['expeditionState'],
     mealState: { ...createDefaultMealState(), ...asRecord(legacy.mealState) } as GameState['mealState'],
     nightState: { ...createDefaultNightState(), ...asRecord(legacy.nightState) } as GameState['nightState'],
+    dawnBrief: Array.isArray(legacy.dawnBrief) ? legacy.dawnBrief.filter((entry): entry is string => typeof entry === 'string') : [],
+    defenseNight: normalizeDefenseNight(legacy.defenseNight, day),
     campaignStats,
     memorials: Array.isArray(legacy.memorials) ? legacy.memorials as GameState['memorials'] : [],
     finalHordeResult: legacy.finalHordeResult as GameState['finalHordeResult'],

@@ -41,7 +41,7 @@ function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEven
   const criticalDiscount = expeditionCache || triageFirst;
   const medicineCost = critical ? (criticalDiscount ? 1 : 2) : 1;
   const supportText = expeditionCache
-    ? '之前从医院和药店搬回来的药还封在诊疗站最里面。'
+      ? '之前从医院和药店搬回来的药还封在诊疗室最里面。'
     : triageFirst
       ? '之前已经说清楚过：药不够时，先留给最危险的人。'
       : '药柜里没有能额外顶上来的储备。';

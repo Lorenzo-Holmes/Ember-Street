@@ -162,6 +162,7 @@ function chooseLocation(state: GameState, policy: AuditV2Policy): string | null 
     const firstVisit = visited.has(location.id) ? 0 : 2.5;
     const score = resourceNeed(state, location.primary) * 2.2
       + resourceNeed(state, location.secondary)
+      + (location.tertiary ? resourceNeed(state, location.tertiary) * 0.55 : 0)
       + firstVisit
       + locationStrategicBonus(state, policy, location.id)
       - location.danger * riskCost;

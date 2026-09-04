@@ -53,10 +53,10 @@ export function pressureBand(state: Pick<GameState, 'socialState'>): PressureBan
 
 export function pressureLabel(state: Pick<GameState, 'socialState'>): string {
   return {
-    calm: '平静',
+    calm: '稳定',
     tense: '紧张',
     'near-breaking': '濒临失控',
-    breaking: '失控',
+    breaking: '已经失控',
   }[pressureBand(state)];
 }
 

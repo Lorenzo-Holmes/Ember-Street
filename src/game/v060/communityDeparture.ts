@@ -167,8 +167,8 @@ export function resolveCommunityDeparture(state: GameState, resolution: Communit
       hope: clampHope(state.hope + 1),
       storyFlags: flags,
     }, -1, 'community-departure-reassured');
-    const entry = `DAY ${state.day} · ${pending.count} 名街区居民暂时留下 · 口粮 -${pending.rationCost} · 希望 +1`;
-    return appendBrief({ ...reassured, lastMessage: `${entry}。他们把已经收好的东西重新放回了铺位旁。` }, entry);
+    const entry = `第 ${state.day} 天：${pending.count} 名街区居民暂时留下。支出 ${pending.rationCost} 份口粮。`;
+    return appendBrief({ ...reassured, lastMessage: entry }, entry);
   }
 
   const reduced = removeResidents(state, pending.count);
@@ -186,6 +186,6 @@ export function resolveCommunityDeparture(state: GameState, resolution: Communit
     },
     storyFlags: flags,
   }, 1, 'community-departure');
-  const entry = `DAY ${state.day} · ${pending.count} 名街区居民离开 · 希望 -1`;
-  return appendBrief({ ...departed, lastMessage: `${entry}。他们没有死，也没有失踪，只是不再相信留在这里更安全。` }, entry);
+  const entry = `第 ${state.day} 天：${pending.count} 名街区居民离开。街区可用人手减少。`;
+  return appendBrief({ ...departed, lastMessage: entry }, entry);
 }

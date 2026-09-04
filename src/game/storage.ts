@@ -15,16 +15,17 @@ function announceSaveChange(): void {
   window.dispatchEvent(new Event(GAME_SAVE_EVENT));
 }
 
-export function saveGame(state: GameState, force = false): void {
-  if (typeof localStorage === 'undefined') return;
+export function saveGame(state: GameState, force = false): boolean {
+  if (typeof localStorage === 'undefined') return false;
   try {
     const now = Date.now();
-    if (!force && now - lastWriteAt < 2_000) return;
+    if (!force && now - lastWriteAt < 2_000) return false;
     localStorage.setItem(KEY_V3, JSON.stringify(state));
     localStorage.setItem(ACTIVE_KEY, String(now));
     lastWriteAt = now;
     announceSaveChange();
-  } catch { /* localStorage is optional */ }
+    return true;
+  } catch { return false; }
 }
 
 export function applyOfflineProgress(state: GameState, elapsedMs: number): GameState {
@@ -44,7 +45,7 @@ export function applyOfflineProgress(state: GameState, elapsedMs: number): GameS
     ...state,
     inventory: { ...state.inventory, materials: state.inventory.materials + gainedMaterials },
     survivors,
-    lastMessage: `你不在时，街区只做了轻量后勤：材料 +${gainedMaterials}。探索、事件和尸潮不会离线推进。`,
+      lastMessage: `你离开的这段时间，留在街里的人捡回了 ${gainedMaterials} 份材料。没人擅自出街，夜里的事也没有往前算。`,
   };
 }
 
@@ -84,4 +85,30 @@ export function clearSave(): void {
     localStorage.removeItem(ACTIVE_KEY);
     announceSaveChange();
   } catch { /* no-op */ }
+}
+
+export type SaveInspection =
+  | { kind: 'saved'; state: GameState }
+  | { kind: 'empty' | 'unreadable' | 'unavailable' };
+
+/** Title-screen inspection must never write, migrate on disk, or grant offline gains. */
+export function inspectGameSave(): SaveInspection {
+  try {
+    if (typeof localStorage === 'undefined') return { kind: 'unavailable' };
+    let found = false;
+    for (const key of [KEY_V3, KEY_V2, KEY_V1]) {
+      const raw = localStorage.getItem(key);
+      if (raw === null) continue;
+      found = true;
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+        const state = key === KEY_V1
+          ? promoteV2ToV3({ ...parsed, version: 2 })
+          : readAndMigrate(raw);
+        if (state) return { kind: 'saved', state };
+      } catch { /* Keep looking for a readable older save, without changing it. */ }
+    }
+    return { kind: found ? 'unreadable' : 'empty' };
+  } catch { return { kind: 'unavailable' }; }
 }

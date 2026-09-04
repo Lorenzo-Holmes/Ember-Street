@@ -2,12 +2,12 @@ import { CHAPTER_FINAL_DAY } from './config';
 import type { DayForecast, Survivor } from './types';
 
 export const SURVIVOR_ROSTER: Survivor[] = [
-  { id: 'lin-xia', name: '林夏', specialty: 'search', energy: 88, mood: 'bright', perk: '先看退路', trait: '先看退路', trust: 1, condition: 'healthy' },
-  { id: 'zhou', name: '老周', specialty: 'repair', energy: 82, mood: 'steady', perk: '修不好不睡', trait: '修不好不睡', trust: 1, condition: 'healthy' },
-  { id: 'ahe', name: '阿禾', specialty: 'cook', energy: 92, mood: 'bright', perk: '热饭很重要', trait: '热饭很重要', trust: 1, condition: 'healthy' },
-  { id: 'cheng', name: '程医生', specialty: 'medical', energy: 78, mood: 'steady', perk: '先救能救的', trait: '先救能救的', trust: 1, condition: 'healthy' },
-  { id: 'aliang', name: '阿梁', specialty: 'watch', energy: 86, mood: 'steady', perk: '听声辨位', trait: '听声辨位', trust: 1, condition: 'healthy' },
-  { id: 'xiaoman', name: '小满', specialty: 'radio', energy: 90, mood: 'bright', perk: '别让声音断掉', trait: '别让声音断掉', trust: 1, condition: 'healthy' },
+  { id: 'lin-xia', name: '林夏', specialty: 'search', energy: 88, mood: 'bright', perk: '先看退路', trait: '每到一处，总先记住能退回来的门', trust: 1, condition: 'healthy' },
+  { id: 'zhou', name: '老周', specialty: 'repair', energy: 82, mood: 'steady', perk: '修不好不睡', trait: '夜里听见线路异响，也会披衣起身', trust: 1, condition: 'healthy' },
+  { id: 'ahe', name: '阿禾', specialty: 'cook', energy: 92, mood: 'bright', perk: '热饭很重要', trait: '盛饭前，总要先数清屋里有几个人', trust: 1, condition: 'healthy' },
+  { id: 'cheng', name: '程医生', specialty: 'medical', energy: 78, mood: 'steady', perk: '先救能救的', trait: '袖口总沾着洗不净的药水味', trust: 1, condition: 'healthy' },
+  { id: 'aliang', name: '阿梁', specialty: 'watch', energy: 86, mood: 'steady', perk: '听声辨位', trait: '说话很轻，耳朵却总朝着街口', trust: 1, condition: 'healthy' },
+  { id: 'xiaoman', name: '小满', specialty: 'radio', energy: 90, mood: 'bright', perk: '别让声音断掉', trait: '守着电台时，会把每个呼号抄两遍', trust: 1, condition: 'healthy' },
 ];
 
 const FIXED: Record<number, DayForecast> = {

@@ -12,39 +12,41 @@ export interface BuildingLevelDefinition {
 export interface BuildingDefinition {
   id: BuildingId;
   name: string;
+  inactiveTitle: string;
+  inactiveDescription: string;
   levels: [BuildingLevelDefinition, BuildingLevelDefinition, BuildingLevelDefinition];
 }
 
 export const V060_BUILDINGS: Record<BuildingId, BuildingDefinition> = {
-  searchStation: { id: 'searchStation', name: '搜索站', levels: [
-    { level: 1, materials: 4, parts: 1, title: '路线桌', unlock: '墙上终于挂起一张能看的地图，外出的人不用再只靠猜。' },
-    { level: 2, materials: 7, parts: 3, title: '路线室', unlock: '几条能走的路被重新标了出来，回来的人会把哪里有什么写在墙上。' },
-    { level: 3, materials: 10, parts: 5, title: '情报墙', unlock: '走过的地方被一遍遍补记，两个人出去时也更容易互相照应。' },
+  searchStation: { id: 'searchStation', name: '路线屋', inactiveTitle: '地图全没了', inactiveDescription: '墙上空着。出去的人只能凭记忆认路。', levels: [
+    { level: 1, materials: 4, parts: 1, title: '先铺一张地图', unlock: '地图钉上墙了。走过的路先标出来，免得再有人绕远。' },
+    { level: 2, materials: 7, parts: 3, title: '路线已经记清', unlock: '能走的几条路都留下了记号。回来的人会把新情况补上。' },
+    { level: 3, materials: 10, parts: 5, title: '整面墙都记满了', unlock: '远近几条路已经分开标清。几队人同时出去，也不容易走乱。' },
   ] },
-  workshop: { id: 'workshop', name: '修理工坊', levels: [
-    { level: 1, materials: 5, parts: 2, title: '修理角', unlock: '修车铺的工具重新归了位，门板和铁皮终于有人能认真修。' },
-    { level: 2, materials: 8, parts: 4, title: '完整工坊', unlock: '焊机和旧电瓶重新能用，夜里坏东西时不再只能拿现成物资硬顶。' },
-    { level: 3, materials: 12, parts: 6, title: '街区工坊', unlock: '常用工具都挂在伸手能拿到的地方，突发损坏时能更快处理。' },
+  workshop: { id: 'workshop', name: '修车铺', inactiveTitle: '工作台塌了', inactiveDescription: '工具散在地上，线路也断着。门板和铁皮坏了只能先顶住。', levels: [
+    { level: 1, materials: 5, parts: 2, title: '先把工具归拢', unlock: '扳手、锤子和钳子能找齐了。小处损坏可以当晚补上。' },
+    { level: 2, materials: 8, parts: 4, title: '电重新接上了', unlock: '焊机和旧电瓶能用了。围栏和发电机坏了，不必再拆别处来补。' },
+    { level: 3, materials: 12, parts: 6, title: '常用工具都齐了', unlock: '材料和工具都放在顺手的位置。夜里出问题，能更快修好。' },
   ] },
-  clinic: { id: 'clinic', name: '诊疗站', levels: [
-    { level: 1, materials: 4, parts: 2, title: '诊疗角', unlock: '诊疗床重新铺好，轻伤终于不用只靠自己熬。' },
-    { level: 2, materials: 7, parts: 4, title: '诊疗站', unlock: '水、照明和基础器械都能用了，重伤的人也有地方躺下。' },
-    { level: 3, materials: 10, parts: 6, title: '急救间', unlock: '第二张床也收拾出来了，一天能照看更多伤员。' },
+  clinic: { id: 'clinic', name: '诊疗室', inactiveTitle: '伤员没地方躺', inactiveDescription: '床架散了，灯也不亮。今晚还不能把伤员安置在这里。', levels: [
+    { level: 1, materials: 4, parts: 2, title: '先铺好一张床', unlock: '床铺和药箱已经清出来。轻伤的人终于能及时处理。' },
+    { level: 2, materials: 7, parts: 4, title: '水和灯都接上了', unlock: '照明、清水和器械能用了。重伤的人也能留在这里照看。' },
+    { level: 3, materials: 10, parts: 6, title: '第二张床也能用了', unlock: '两张床都已经安好。一天能多照看几个伤员。' },
   ] },
-  watchPost: { id: 'watchPost', name: '守夜岗', levels: [
-    { level: 1, materials: 5, parts: 1, title: '门卫室', unlock: '旧门卫室重新有人坐着。街口有动静时，总算能早一点看见。' },
-    { level: 2, materials: 8, parts: 3, title: '守夜岗', unlock: '屋顶加了一层观察架，守夜的人能看见更远的路口。' },
-    { level: 3, materials: 11, parts: 5, title: '高处哨位', unlock: '警铃、灯和观察位都固定下来，夜里出事时不再全靠一声喊。' },
+  watchPost: { id: 'watchPost', name: '街口岗', inactiveTitle: '看不清路口', inactiveDescription: '窗户碎了，屋顶的观察位也塌着。夜里有人靠近，很难提前发现。', levels: [
+    { level: 1, materials: 5, parts: 1, title: '门卫室能守人了', unlock: '窗框先封住了。街口有动静，总算能早一点看见。' },
+    { level: 2, materials: 8, parts: 3, title: '屋顶能上人了', unlock: '观察架重新搭好。守夜的人能看清更远的路口。' },
+    { level: 3, materials: 11, parts: 5, title: '警铃也接好了', unlock: '灯、警铃和观察位都固定下来。真有东西靠近，不必只靠人喊。' },
   ] },
-  shelter: { id: 'shelter', name: '宿营屋', levels: [
-    { level: 1, materials: 4, parts: 0, title: '能住人的屋子', unlock: '漏风的窗先堵上了。至少晚上有地方真正躺下来。' },
-    { level: 2, materials: 7, parts: 2, title: '公共厨房', unlock: '小饭馆重新归了灶台和桌子，一锅饭能更稳地顾到更多人。' },
-    { level: 3, materials: 10, parts: 4, title: '居民后勤间', unlock: '储物、做饭和轮值都有人接手，熟手终于能从杂事里腾出一点时间。' },
+  shelter: { id: 'shelter', name: '宿营屋', inactiveTitle: '今晚还住不了人', inactiveDescription: '窗户漏风，地面返潮。人只能继续挤在别处。', levels: [
+    { level: 1, materials: 4, parts: 0, title: '先腾出睡觉的地方', unlock: '漏风的窗堵上了。今晚终于有人能真正躺下。' },
+    { level: 2, materials: 7, parts: 2, title: '灶台重新点起来', unlock: '饭馆的灶和桌子能用了。一锅饭能顾到更多人。' },
+    { level: 3, materials: 10, parts: 4, title: '住处有了轮值', unlock: '储物、做饭和夜间轮值都有人接手。熟手能腾出时间做别的事。' },
   ] },
-  radio: { id: 'radio', name: '广播亭', levels: [
-    { level: 1, materials: 4, parts: 3, title: '收音台', unlock: '收音机、车载电台和电瓶接到了一起，噪音里偶尔能听见完整的人声。' },
-    { level: 2, materials: 7, parts: 5, title: '广播亭', unlock: '天线终于能把声音送出去。城里如果还有人在听，他们可能会回答。' },
-    { level: 3, materials: 9, parts: 7, title: '远距电台', unlock: '更远的频段开始有回应。有人说自己来自临时救援队，也有人只报了一个坐标。' },
+  radio: { id: 'radio', name: '广播间', inactiveTitle: '一点声音也收不到', inactiveDescription: '电台没有电，天线的线缆也断了。外面的声音进不来。', levels: [
+    { level: 1, materials: 4, parts: 3, title: '杂音里有了人声', unlock: '收音机、车载电台和电瓶接到一起。偶尔能听清几句话。' },
+    { level: 2, materials: 7, parts: 5, title: '声音能送出去了', unlock: '天线已经接稳。城里还有人在听的话，可能会回话。' },
+    { level: 3, materials: 9, parts: 7, title: '更远的频段也通了', unlock: '远处开始有回应。有人报了队伍的名字，也有人只留下坐标。' },
   ] },
 };
 
@@ -59,9 +61,11 @@ export function nextBuildingLevel(state: GameState, id: BuildingId): BuildingLev
 
 export function canUpgradeBuilding(state: GameState, id: BuildingId): { allowed: boolean; reason?: string; next?: BuildingLevelDefinition } {
   const next = nextBuildingLevel(state, id);
-  if (!next) return { allowed: false, reason: '这里已经没有更多能收拾的了' };
-  if (state.inventory.materials < next.materials) return { allowed: false, reason: `还差材料 · 需要 ${next.materials}` };
-  if (state.inventory.parts < next.parts) return { allowed: false, reason: `还差零件 · 需要 ${next.parts}` };
+  if (!next) return { allowed: false, reason: '这处已经修好了' };
+  const missingMaterials = Math.max(0, next.materials - state.inventory.materials);
+  const missingParts = Math.max(0, next.parts - state.inventory.parts);
+  const shortages = [missingMaterials > 0 ? `材料 ${missingMaterials}` : '', missingParts > 0 ? `零件 ${missingParts}` : ''].filter(Boolean);
+  if (shortages.length) return { allowed: false, reason: `尚缺：${shortages.join(' · ')}` };
   return { allowed: true, next };
 }
 
@@ -83,9 +87,7 @@ export function upgradeBuilding(state: GameState, id: BuildingId): GameState {
     storyFlags,
     mainLightStage,
     hope: Math.min(100, state.hope + (next.level === 1 ? 2 : 1)),
-    lastMessage: next.level === 1
-      ? `${V060_BUILDINGS[id].name}重新收拾出来了。今晚开始，这里终于能派上用场。`
-      : `${V060_BUILDINGS[id].name}又往前收拾了一步。${next.unlock}`,
+    lastMessage: `${V060_BUILDINGS[id].name}：${next.title}。${next.unlock}`,
   };
   return evaluatePromiseProgress(upgraded);
 }

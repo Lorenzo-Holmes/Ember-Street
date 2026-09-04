@@ -44,7 +44,7 @@ export function createPendingCheck(
     modifiers,
     rerolled: false,
   };
-  return { ...state, pendingCheck: pending, lastMessage: `${input.label} · 等待投骰` };
+  return { ...state, pendingCheck: pending, lastMessage: `${input.label} · 得有人现在去做` };
 }
 
 export function rollPendingCheck(state: GameState): GameState {
@@ -66,7 +66,7 @@ export function rollPendingCheck(state: GameState): GameState {
     ...state,
     rngState,
     pendingCheck: { ...pending, dice, keptDice, total, outcome: outcomeFor(total, twist), twist },
-    lastMessage: `判定结果 ${total}`,
+    lastMessage: `掷出了 ${total}`,
   };
 }
 
@@ -93,13 +93,13 @@ export function rerollLowestDie(state: GameState): GameState {
     ...state,
     rngState,
     pendingCheck: { ...pending, dice, keptDice, total, outcome: outcomeFor(total, twist), twist, rerolled: true },
-    lastMessage: `${state.survivors.find((item) => item.id === pending.actorId)?.name ?? '幸存者'}选择再试一次`,
+    lastMessage: `${state.survivors.find((item) => item.id === pending.actorId)?.name ?? '幸存者'}把最低的那枚重新掷了一次`,
   };
 }
 
 export const OUTCOME_LABEL: Record<CheckOutcome, string> = {
-  failure: '失败 · 代价落下来了',
-  partial: '部分成功 · 做到了，但是……',
-  success: '完全成功',
-  critical: '极佳结果 · 命运站在你这边',
+  failure: '没能办成 · 代价已经落下',
+  partial: '勉强办成 · 付出了代价',
+  success: '事情办成了',
+  critical: '比预想的更好',
 };

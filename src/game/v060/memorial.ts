@@ -1,6 +1,7 @@
 import type { GameState } from '../types';
 import { shockLivingCore } from './characterPsychology';
 import { adjustPressure } from './socialPressure';
+import { recoverTrustFromCare } from './trust';
 
 const EPITAPH: Record<string, string> = {
   'lin-xia': '“先看好退路，再往前走。”',
@@ -25,7 +26,7 @@ export function markMissing(state: GameState, survivorId: string, cause: string)
 export function recoverMissing(state: GameState, survivorId: string, condition: 'minor' | 'serious' = 'serious'): GameState {
   const survivor = state.survivors.find((item) => item.id === survivorId);
   if (!survivor || survivor.condition !== 'missing') return state;
-  return {
+  const recovered: GameState = {
     ...state,
     survivors: state.survivors.map((item) => item.id === survivorId ? { ...item, condition, energy: Math.min(item.energy, 35) } : item),
     campaignStats: { ...state.campaignStats, missing: Math.max(0, state.campaignStats.missing - 1) },
@@ -33,6 +34,7 @@ export function recoverMissing(state: GameState, survivorId: string, condition: 
     hope: Math.min(100, state.hope + 2),
     lastMessage: `${survivor.name}被找回来了。人很虚弱，但还活着。`,
   };
+  return recoverTrustFromCare(recovered, survivorId, 'rescue');
 }
 
 export function recordDeath(state: GameState, survivorId: string, cause: string): GameState {

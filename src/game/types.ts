@@ -59,7 +59,7 @@ export interface Survivor {
   mood: 'low' | 'steady' | 'bright';
   perk: string;
   trait?: string;
-  trust?: 0 | 1 | 2 | 3;
+  trust?: -3 | -2 | -1 | 0 | 1 | 2 | 3;
   condition?: SurvivorCondition;
   untreatedDays?: number;
   mentalState?: SurvivorMentalState;
@@ -118,11 +118,19 @@ export interface MealState {
   wellFedPlus: boolean;
 }
 
+export interface ExpeditionPlan {
+  id: string;
+  locationId: string;
+  partyIds: string[];
+}
+
 export interface DayState {
   assignmentsLocked: boolean;
   returnedExpeditions: number;
   unresolvedExpeditions: string[];
   committedSurvivorIds: string[];
+  expeditionRoutes?: Record<string, string>;
+  expeditionQueue?: ExpeditionPlan[];
 }
 
 export interface ExpeditionState {
@@ -141,6 +149,15 @@ export interface NightState {
   hordeActive: boolean;
   hordeStage: 'approach' | 'impact' | 'retreat' | 'breach' | null;
   resolutions: string[];
+}
+
+export interface DefenseNightRecord {
+  day: number;
+  start: number;
+  end: number;
+  reinforced: number;
+  damaged: number;
+  complete: boolean;
 }
 
 export interface CampaignStats {
@@ -190,6 +207,7 @@ export interface GameState {
   campaignStats: CampaignStats;
   memorials: MemorialEntry[];
   dawnBrief?: string[];
+  defenseNight?: DefenseNightRecord;
   finalHordeResult?: FinalHordeResult;
   ending?: EndingResult | null;
   hope: number;

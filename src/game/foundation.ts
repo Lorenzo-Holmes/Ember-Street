@@ -28,7 +28,14 @@ export function createDefaultMealState(): MealState {
 }
 
 export function createDefaultDayState(): DayState {
-  return { assignmentsLocked: false, returnedExpeditions: 0, unresolvedExpeditions: [], committedSurvivorIds: [] };
+  return {
+    assignmentsLocked: false,
+    returnedExpeditions: 0,
+    unresolvedExpeditions: [],
+    committedSurvivorIds: [],
+    expeditionRoutes: {},
+    expeditionQueue: [],
+  };
 }
 
 export function createDefaultExpeditionState(): ExpeditionState {
@@ -53,7 +60,7 @@ export function normalizeSurvivor(survivor: Survivor): Survivor {
   if (!['steady', 'focused', 'shaken'].includes(mentalState)) mentalState = 'steady';
   return {
     ...survivor,
-    trust: survivor.trust ?? 0,
+    trust: Math.max(-3, Math.min(3, Math.round(Number(survivor.trust ?? 0)))) as Survivor['trust'],
     trait: survivor.trait ?? survivor.perk,
     condition,
     untreatedDays: Math.max(0, Math.floor(Number(survivor.untreatedDays) || 0)),

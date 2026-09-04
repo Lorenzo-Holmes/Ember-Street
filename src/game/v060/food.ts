@@ -1,5 +1,6 @@
 import type { GameState, MealQuality, MealState, Survivor } from '../types';
 import { communityCookingSupport } from './community';
+import { trustWorkFactor } from './trust';
 
 const KITCHEN_MODIFIER = [0.8, 1, 1.25, 1.5] as const;
 
@@ -17,7 +18,7 @@ export function effectiveCookingCapacity(state: GameState, survivor: Survivor): 
   if (survivor.condition === 'serious') conditionModifier = 0.55;
   else if (survivor.condition === 'minor' || survivor.condition === 'fatigued') conditionModifier = 0.8;
   if (survivor.energy < 30) conditionModifier *= 0.8;
-  return baseCookingCapacity(survivor) * KITCHEN_MODIFIER[level] * conditionModifier;
+  return baseCookingCapacity(survivor) * KITCHEN_MODIFIER[level] * conditionModifier * trustWorkFactor(survivor);
 }
 
 function qualityForCoverage(coverage: number): MealQuality {
@@ -122,7 +123,7 @@ export function resolveMeal(state: GameState): GameState {
     hope: Math.max(0, Math.min(100, state.hope + preview.hopeDelta)),
     survivors,
     mealState,
-    lastMessage: `今晚供餐：${mealLabel(preview.quality)} · 精力 +${preview.energyRecovery}${preview.hopeDelta ? ` · 希望 ${preview.hopeDelta > 0 ? '+' : ''}${preview.hopeDelta}` : ''}`,
+    lastMessage: `今晚吃的是${mealLabel(preview.quality)}。${preview.energyRecovery > 0 ? '睡一晚，大家能缓回一些力气。' : '这顿饭填不回多少力气。'}${preview.hopeDelta > 0 ? '至少没人空着肚子。' : preview.hopeDelta < 0 ? '还是有人没分到足够的东西。' : ''}`,
   };
 }
 

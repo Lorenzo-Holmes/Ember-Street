@@ -21,3 +21,9 @@ export const SURVIVOR_CONDITION_LABEL: Record<SurvivorCondition, string> = {
 export function resourceLabel(resource: ExpeditionResource): string {
   return RESOURCE_LABEL[resource] ?? resource;
 }
+
+export function resourceListLabel(...resources: Array<ExpeditionResource | undefined>): string {
+  return [...new Set(resources.filter((resource): resource is ExpeditionResource => Boolean(resource)))]
+    .map(resourceLabel)
+    .join('、');
+}

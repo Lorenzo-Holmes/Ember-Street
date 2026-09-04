@@ -18,10 +18,10 @@ describe('v0.6 full-play player-facing language', () => {
 
   it('describes repaired spaces without level jargon', () => {
     expect([0, 1, 2, 3].map(buildingConditionLabel)).toEqual([
-      '还没收拾',
-      '刚能用',
-      '收拾得像样',
-      '已经很稳',
+      '封着',
+      '勉强能用',
+      '已经能用',
+      '修稳了',
     ]);
   });
 
@@ -32,9 +32,10 @@ describe('v0.6 full-play player-facing language', () => {
     expect(mealCoverageLine(0.4)).toContain('不够分');
   });
 
-  it('turns night preparation bands into lived warnings', () => {
-    expect(nightPreparationLine('良好')).toContain('还算稳');
-    expect(nightPreparationLine('一般')).toContain('盯紧');
-    expect(nightPreparationLine('薄弱')).toContain('太薄');
+  it('describes guard coverage without claiming the physical defense is repaired', () => {
+    expect(nightPreparationLine('良好')).toContain('守岗人手较充足');
+    expect(nightPreparationLine('一般')).toContain('力量有限');
+    expect(nightPreparationLine('薄弱')).toContain('尚未安排守岗');
+    for (const band of ['良好', '一般', '薄弱'] as const) expect(nightPreparationLine(band)).not.toMatch(/门墙|已经补过|今晚能守/);
   });
 });

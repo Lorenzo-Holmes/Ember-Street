@@ -1,0 +1,121 @@
+@font-face {
+  font-family: "ZCOOL XiaoWei";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("../node_modules/@fontsource/zcool-xiaowei/files/zcool-xiaowei-chinese-simplified-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("../node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Noto Sans SC";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url("../node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-700-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 600;
+  src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "LXGW WenKai";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("../node_modules/@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Ma Shan Zheng";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("../node_modules/@fontsource/ma-shan-zheng/files/ma-shan-zheng-chinese-simplified-400-normal.woff2") format("woff2");
+}
+
+:root {
+  --font-game-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-game-display: "ZCOOL XiaoWei", "Noto Sans SC", serif;
+  --font-game-data: "IBM Plex Mono", "Noto Sans SC", monospace;
+  --font-notebook-body: "LXGW WenKai", "Noto Sans SC", serif;
+  --font-notebook-mark: "Ma Shan Zheng", "ZCOOL XiaoWei", serif;
+}
+
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--font-game-body);
+}
+
+h1,
+h2,
+h3,
+.v1-status-strip__weather b,
+.v1-day-action strong,
+.v6-topbar > div:last-child > b {
+  font-family: var(--font-game-display);
+  font-weight: 400;
+  letter-spacing: 0.025em;
+  text-wrap: balance;
+}
+
+.v6-day-number,
+.v6-manifest-val,
+.v6-energy-val,
+.v060-night__header-day strong,
+.v060-night__header-count strong,
+.v060-night__resources b,
+.v060-dice b,
+.v060-total strong,
+.v6-dawn-stat-card b,
+.v6-ledger-cell b,
+.v6-survivor__top > div:last-child:not(.v6-survivor__energy) > b,
+.v6-stats b,
+.v6-ending__day,
+.v6-resource-grid > div > b,
+.v6-building-card > div:first-child > b,
+.v1-status-strip > div:first-child,
+.v1-resource-strip b,
+.v1n-resource-strip b,
+.v1n-dice__faces b,
+.v1n-dice__total strong {
+  font-family: var(--font-game-data);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.v1-today-summary header button {
+  font-size: 0.8125rem;
+}
+
+.v1-bottom-nav button {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 390px) {
+  .v1-today-summary header button {
+    font-size: 0.8rem;
+  }
+
+  .v1-bottom-nav button {
+    font-size: 0.84rem;
+  }
+}

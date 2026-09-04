@@ -1,0 +1,211 @@
+/* The cover and the inner pages share a desk, but never share layout padding. */
+body:has(.v1-title-screen) {
+  margin: 0;
+  background: radial-gradient(ellipse at 50% 40%, transparent 12%, #080503aa 100%),
+    url('/assets/ui/notebook-table-dirty.jpg') center / cover fixed #160f0a;
+}
+.v1-title-screen {
+  box-sizing: border-box;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: max(16px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom));
+  color: #282017;
+  font-family: var(--font-notebook-body);
+}
+.v1-title-book {
+  container-type: inline-size;
+  position: relative;
+  flex-shrink: 0;
+  width: min(480px, calc(100vw - 24px), max(280px, calc((100svh - 32px) * .666667)));
+  aspect-ratio: 2 / 3;
+  background: url('/assets/ui/notebook-cover-worn.png') center / contain no-repeat;
+  filter: drop-shadow(10px 14px 12px #0009);
+  animation: diary-arrive .28s ease-out both;
+}
+.v1-title-heading {
+  position: absolute;
+  top: 25%;
+  left: 9%;
+  right: 9%;
+  text-align: center;
+  transform: rotate(-1.3deg);
+}
+.v1-title-kicker {
+  color: #3f2e20;
+  font-size: clamp(14px, 3.7cqw, 18px);
+  letter-spacing: .25em;
+}
+.v1-title-heading h1 {
+  margin: 12px 0 16px;
+  color: #261c13;
+  font: 400 clamp(44px, 13.5cqw, 66px) / 1.2 var(--font-notebook-mark);
+  letter-spacing: .06em;
+  text-shadow: .7px .3px #261c1340;
+  outline: none;
+}
+.v1-title-rule {
+  display: block;
+  width: 63%;
+  margin: auto;
+  border-top: 2px solid #49322199;
+  transform: rotate(.6deg);
+}
+.v1-title-actions {
+  position: absolute;
+  top: 49%;
+  left: 14%;
+  right: 14%;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+}
+.v1-title-actions button {
+  box-sizing: border-box;
+  width: auto;
+  min-width: 160px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px 14px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  color: #302419;
+  font: 400 clamp(24px, 6.5cqw, 30px) / 1.25 var(--font-notebook-mark);
+  letter-spacing: .12em;
+  cursor: pointer;
+  transition: color .12s;
+}
+.v1-title-actions button.v1-title-primary,
+.v1-title-actions button:hover {
+  color: #692f25;
+  text-shadow: .4px .2px #692f2540;
+}
+.v1-title-actions button:hover { transform: rotate(-1deg); }
+.v1-title-actions button:disabled { cursor: not-allowed; color: #544737; }
+.v1-title-actions button:focus-visible,
+.v1-menu-action:focus-visible,
+.v1-player-menu:focus-visible { outline: 2px dashed #713d2d; outline-offset: 3px; }
+.v1-title-save {
+  margin: -5px 0 8px;
+  color: #3d2c1e;
+  font-size: clamp(14px, 3.6cqw, 17px);
+  line-height: 1.5;
+  text-align: center;
+}
+.v1-title-bottom {
+  position: absolute;
+  bottom: 10%;
+  left: 14%;
+  right: 14%;
+  margin: 0;
+  color: #473322;
+  text-align: center;
+  font-size: clamp(13px, 3.2cqw, 15px);
+  letter-spacing: .08em;
+  transform: rotate(-.7deg);
+}
+.v1-title-error {
+  max-width: 400px;
+  padding: 12px 18px;
+  margin: 0;
+  background: url('/assets/ui/notebook-paper-grimy.jpg') center / 420px #bba474;
+  color: #59271f;
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: center;
+}
+dialog.v1-menu-sheet {
+  box-sizing: border-box;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100svh - 48px);
+  margin: auto;
+  padding: 26px 28px;
+  border: 1px solid #5c4830;
+  border-radius: 2px 5px 7px 2px;
+  background: linear-gradient(90deg, #4b301d19, #dbcaa02b 10%, #dbcaa02b 90%, #4b301d22),
+    url('/assets/ui/notebook-paper-grimy.jpg') center / 520px #bba474;
+  color: #30281e;
+  box-shadow: 3px 4px 0 #665134, 0 18px 50px #0009;
+  font: 400 17px / 1.8 var(--font-notebook-body);
+  overscroll-behavior: contain;
+}
+.v1-menu-sheet::backdrop { background: #0b0705b3; }
+body:has(.v1-menu-sheet[open]) { overflow: hidden; }
+.v1-menu-sheet h2 {
+  margin: 0 0 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #4a392d88;
+  color: #30251a;
+  font: 400 29px / 1.35 var(--font-notebook-mark);
+}
+.v1-menu-sheet p { margin: 8px 0 14px; color: #392f23; }
+.v1-menu-guide ol { padding-left: 1.4em; margin: 16px 0; }
+.v1-menu-guide li { margin-bottom: 12px; }
+.v1-menu-guide li::marker { color: #713d2d; }
+.v1-menu-guide strong { font-weight: 700; color: #30251a; }
+.v1-menu-guide li p { margin: 3px 0; }
+.v1-menu-sheet .v1-menu-footnote {
+  padding-top: 14px;
+  border-top: 1px dashed #5f493766;
+  color: #493928;
+  font-size: 15px;
+  line-height: 1.7;
+}
+.v1-menu-sheet .v1-menu-day { color: #65372b; font-size: 18px; }
+.v1-menu-sheet .v1-menu-error { color: #63291f; }
+.v1-menu-actions { display: grid; gap: 6px; margin: 14px 0 20px; }
+.v1-menu-action {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 6px;
+  border: 0;
+  border-bottom: 1px dashed #56412e77;
+  border-radius: 0;
+  color: #30251a;
+  background: transparent;
+  box-shadow: none;
+  font: 400 24px / 1.4 var(--font-notebook-mark);
+  cursor: pointer;
+}
+.v1-menu-action:hover,
+.v1-menu-action--danger { color: #713526; }
+.v1-menu-confirm-actions { display: grid; gap: 8px; margin-top: 20px; }
+.v1-player-menu {
+  position: fixed;
+  z-index: 55;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(12px, calc((100vw - 580px) / 2));
+  min-width: 62px;
+  min-height: 44px;
+  padding: 8px 12px;
+  color: #30251b;
+  border: 1px solid #4a3422;
+  border-radius: 2px 1px 4px 2px;
+  background: url('/assets/ui/notebook-paper-grimy.jpg') 60% 20% / 220px #ae986d;
+  box-shadow: 2px 3px 5px #0006;
+  font: 400 20px / 1.2 var(--font-notebook-mark);
+  transform: rotate(2deg);
+  cursor: pointer;
+}
+.v1-player-menu:hover { color: #713526; }
+@keyframes diary-arrive { from { opacity: .3; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 390px) {
+  dialog.v1-menu-sheet { padding: 23px 20px; font-size: 16px; }
+  .v1-menu-sheet h2 { font-size: 27px; }
+}
+@media (max-width: 350px) {
+  .v1-title-heading { top: 22%; }
+  .v1-title-actions { top: 46%; gap: 4px; }
+  .v1-title-save { margin: -3px 0 2px; }
+  .v1-title-bottom { bottom: 8%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v1-title-book { animation: none; }
+  .v1-title-actions button { transition: none; }
+}

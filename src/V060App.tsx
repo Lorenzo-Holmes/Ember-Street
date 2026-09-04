@@ -8,11 +8,12 @@ import { assignDayJob, canTakeDayAssignment, clearDayJob, lockDayAssignments, pr
 import { ENDINGS, endingHint, loadMetaProgress, recordEnding, type MetaProgress } from './game/v060/endings';
 import { EXPEDITION_LOCATIONS, currentExpeditionEvent, drawExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, startExpedition } from './game/v060/expedition';
 import { mealLabel, previewMeal } from './game/v060/food';
+import { energyLabel, trustLabel } from './game/v060/trust';
 
 const JOBS: Array<{ id: DayAssignment; label: string; note: string }> = [
   { id: 'expedition', label: '探索', note: '外出搜集物资，可能受伤、失踪或死亡。' },
   { id: 'repair', label: '维修', note: '加固防线，并让工坊在夜里发挥作用。' },
-  { id: 'medical', label: '医疗', note: '优先处理街区里最严重的伤员。' },
+  { id: 'medical', label: '医疗', note: '去诊疗室守着，先照看伤得最重的人。' },
   { id: 'watch', label: '守备', note: '降低夜间紧急事件和尸潮风险。' },
   { id: 'radio', label: '广播', note: '积累外界联系，寻找幸存者与军方信号。' },
   { id: 'cook', label: '炊事', note: '按当前人口提高供餐覆盖率和次日恢复。' },
@@ -64,12 +65,11 @@ function MemorialPanel({ state }: { state: GameState }) {
 }
 
 function AssignmentPanel({ state, setState }: { state: GameState; setState: (state: GameState) => void }) {
-  const expeditionCount = Object.values(state.dayAssignments).filter((job) => job === 'expedition').length;
   return <section className="v6-section"><div className="v6-section__head"><div><span>今日调遣</span><h2>一个人，一天只做一件主要的事</h2></div><small>黄昏后不可改岗</small></div><div className="v6-survivors">{state.survivors.filter((s) => s.condition !== 'dead' && s.condition !== 'missing').map((survivor) => {
     const condition = survivor.condition ?? 'healthy'; const unavailable = condition === 'critical'; const current = state.dayAssignments[survivor.id]; const committed = state.dayState.committedSurvivorIds.includes(survivor.id);
-    return <article className={`v6-survivor ${unavailable || committed ? 'is-unavailable' : ''}`} key={survivor.id}><div className="v6-survivor__top"><div><h3>{survivor.name}</h3><span>{committed ? '今天已经参加搜救' : survivor.trait ?? survivor.perk}</span></div><div><b>{survivor.energy}</b><small>精力</small></div></div><div className="v6-survivor__status"><span>{CONDITION_LABEL[condition]}</span><span>信任 {survivor.trust ?? 0}</span><span>{survivor.specialty}</span></div><div className="v6-job-grid">{JOBS.map((job) => {
-      const availability = canTakeDayAssignment(state, survivor.id, job.id); const extraLimit = job.id === 'expedition' && current !== 'expedition' && expeditionCount >= 2; const disabled = !availability.allowed || extraLimit;
-      return <button key={job.id} className={current === job.id ? 'active' : ''} disabled={disabled} title={extraLimit ? '一支探索队最多两人' : availability.reason ?? job.note} onClick={() => commit(current === job.id ? clearDayJob(state, survivor.id) : assignDayJob(state, survivor.id, job.id), setState)}>{job.label}</button>;
+    return <article className={`v6-survivor ${unavailable || committed ? 'is-unavailable' : ''}`} key={survivor.id}><div className="v6-survivor__top"><div><h3>{survivor.name}</h3><span>{committed ? '今天已经参加搜救' : survivor.trait ?? survivor.perk}</span></div><div><b>{energyLabel(survivor.energy)}</b><small>精神</small></div></div><div className="v6-survivor__status"><span>{CONDITION_LABEL[condition]}</span><span>{trustLabel(survivor.trust)}</span><span>{survivor.specialty}</span></div><div className="v6-job-grid">{JOBS.map((job) => {
+      const availability = canTakeDayAssignment(state, survivor.id, job.id); const disabled = !availability.allowed;
+      return <button key={job.id} className={current === job.id ? 'active' : ''} disabled={disabled} title={availability.reason ?? job.note} onClick={() => commit(current === job.id ? clearDayJob(state, survivor.id) : assignDayJob(state, survivor.id, job.id), setState)}>{job.label}</button>;
     })}</div></article>;
   })}</div></section>;
 }

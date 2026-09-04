@@ -130,7 +130,7 @@ describe('v0.6 street principles', () => {
     const baselineResolved = finalizeDay(baseline);
     const waitingResolved = finalizeDay(waiting);
     expect(waitingResolved.hope).toBe(baselineResolved.hope + 1);
-    expect(waitingResolved.dawnBrief).toContain('街区原则《等待外援》：广播仍与外界保持联系，希望 +1。');
+    expect(waitingResolved.dawnBrief).toContain('街区原则《等待外援》：广播与外界仍有联系。');
   });
 });
 

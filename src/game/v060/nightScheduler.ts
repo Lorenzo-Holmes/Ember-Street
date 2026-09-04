@@ -16,7 +16,9 @@ import { markMissing, recordDeath } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, loseCommunityResidents } from './mortality';
 import { mortalityEventById, pendingMortalityEventIds } from './mortalityEvents';
 import { appendDawnBrief } from './morningBrief';
+import { beginDefenseNight } from './defenseFeedback';
 import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
+import { applyInjuryTrustLoss, specialtyAvailable, trustCheckModifier } from './trust';
 
 const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = { search: 'expedition', repair: 'repair', medical: 'medical', watch: 'watch', cook: 'cook', radio: 'radio', rest: 'rest' };
 const ROLE_BUILDING: Partial<Record<Role, BuildingId>> = { search: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio', rest: 'shelter' };
@@ -141,8 +143,8 @@ function normalComposition(state: GameState, count: number, rngState: number): [
 }
 
 export function scheduleNight(input: GameState): GameState {
-  if (input.day >= 30) return { ...input, phase: 'ending', nightState: { ...input.nightState, eventIndex: 0, eventTotal: 0, scheduledEventIds: [], emergencyEventIds: [], currentEventId: null, hordeActive: false, hordeStage: null, resolutions: [] }, lastMessage: 'DAY 30 · 天亮以后，只剩结算。' };
-  const state = advanceUntreatedRisk({ ...input, dawnBrief: [] });
+  if (input.day >= 30) return { ...input, phase: 'ending', nightState: { ...input.nightState, eventIndex: 0, eventTotal: 0, scheduledEventIds: [], emergencyEventIds: [], currentEventId: null, hordeActive: false, hordeStage: null, resolutions: [] }, lastMessage: '第 30 天 · 天亮以后，只剩最后的清点。' };
+  const state = beginDefenseNight(advanceUntreatedRisk({ ...input, dawnBrief: [] }));
 
   if (state.day === 29) {
     const scheduledEventIds = [...FINAL_HORDE_EVENT_IDS];
@@ -159,7 +161,7 @@ export function scheduleNight(input: GameState): GameState {
         hordeStage: 'approach',
         resolutions: [],
       },
-      lastMessage: 'NIGHT 29 · 最终尸潮第一阶段：北门。过去二十八天正在决定今晚。',
+      lastMessage: '最后一夜，第一阵撞在北门。过去留下的一切，今晚都要用上。',
     };
   }
 
@@ -185,7 +187,7 @@ export function scheduleNight(input: GameState): GameState {
     rngState,
     phase: 'night',
     nightState: { eventIndex: 0, eventTotal: scheduledEventIds.length, scheduledEventIds, emergencyEventIds, currentEventId: urgentMedical ?? scheduledEventIds[0] ?? emergencyEventIds[0] ?? null, hordeActive, hordeStage: hordeActive ? 'approach' : null, resolutions: [] },
-    lastMessage: urgentMedical ? `NIGHT ${state.day} · 有人的伤势已经不能再拖` : hordeActive ? `NIGHT ${state.day} · 尸群迹象正在靠近` : `NIGHT ${state.day} · 今晚先听清每一个声音`,
+    lastMessage: urgentMedical ? `第 ${state.day} 天夜里 · 有人的伤势已经不能再拖` : hordeActive ? `第 ${state.day} 天夜里 · 尸群迹象正在靠近` : `第 ${state.day} 天夜里 · 今晚先听清每一个声音`,
   };
 }
 
@@ -226,7 +228,7 @@ function actorForRole(state: GameState, role: Role | undefined): Survivor | unde
 
 function buildingModifier(state: GameState, role: Role | undefined): CheckModifier | null {
   if (!role) return null; const id = ROLE_BUILDING[role]; if (!id) return null;
-  const level = state.buildings[id]; return level >= 3 ? { label: '设施 Lv3', value: 2 } : level >= 2 ? { label: '设施 Lv2', value: 1 } : null;
+  const level = state.buildings[id]; return level >= 3 ? { label: '这里已经修稳', value: 2 } : level >= 2 ? { label: '这里已经能用', value: 1 } : null;
 }
 
 function communityRoleSupport(state: GameState, role: Role | undefined): CheckModifier | null {
@@ -239,8 +241,11 @@ function communityRoleSupport(state: GameState, role: Role | undefined): CheckMo
 
 export function nightCheckContext(state: GameState, choice: NightChoice): { actor?: Survivor; modifiers: CheckModifier[]; mode: 'normal' | 'advantage' | 'disadvantage' } {
   const role = choice.check?.role; const actor = actorForRole(state, role); const modifiers: CheckModifier[] = [];
-  if (actor && role && actor.specialty === role) modifiers.push({ label: '人物专长', value: 1 });
-  if (actor && (actor.trust ?? 0) >= 2) modifiers.push({ label: '信任', value: 1 });
+  if (actor && role && actor.specialty === role && specialtyAvailable(actor)) modifiers.push({ label: '人物专长', value: 1 });
+  if (actor) {
+    const trustModifier = trustCheckModifier(actor);
+    if (trustModifier) modifiers.push({ label: trustModifier > 0 ? '彼此信得过' : '不肯好好配合', value: trustModifier });
+  }
   if (actor?.condition === 'fatigued' || actor?.condition === 'minor') modifiers.push({ label: '状态不佳', value: -1 });
   if (actor?.condition === 'serious' || actor?.condition === 'critical') modifiers.push({ label: '伤势严重', value: -2 });
   const facility = buildingModifier(state, role); if (facility) modifiers.push(facility);
@@ -396,8 +401,8 @@ function completeCurrentEvent(state: GameState, eventId: string): GameState {
       emergencyEventsResolved: temporary.campaignStats.emergencyEventsResolved + (eventId.startsWith('emergency-') || eventId.startsWith('mortality-') ? 1 : 0),
     },
     lastMessage: complete
-      ? (state.day === 29 ? 'NIGHT 29 · 最后一波尸群终于开始退去。' : `NIGHT ${state.day} · 今晚的决定已经落下`)
-      : (state.day === 29 ? `最终尸潮 · 第 ${mainResolved + 1}/6 阶段` : '下一个声音从黑暗里传来。'),
+      ? (state.day === 29 ? '最后一波尸群终于开始退去。' : `第 ${state.day} 天夜里，该做的已经做了。`)
+      : (state.day === 29 ? '尸潮还没有停。' : '黑暗里又传来一个声音。'),
   };
 }
 
@@ -415,6 +420,7 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
   if (event.id.startsWith('mortality-hope:')) next = resolveHopeDirect(next, event.id, choice.id);
   if (isFinalHordeEventId(event.id)) next = applyFinalHordeResolution(next, event.id, choice.id);
   next = applyCivilianIncident(next, event.id, choice.id);
+  next = applyInjuryTrustLoss(before, next, before.survivors.map((survivor) => survivor.id), `night:${state.day}:${event.id}:${choice.id}`);
   next = appendDawnBrief(before, next, event.title);
   return completeCurrentEvent(next, event.id);
 }
@@ -431,6 +437,7 @@ export function acceptNightCheckResult(state: GameState): GameState {
   next = applyCivilianIncident(next, event.id, choice.id, check.outcome);
   const actor = check.actorId ? next.survivors.find((item) => item.id === check.actorId) : undefined;
   if (state.day >= 11 && check.twist === 'double-one' && (event.category === 'horde' || event.category === 'emergency') && actor && (actor.condition === 'serious' || actor.condition === 'critical')) next = recordDeath(next, actor.id, `${event.title} · 双一`);
+  next = applyInjuryTrustLoss(before, next, before.survivors.map((survivor) => survivor.id), `night:${state.day}:${event.id}:${choice.id}`);
   next = appendDawnBrief(before, next, event.title);
   return completeCurrentEvent(next, event.id);
 }

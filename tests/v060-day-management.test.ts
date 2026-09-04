@@ -87,8 +87,8 @@ describe('v0.6 daytime management', () => {
     const preview = previewDispatchConfirmation(state);
     expect(preview.committed).toBe(1);
     expect(preview.autoResting).toBe(3);
-    expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('探索 · 已经去过');
-    expect(preview.entries.find((entry) => entry.survivorId === 'cheng')?.label).toBe('危重 · 今天动不了');
+    expect(preview.entries.find((entry) => entry.survivorId === 'lin-xia')?.label).toBe('去街外找东西，已经去过');
+    expect(preview.entries.find((entry) => entry.survivorId === 'cheng')?.label).toBe('伤得太重，今天起不了身');
   });
   it('locks daytime jobs and refuses dead, serious, or committed survivors', () => {
     let state = assignDayJob(fivePersonState(), 'lin-xia', 'expedition'); state = lockDayAssignments(state);

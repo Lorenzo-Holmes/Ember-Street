@@ -19,8 +19,8 @@ describe('v0.6 decision readability', () => {
     const choice: NightChoice = { id: 'battery', label: '启用备用电源', detail: '直接供电。', strategy: 'resource', cost: { power: 10 }, direct: { hope: 1 } };
     const preview = nightChoicePreview(state, eventWith('clinic-blackout', choice), choice);
     expect(preview.tags).toContain('拿东西换稳妥');
-    expect(preview.tags).toContain('电力 -10');
-    expect(preview.summary).toContain('不再把结果交给运气');
+    expect(preview.tags).toContain('要用电力 10');
+    expect(preview.summary).toContain('不用再让人冒险');
   });
 
   it('warns that a critical untreated survivor can die in the medical crisis', () => {
@@ -45,7 +45,7 @@ describe('v0.6 decision readability', () => {
     const leave: NightChoice = { id: 'mortality-leave', label: '不阻拦', detail: '让对方离开。', strategy: 'consequence', direct: { hope: -1 } };
     const event = eventWith('mortality-hope:lin-xia', leave);
     const preview = nightChoicePreview(state, event, leave);
-    expect(preview.tags).toContain('必定失踪');
+    expect(preview.tags).toContain('这个人一定会走');
     expect(preview.summary).toContain('只能再想办法去找');
   });
 
@@ -53,7 +53,7 @@ describe('v0.6 decision readability', () => {
     const state = { ...createV060InitialState(880004), civilianResidents: 5 };
     const choice: NightChoice = { id: 'combat-first', label: '先挡尸群', detail: '医疗稍后。', strategy: 'consequence', direct: {} };
     const preview = nightChoicePreview(state, eventWith('horde-clinic', choice), choice);
-    expect(preview.tags).toContain('居民必减员');
+    expect(preview.tags).toContain('一定会有人死');
     expect(preview.tone).toBe('severe');
   });
 
@@ -63,9 +63,9 @@ describe('v0.6 decision readability', () => {
     const retreat = expeditionDecisionPreview(state, 'retreat', 'extreme');
     expect(push.tags).toContain('严重失败可能失踪/死亡');
     expect(push.summary).toContain('甚至可能回不来');
-    expect(retreat.tags).toContain('安全撤回');
+    expect(retreat.tags).toContain('现在回头');
     expect(retreat.tags).toContain('今天空手');
-    expect(retreat.summary).toContain('人会直接回来');
+    expect(retreat.summary).toContain('人能直接回来');
   });
 
   it('marks a second failed missing-person search as fatal before the player commits', () => {
@@ -77,9 +77,28 @@ describe('v0.6 decision readability', () => {
       storyFlags: [...base.storyFlags, 'missing_search_failed:lin-xia:7'],
     };
     const radio = missingSearchPreview(state, 'lin-xia', 'radio');
-    expect(radio.tags).toContain('电力 -5');
-    expect(radio.tags).toContain('再失败就确认死亡');
+    expect(radio.tags).toContain('要用 5 份电');
+    expect(radio.tags).toContain('再找不到，就只能记下名字');
     expect(radio.summary).toContain('第二次找');
+  });
+
+  it('exposes search availability independently of the displayed wording', () => {
+    const base = createV060InitialState(880009);
+    const state: GameState = {
+      ...base,
+      survivors: base.survivors.map((survivor) => survivor.id === 'lin-xia' ? { ...survivor, condition: 'missing' as const } : survivor),
+    };
+    expect(missingSearchPreview(state, 'lin-xia', 'team').available).toBe(true);
+    const shortHanded = { ...state, dayState: { ...state.dayState, committedSurvivorIds: ['zhou'] } };
+    expect(missingSearchPreview(shortHanded, 'lin-xia', 'team').available).toBe(false);
+    expect(missingSearchPreview(shortHanded, 'lin-xia', 'team').tags).toContain('人手不够');
+    expect(missingSearchPreview(state, 'lin-xia', 'radio').available).toBe(false);
+    const radioReady = { ...state, buildings: { ...state.buildings, radio: 1 }, inventory: { ...state.inventory, power: 5 } };
+    expect(missingSearchPreview(radioReady, 'lin-xia', 'radio').available).toBe(true);
+    expect(missingSearchPreview({ ...radioReady, inventory: { ...radioReady.inventory, power: 4 } }, 'lin-xia', 'radio').available).toBe(false);
+    const attempted = { ...radioReady, storyFlags: [...radioReady.storyFlags, `missing_search:lin-xia:${state.day}`] };
+    expect(missingSearchPreview(attempted, 'lin-xia', 'team').available).toBe(false);
+    expect(missingSearchPreview(attempted, 'lin-xia', 'radio').available).toBe(false);
   });
 
   it('makes the three last-line promises readable before the player commits', () => {
@@ -99,18 +118,18 @@ describe('v0.6 decision readability', () => {
     const resourcePreview = enhanceFinalHordePreview(state, event, resource, nightChoicePreview(state, event, resource));
     const retreatPreview = enhanceFinalHordePreview(state, event, retreat, nightChoicePreview(state, event, retreat));
 
-    expect(personPreview.tags).toContain('省下库存');
-    expect(personPreview.tags).toContain('结果交给人');
-    expect(personPreview.summary).toContain('失手也会直接落在人身上');
+    expect(personPreview.tags).toContain('不用再拿东西');
+    expect(personPreview.tags).toContain('得让人顶上');
+    expect(personPreview.summary).toContain('代价会直接落在人身上');
 
-    expect(resourcePreview.tags).toContain('不掷骰');
-    expect(resourcePreview.tags).toContain('用库存换确定');
-    expect(resourcePreview.tags).toContain('过去准备省下物资');
+    expect(resourcePreview.tags).toContain('不用冒险');
+    expect(resourcePreview.tags).toContain('直接拿东西顶住');
+    expect(resourcePreview.tags).toContain('以前的准备省下一些');
     expect(resourcePreview.summary).toContain('还要从仓房拿走的量');
 
     expect(retreatPreview.tags).toContain('先保住人');
     expect(retreatPreview.tags).toContain('主动放弃外层');
-    expect(retreatPreview.summary).toContain('不再烧库存');
+    expect(retreatPreview.summary).toContain('不用再拿东西');
     expect(retreatPreview.tone).toBe('stable');
   });
 
@@ -125,10 +144,10 @@ describe('v0.6 decision readability', () => {
     const stockpile = event.choices.find((choice) => choice.id === 'final-last-stockpile')!;
     const preview = nightChoicePreview(state, event, stockpile);
 
-    expect(effectiveNightChoiceCostLabel(state, stockpile)).toBe('材料 -3 · 零件 -1');
-    expect(preview.tags).toContain('材料 -3');
-    expect(preview.tags).toContain('零件 -1');
-    expect(preview.tags).not.toContain('材料 -6');
-    expect(preview.tags).not.toContain('零件 -3');
+    expect(effectiveNightChoiceCostLabel(state, stockpile)).toBe('要用材料 3 · 要用零件 1');
+    expect(preview.tags).toContain('要用材料 3');
+    expect(preview.tags).toContain('要用零件 1');
+    expect(preview.tags).not.toContain('要用材料 6');
+    expect(preview.tags).not.toContain('要用零件 3');
   });
 });

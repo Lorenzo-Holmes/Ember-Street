@@ -1,27 +1,35 @@
-import { useEffect, useState } from 'react';
-import V060AppHotfix from './V060AppHotfix';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { MissingPanel } from './V060AppHotfix';
+import SocialStatusPanel from './components/v060/SocialStatusPanel';
 import { GAME_SAVE_EVENT, loadGame, saveGame } from './game/storage';
 import type { GameState } from './game/types';
 import {
-  createV060InitialState,
   resolveExpeditionStance,
   retreatCurrentExpedition,
 } from './game/v060/campaign';
-import { pendingCampaignEvent } from './game/v060/campaignEvents';
+import { pendingCampaignEvent, resolveCampaignEvent } from './game/v060/campaignEvents';
 import {
   pendingCommunityDeparture,
   resolveCommunityDeparture,
   type CommunityDepartureResolution,
 } from './game/v060/communityDeparture';
+import { pendingCommunityRequest } from './game/v060/communityPromises';
 import { dayAttentionSummary } from './game/v060/dayAttention';
-import { lockDayAssignments, lockDayAssignmentsAndRoute, reopenDayAssignments } from './game/v060/dayManagement';
+import { assignExpeditionRoute, incompleteExpeditionSurvivorIds, lockDayAssignmentsAndRoute } from './game/v060/dayManagement';
 import { drawExpeditionEvent, startExpedition } from './game/v060/expedition';
-import HomeBaseView, { type V1NavTarget } from './ui/v1/HomeBaseView';
+import { loadMetaProgress, recordEnding, type MetaProgress } from './game/v060/endings';
+import { pendingPrincipleDecision } from './game/v060/principles';
+import HomeBaseView from './ui/v1/HomeBaseView';
+import BuildingsV1 from './ui/v1/BuildingsV1';
 import ExploreV1, { type ExploreDecision } from './ui/v1/ExploreV1';
+import ExploreRouteV1 from './ui/v1/ExploreRouteV1';
 import NightEventV1 from './ui/v1/NightEventV1';
 import RecordsV1 from './ui/v1/RecordsV1';
 import SurvivorsV1 from './ui/v1/SurvivorsV1';
-import V1BottomNav from './ui/v1/V1BottomNav';
+import V1BottomNav, { type V1NavTarget } from './ui/v1/V1BottomNav';
+import { createPreviewState, DevSceneNav, previewSceneFromLocation } from './ui/v1/DevScenePreview';
+import { CampaignEventV1, DawnV1, DuskV1, EndingV1, NightSummaryV1 } from './ui/v1/StoryPhasesV1';
+import TitleScreen, { PlayerMenu } from './ui/v1/TitleScreen';
 
 function CommunityDepartureScreen({ state, onResolved }: { state: GameState; onResolved: (next: GameState) => void }) {
   const departure = pendingCommunityDeparture(state);
@@ -31,53 +39,52 @@ function CommunityDepartureScreen({ state, onResolved }: { state: GameState; onR
 
   const resolve = (choice: CommunityDepartureResolution) => {
     const next = resolveCommunityDeparture(state, choice);
-    saveGame(next, true);
     onResolved(next);
   };
 
   return (
-    <main className="v6-shell">
+    <main className="v6-shell notebook-page notebook-page--community-event">
       <header className="v6-page-head">
-        <span>清晨 · DAY {state.day} · 街里的人</span>
+          <span>清晨 · 第 {state.day} 天</span>
         <h1>{departure.title}</h1>
         <p>{departure.body}</p>
       </header>
 
-      <section className="v6-preview" aria-label="居民离开前的街区状态">
+        <section className="v6-preview" aria-label="有人准备离开长街">
         <div>
           <span>街区居民</span>
           <strong>{state.civilianResidents} 人</strong>
-          <small>他们不是核心幸存者角色，但同样吃饭、搬东西、守门，也会决定这条街还能不能运转。</small>
+            <small>这些人还在帮着取水、搬运和守夜。</small>
         </div>
         <div>
           <span>准备离开</span>
           <strong>{departure.count} 人</strong>
-          <small>让他们走以后，街区还剩 {remainingIfTheyLeave} 名普通居民；这不计入死亡。</small>
+            <small>他们已经收好随身的东西。人走以后，街里还剩 {remainingIfTheyLeave} 名居民。</small>
         </div>
       </section>
 
       <section className="v6-section">
         <div className="v6-section__head">
-          <div><span>现在得给一句话</span><h2>留下他们，还是让他们自己选路</h2></div>
-          <small>这是人口流失，不是死亡事件</small>
+          <div><span>他们在等一句话</span><h2>要不要拿出口粮把人留下</h2></div>
+          <small>人一走，今天干活的手就更少。</small>
         </div>
 
         <div className="v6-expedition-choices">
           <button disabled={!canOfferRations} onClick={() => resolve('ration')}>
             <b>A</b>
-            <strong>拿出 {departure.rationCost} 份口粮，请他们再留下</strong>
-            <span>先把眼前最直接的不安压下来。人还在，库存会更薄。</span>
+            <strong>拿出 {departure.rationCost} 份口粮挽留</strong>
+              <span>先让他们留下。仓房里的口粮会少掉这些。</span>
             <div style={{ gridColumn: 2 }}>
-              <small>口粮 -{departure.rationCost} · 居民不减少 · 希望 +1 · 压力下降{!canOfferRations ? ' · 口粮不够' : ''}</small>
+            <small>要拿出 {departure.rationCost} 份口粮{!canOfferRations ? '，仓房里已经不够' : ''}。</small>
             </div>
           </button>
 
           <button onClick={() => resolve('leave')}>
             <b>B</b>
-            <strong>让他们走</strong>
-            <span>他们没有死，也没有失踪。只是决定不再把明天押在这条街上。</span>
+            <strong>不再挽留</strong>
+              <span>不再拦着。他们会带上东西离开长街。</span>
             <div style={{ gridColumn: 2 }}>
-              <small>街区居民 -{departure.count} · 希望 -1 · 压力上升 · 不增加死亡统计</small>
+            <small>今天会少掉 {departure.count} 个人。</small>
             </div>
           </button>
         </div>
@@ -86,64 +93,116 @@ function CommunityDepartureScreen({ state, onResolved }: { state: GameState; onR
   );
 }
 
-function initialSnapshot(): GameState {
-  const loaded = loadGame();
-  if (loaded) return loaded;
-  const created = createV060InitialState();
-  saveGame(created, true);
-  return created;
+function DayAttentionScreen({ state, onCommit, kind }: { state: GameState; onCommit: (next: GameState) => void; kind: 'social' | 'missing' }) {
+  const isMissing = kind === 'missing';
+  return (
+    <main className="v1-mobile-page notebook-page notebook-page--attention">
+      <header className="v1-page-title">
+          <span>{isMissing ? '有人没回来' : '门口有人等着'}</span>
+          <h1>{isMissing ? '天亮了，床还是空的' : '这件事得先给个答复'}</h1>
+          <p>{isMissing ? '脚印和广播都还能找，不能再拖。' : '处理完，再把今天的人手写下来。'}</p>
+      </header>
+      {isMissing
+        ? <MissingPanel state={state} setState={onCommit}/>
+        : <SocialStatusPanel state={state} onCommit={onCommit}/>}
+    </main>
+  );
+}
+
+function beginNextPlannedExpedition(state: GameState): GameState {
+  const [plan, ...remaining] = state.dayState.expeditionQueue ?? [];
+  if (!plan) return { ...state, phase: 'dusk', lastMessage: state.lastMessage.replace(/ · 进入黄昏$/, '') };
+  const prepared: GameState = {
+    ...state,
+    phase: 'expedition',
+    dayState: { ...state.dayState, expeditionQueue: remaining },
+  };
+  let next = startExpedition(prepared, plan.partyIds, plan.locationId, true);
+  if (!next.expeditionState.departed) return { ...next, phase: 'dusk' };
+  next = drawExpeditionEvent(next);
+  return { ...next, phase: 'expedition' };
 }
 
 export default function V1Entry() {
-  const [snapshot, setSnapshot] = useState<GameState>(() => initialSnapshot());
+  const previewScene = previewSceneFromLocation();
+  const [session, setSession] = useState<GameState | null>(null);
+  const [titlePanel, setTitlePanel] = useState<'main' | 'restart'>('main');
+  const returnToTitle = (panel: 'main' | 'restart' = 'main') => {
+    setTitlePanel(panel);
+    setSession(null);
+  };
+  if (!previewScene && !session) return <TitleScreen onEnter={setSession} initialPanel={titlePanel}/>;
+  return <GameSession initialState={session} onReturnToTitle={returnToTitle}/>;
+}
+
+function GameSession({ initialState, onReturnToTitle }: {
+  initialState: GameState | null; onReturnToTitle: (panel?: 'main' | 'restart') => void;
+}) {
+  const previewScene = previewSceneFromLocation();
+  const [snapshot, setSnapshot] = useState<GameState>(() => previewScene ? createPreviewState(previewScene) : initialState!);
+  const [meta, setMeta] = useState<MetaProgress>(() => loadMetaProgress());
   const [nav, setNav] = useState<V1NavTarget>('home');
+  const [routeSurvivorId, setRouteSurvivorId] = useState<string | null>(null);
+  const recordedEnding = useRef<string | null>(null);
+
+  const page = (content: ReactNode) => <>{content}{previewScene
+    ? <DevSceneNav active={previewScene}/>
+    : <PlayerMenu state={snapshot} onReturnToTitle={() => onReturnToTitle()}/>}</>;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined' || previewScene) return undefined;
     const sync = () => {
       const loaded = loadGame();
       if (loaded) setSnapshot(loaded);
     };
     window.addEventListener(GAME_SAVE_EVENT, sync);
     return () => window.removeEventListener(GAME_SAVE_EVENT, sync);
-  }, []);
+  }, [previewScene]);
+
+  useEffect(() => {
+    if (previewScene || snapshot.phase !== 'ending' || !snapshot.ending || !snapshot.finalHordeResult) return;
+    const key = `${snapshot.seed}:${snapshot.ending.id}`;
+    if (recordedEnding.current === key) return;
+    recordedEnding.current = key;
+    setMeta((current) => recordEnding(current, snapshot.ending!, snapshot.finalHordeResult!));
+  }, [previewScene, snapshot.phase, snapshot.ending, snapshot.finalHordeResult, snapshot.seed]);
 
   useEffect(() => {
     setNav('home');
+    setRouteSurvivorId(null);
   }, [snapshot.day]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  }, [nav, routeSurvivorId]);
+
   const commit = (next: GameState) => {
-    saveGame(next, true);
+    if (!previewScene) saveGame(next, true);
     setSnapshot(next);
   };
 
+  const restart = () => {
+    if (previewScene && typeof window !== 'undefined') {
+      window.location.href = window.location.pathname;
+      return;
+    }
+    onReturnToTitle('restart');
+  };
+
   if (pendingCommunityDeparture(snapshot)) {
-    return <CommunityDepartureScreen state={snapshot} onResolved={setSnapshot}/>;
+    return page(<CommunityDepartureScreen state={snapshot} onResolved={commit}/>);
   }
 
   if (snapshot.phase === 'night') {
-    return <NightEventV1 state={snapshot} onCommit={commit}/>;
+    return page(<NightEventV1 state={snapshot} onCommit={commit}/>);
   }
 
   if (snapshot.phase === 'expedition') {
-    const onStart = (partyIds: string[], locationId: string) => {
-      const prepared = snapshot.dayState.assignmentsLocked ? snapshot : lockDayAssignments(snapshot);
-      let next = startExpedition(prepared, partyIds, locationId);
-      if (!next.expeditionState.departed) return commit(next);
-      next = drawExpeditionEvent(next);
-      commit({ ...next, phase: 'expedition' });
-    };
-    const onBack = () => {
-      if (snapshot.expeditionState.departed) return;
-      const reopened = reopenDayAssignments(snapshot);
-      commit(reopened);
-      setNav('survivors');
-    };
     const onDecision = (decision: ExploreDecision) => {
       const partyIds = [...snapshot.expeditionState.activePartyIds];
       if (decision === 'retreat') {
         const retreated = retreatCurrentExpedition(snapshot);
-        return commit({
+        const settled: GameState = {
           ...retreated,
           phase: 'dusk',
           dayState: {
@@ -151,7 +210,8 @@ export default function V1Entry() {
             assignmentsLocked: true,
             committedSurvivorIds: [...new Set([...retreated.dayState.committedSurvivorIds, ...partyIds])],
           },
-        });
+        };
+        return commit(beginNextPlannedExpedition(settled));
       }
       const wasFirstVisit = snapshot.expeditionState.locationId
         ? !snapshot.storyFlags.includes(`visited:${snapshot.expeditionState.locationId}`)
@@ -160,7 +220,7 @@ export default function V1Entry() {
       if (wasFirstVisit && next.campaignStats.locationsDiscovered > 0) {
         next = { ...next, campaignStats: { ...next.campaignStats, locationsDiscovered: next.campaignStats.locationsDiscovered - 1 } };
       }
-      return commit({
+      const settled: GameState = {
         ...next,
         phase: 'dusk',
         dayState: {
@@ -168,51 +228,58 @@ export default function V1Entry() {
           assignmentsLocked: true,
           committedSurvivorIds: [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])],
         },
-      });
+      };
+      return commit(beginNextPlannedExpedition(settled));
     };
-    return <ExploreV1 state={snapshot} onBack={onBack} onStart={onStart} onDecision={onDecision}/>;
+    return page(<ExploreV1 state={snapshot} onBack={() => undefined} onStart={() => undefined} onDecision={onDecision}/>);
   }
 
-  if (snapshot.phase !== 'street' && snapshot.phase !== 'assignment') {
-    return <V060AppHotfix/>;
+  if (snapshot.phase === 'dusk') return page(<DuskV1 state={snapshot} onCommit={commit}/>);
+  if (snapshot.phase === 'night-summary') return page(<NightSummaryV1 state={snapshot} onCommit={commit}/>);
+  if (snapshot.phase === 'summary' || snapshot.phase === 'dawn') return page(<DawnV1 state={snapshot} onCommit={commit}/>);
+  if (snapshot.phase === 'ending') {
+    const endingMeta = previewScene && snapshot.ending
+      ? { ...meta, endingsUnlocked: [...new Set([...meta.endingsUnlocked, snapshot.ending.id])] }
+      : meta;
+    return page(<EndingV1 state={snapshot} meta={endingMeta} onRestart={restart}/>);
   }
 
   const attention = dayAttentionSummary(snapshot);
   const fixedEvent = !snapshot.expeditionState.departed ? pendingCampaignEvent(snapshot) : null;
-  const needsLegacyAttention = Boolean(fixedEvent || attention.missingCount > 0 || attention.socialNeedsAttention);
-  if (needsLegacyAttention) {
-    return <V060AppHotfix/>;
+  const urgentSocialChoice = Boolean(pendingPrincipleDecision(snapshot) || pendingCommunityRequest(snapshot));
+  if (fixedEvent) {
+    return page(<CampaignEventV1 state={snapshot} event={fixedEvent} onCommit={(current, eventId) => commit(resolveCampaignEvent(current, eventId))}/>);
+  }
+  if (attention.missingCount > 0) {
+    return page(<DayAttentionScreen state={snapshot} onCommit={commit} kind="missing"/>);
+  }
+  if (urgentSocialChoice) {
+    return page(<DayAttentionScreen state={snapshot} onCommit={commit} kind="social"/>);
   }
 
   const navigate = (target: V1NavTarget) => setNav(target);
-  const onStart = (partyIds: string[], locationId: string) => {
-    const prepared = snapshot.dayState.assignmentsLocked ? snapshot : lockDayAssignments(snapshot);
-    let next = startExpedition(prepared, partyIds, locationId);
-    if (!next.expeditionState.departed) return commit(next);
-    next = drawExpeditionEvent(next);
-    commit({ ...next, phase: 'expedition' });
-  };
-  const onExploreDecision = (decision: ExploreDecision) => {
-    if (decision === 'retreat') {
-      const next = retreatCurrentExpedition(snapshot);
-      return commit({ ...next, phase: 'dusk' });
-    }
-    return commit({ ...resolveExpeditionStance(snapshot, decision), phase: 'dusk' });
-  };
   const finishAssignments = () => {
-    const next = lockDayAssignmentsAndRoute(snapshot);
+    const locked = lockDayAssignmentsAndRoute(snapshot);
+    const next = locked.phase === 'expedition' ? beginNextPlannedExpedition(locked) : locked;
     commit(next);
-    if (next.phase === 'expedition') setNav('explore');
   };
 
-  if (nav === 'explore') {
-    return <><ExploreV1 state={snapshot} onBack={() => setNav('home')} onStart={onStart} onDecision={onExploreDecision}/><V1BottomNav active="explore" onNavigate={navigate}/></>;
+  if (routeSurvivorId) {
+    return page(<><ExploreRouteV1 state={snapshot} survivorId={routeSurvivorId} onBack={() => setRouteSurvivorId(null)} onConfirm={(locationId) => {
+      commit(assignExpeditionRoute(snapshot, routeSurvivorId, locationId));
+      setRouteSurvivorId(null);
+      setNav('survivors');
+    }}/><V1BottomNav active="survivors" onNavigate={(target) => { setRouteSurvivorId(null); navigate(target); }}/></>);
   }
   if (nav === 'survivors') {
-    return <><SurvivorsV1 state={snapshot} onCommit={commit} onBack={() => setNav('home')} onDone={finishAssignments}/><V1BottomNav active="survivors" onNavigate={navigate}/></>;
+    const incomplete = incompleteExpeditionSurvivorIds(snapshot);
+    return page(<><SurvivorsV1 state={snapshot} onCommit={commit} onDone={finishAssignments} onChooseRoute={setRouteSurvivorId} doneDisabled={incomplete.length > 0} doneHint="还有人的路没定下来"/><V1BottomNav active="survivors" onNavigate={navigate}/></>);
+  }
+  if (nav === 'buildings') {
+    return page(<><BuildingsV1 state={snapshot} onCommit={commit}/><V1BottomNav active="buildings" onNavigate={navigate}/></>);
   }
   if (nav === 'records') {
-    return <><RecordsV1 state={snapshot} onBack={() => setNav('home')}/><V1BottomNav active="records" onNavigate={navigate}/></>;
+    return page(<><RecordsV1 state={snapshot}/><V1BottomNav active="records" onNavigate={navigate}/></>);
   }
-  return <HomeBaseView state={snapshot} onCommit={commit} onNavigate={navigate}/>;
+  return page(<HomeBaseView state={snapshot} onCommit={commit} onNavigate={navigate}/>);
 }
