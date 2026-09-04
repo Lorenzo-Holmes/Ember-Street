@@ -88,6 +88,14 @@ test('failed missing search always exposes a way back to the day', async ({ page
     ...base,
     day: 6,
     phase: 'street',
+    socialState: {
+      pressure: 0,
+      activePromise: null,
+      fulfilledPromises: 0,
+      brokenPromises: 0,
+      principles: [],
+      lastRequestDay: 6,
+    },
     survivors: base.survivors.map((survivor) => survivor.id === missingId
       ? { ...survivor, condition: 'missing' as const }
       : survivor),
