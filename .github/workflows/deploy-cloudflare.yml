@@ -14,8 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  release-gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -33,6 +34,37 @@ jobs:
 
       - name: Unit tests
         run: npm test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run release-blocker browser smoke
+        run: npm run test:release-blocker
+
+      - name: Upload release-gate browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-gate-browser-evidence
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: warn
+
+  deploy:
+    needs: release-gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
 
       - name: Production build
         run: npm run build
