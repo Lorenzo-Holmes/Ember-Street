@@ -247,7 +247,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
     dayState: { ...duskBase.dayState, assignmentsLocked: true },
   };
   await renderState(page, dusk);
-  await expect(page.getByText('天黑了', { exact: true })).toBeVisible();
+  await expect(page.getByText('太阳快下去了。', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '合上本子，等天黑', exact: true })).toBeVisible();
   await capture(page, 'dusk-1440x900');
 
   const normalNightBase = { ...quietState(962004), day: 5, phase: 'night' as const };
