@@ -40,6 +40,26 @@ function endingState(id: EndingId): GameState {
 describe('v0.6 endings', () => {
   it('defines exactly thirteen endings', () => expect(Object.keys(ENDINGS)).toHaveLength(13));
   for (const id of Object.keys(ENDINGS) as EndingId[]) it(`makes ${id} reachable`, () => expect(resolveEnding(endingState(id)).id).toBe(id));
+
+  it('describes a low-hope surviving community as dispersed rather than physically empty', () => {
+    const base = matureState();
+    const lowHopeWithSixAlive: GameState = {
+      ...base,
+      civilianResidents: 0,
+      survivors: base.survivors.map((survivor) => ({ ...survivor, trust: 0 })),
+      hope: 4,
+      buildings: { searchStation: 2, workshop: 1, clinic: 1, watchPost: 1, shelter: 2, radio: 1 },
+      campaignStats: { ...base.campaignStats, rescued: 2, deaths: 0 },
+      storyFlags: ['v060_started'],
+      inventory: { ...base.inventory, power: 40 },
+      finalHordeResult: 'damaged',
+    };
+    const ending = resolveEnding(lowHopeWithSixAlive);
+    expect(ending.id).toBe('E10');
+    expect(ending.title).toBe('街散了');
+    expect(ending.summary).toContain('街上还留着脚步');
+    expect(ending.summary).not.toContain('没有谁需要');
+  });
 });
 
 describe('DAY 29 final horde grade', () => {
