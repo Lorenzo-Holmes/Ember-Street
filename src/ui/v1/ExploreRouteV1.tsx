@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { GameState } from '../../game/types';
-import { expeditionRouteFor, expeditionRouteLimit } from '../../game/v060/dayManagement';
+import { canTakeDayAssignment, expeditionRouteFor, expeditionRouteLimit } from '../../game/v060/dayManagement';
 import { EXPEDITION_LOCATIONS, expeditionRiskLabel, expeditionRiskScore } from '../../game/v060/expedition';
 import { isLocationUnlocked } from '../../game/v060/campaignEvents';
 import { locationVisual, visualAssetStyle } from '../visualAssets';
@@ -21,6 +21,15 @@ function companyNote(count: number): string {
   if (count <= 1) return '一个人走，出事时没人照应';
   if (count === 2) return '两个人同行，路上能互相照应';
   return `${count} 人同行，能分开找，也更容易把东西带回来`;
+}
+
+function bestAdditionalCompanionRisk(state: GameState, partyIds: string[], survivorId: string, locationId: string): number | null {
+  if (partyIds.length !== 1) return null;
+  const candidates = state.survivors.filter((candidate) => candidate.id !== survivorId
+    && !state.dayAssignments[candidate.id]
+    && canTakeDayAssignment(state, candidate.id, 'expedition').allowed);
+  if (!candidates.length) return null;
+  return Math.min(...candidates.map((candidate) => expeditionRiskScore(state, [...partyIds, candidate.id], locationId)));
 }
 
 export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }: ExploreRouteV1Props) {
@@ -54,7 +63,12 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
             .filter(([id, route]) => id !== survivorId && route === location.id && state.dayAssignments[id] === 'expedition')
             .map(([id]) => id);
           const prospectiveParty = survivor ? [...companions, survivor.id] : companions;
-          const risk = expeditionRiskLabel(expeditionRiskScore(state, prospectiveParty, location.id));
+          const currentRiskScore = expeditionRiskScore(state, prospectiveParty, location.id);
+          const risk = expeditionRiskLabel(currentRiskScore);
+          const bestCompanionScore = bestAdditionalCompanionRisk(state, prospectiveParty, survivorId, location.id);
+          const bestCompanionLabel = bestCompanionScore !== null && bestCompanionScore < currentRiskScore
+            ? riskLabel(expeditionRiskLabel(bestCompanionScore))
+            : null;
           const blocked = !existingDistinct.has(location.id) && existingDistinct.size >= routeLimit;
           return (
             <button className={`v1e-location ${active ? 'active' : ''}`} disabled={blocked} key={location.id} onClick={() => setLocationId(location.id)}>
@@ -63,6 +77,7 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
                 <div><strong>{location.name}</strong><em>{blocked ? '今天记不了更多路' : riskLabel(risk)}</em></div>
                 <p>{location.description}</p>
                 <small>能翻到：{resourceListLabel(location.primary, location.secondary, location.tertiary)} · {companyNote(prospectiveParty.length)}</small>
+                {bestCompanionLabel && <small className="v1e-companion-hint">再安排 1 人走同一路线，风险最低可到：{bestCompanionLabel}</small>}
               </div>
             </button>
           );
