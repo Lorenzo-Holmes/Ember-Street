@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { BuildingId, GameState } from '../../game/types';
 import { V060_BUILDINGS, canUpgradeBuilding, upgradeBuilding } from '../../game/v060/buildings';
-import { buildingVisual, visualAssetStyle } from '../visualAssets';
+import { buildingSceneStatus, buildingSceneStyle } from '../buildingVisuals';
 import './home-base.css';
 
 interface BuildingsV1Props {
@@ -30,10 +30,16 @@ export default function BuildingsV1({ state, onCommit }: BuildingsV1Props) {
           const level = state.buildings[id];
           const next = definition.levels[level] ?? null;
           const check = canUpgradeBuilding(state, id);
-          const asset = buildingVisual(id);
+          const artStyle = buildingSceneStyle(id);
+          const artStatus = buildingSceneStatus(id);
           const isOpen = openId === id;
           return (
-            <article className={`v1-building ${asset ? '' : 'v1-building--text'} ${isOpen ? 'is-open' : ''}`} key={id}>
+            <article
+              className={`v1-building ${artStyle ? '' : 'v1-building--text'} ${isOpen ? 'is-open' : ''}`}
+              data-building-id={id}
+              data-visual-status={artStatus}
+              key={id}
+            >
               <button className="v1-building__summary" aria-expanded={isOpen} onClick={() => setOpenId(isOpen ? null : id)}>
                 <span>{definition.name}</span>
                 <strong>{level ? definition.levels[level - 1].title : definition.inactiveTitle}</strong>
@@ -47,7 +53,7 @@ export default function BuildingsV1({ state, onCommit }: BuildingsV1Props) {
                 <i>{isOpen ? '合上' : '翻开看'}</i>
               </button>
               {isOpen ? <>
-                {asset ? <div className="v1-art-frame v1-building__art" aria-label={definition.name} style={visualAssetStyle(asset)}/> : null}
+                {artStyle ? <div className="v1-art-frame v1-building__art" aria-label={definition.name} style={artStyle}/> : null}
                 <div className="v1-building__body">
                   <p>{level ? definition.levels[level - 1].unlock : definition.inactiveDescription}</p>
                   {next ? <button className="v1-primary-action" aria-describedby={`building-cost-${id}`} disabled={!check.allowed || state.dayState.assignmentsLocked} onClick={() => onCommit(upgradeBuilding(state, id))}>{state.dayState.assignmentsLocked ? '人已经派出去了' : level === 0 ? '动手抢修' : '接着修'}</button> : <strong className="v1-finished">这里已经修完</strong>}
