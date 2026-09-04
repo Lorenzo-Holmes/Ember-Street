@@ -17,6 +17,8 @@
     "typecheck": "tsc -b --pretty false",
     "audit:assets": "node scripts/audit-visual-assets.mjs",
     "audit:assets:strict": "node scripts/audit-visual-assets.mjs --strict",
+    "audit:building-art": "node scripts/audit-building-visuals.mjs",
+    "audit:building-art:strict": "node scripts/audit-building-visuals.mjs --strict",
     "audit:xhs": "node scripts/audit-xhs-package.mjs",
     "preview": "vite preview",
     "cf:dry-run": "npm run build && wrangler deploy --dry-run",
