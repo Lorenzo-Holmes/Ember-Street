@@ -32,6 +32,12 @@ node scripts/package-minitool.mjs APP_DIRECTORY
 
 ZIP、校验摘要及 SHA-256 文件会生成在 `app` 的同级目录；同名 ZIP 已存在时拒绝覆盖。构建目录旁的 `build-report.json` 记录素材处理和源提交信息。
 
+## GitHub Actions 发布包
+
+`.github/workflows/package-xhs.yml` 使用与本地正式发布相同的专用小工具流程：安装并校验 minitool-zip-builder 1.6.0、执行 `build:minitool`、运行项目静态审计和官方校验脚本，再上传最终 ZIP、SHA-256、`validation.json`、`build-report.json` 与 `release-manifest.txt`。
+
+下载 Actions 产物后，上传小红书前必须核对 `release-manifest.txt` 的 `Source commit` 与计划发布的 Git commit 完全一致。不要继续使用本地下载目录中无法确认来源提交的旧 ZIP。
+
 ## 本地检查
 
 ```sh
@@ -42,4 +48,4 @@ node scripts/serve-minitool.mjs APP_DIRECTORY 4185
 
 日记本规矩和请求界面的开发预览分别为 `?scene=social` 与 `?scene=request`。预览选择不会写入正式存档，生产构建不开放这些场景入口。
 
-推送 Git 不会把该独立发布包提交到小红书。仓库现有的 `package-xhs.yml` 仍打包普通 `dist`，不等同于这里的兼容构建；正式提交请使用上述流程生成并校验的 ZIP。
+推送 Git 只会生成新的待提交发布包，不会自动替换小红书创作服务平台里已经上传的版本。正式发布仍需下载对应提交的 Actions 产物，并在小红书创作服务平台重新上传、预览和提交。
