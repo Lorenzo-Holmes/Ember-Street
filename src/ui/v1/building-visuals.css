@@ -1,0 +1,11 @@
+.v1-building__art{
+  aspect-ratio:16/7;
+  width:100%;
+  height:auto;
+  background-size:cover;
+  background-position:center;
+}
+
+@media (max-width:390px){
+  .v1-building__art{aspect-ratio:16/8;}
+}
