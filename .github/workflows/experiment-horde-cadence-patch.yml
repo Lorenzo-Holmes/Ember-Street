@@ -33,24 +33,40 @@ jobs:
               raise SystemExit('scheduler target snippet not found')
           scheduler.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          test = Path('tests/night-scheduler-v060.test.ts')
-          text = test.read_text(encoding='utf-8')
-          old = "expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(5);"
-          new = "expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(3);"
-          if old not in text:
-              raise SystemExit('night scheduler expectation not found')
-          test.write_text(text.replace(old, new, 1), encoding='utf-8')
+          scheduler_test = Path('tests/night-scheduler-v060.test.ts')
+          text = scheduler_test.read_text(encoding='utf-8')
+          replacements = {
+              "expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(5);":
+                  "expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(3);",
+              "const day10 = scheduleNight(stateFor(10, 1010)); expect(day10.nightState.scheduledEventIds).toHaveLength(5);":
+                  "const day10 = scheduleNight(stateFor(10, 1010)); expect(day10.nightState.scheduledEventIds).toHaveLength(3);",
+              "const day20 = scheduleNight(stateFor(20, 2020)); expect(day20.nightState.scheduledEventIds).toHaveLength(5);":
+                  "const day20 = scheduleNight(stateFor(20, 2020)); expect(day20.nightState.scheduledEventIds).toHaveLength(3);",
+          }
+          for old_text, new_text in replacements.items():
+              if old_text not in text:
+                  raise SystemExit(f'night scheduler expectation not found: {old_text}')
+              text = text.replace(old_text, new_text, 1)
+          scheduler_test.write_text(text, encoding='utf-8')
+
+          recent_test = Path('tests/night-recent-selection-v060.test.ts')
+          text = recent_test.read_text(encoding='utf-8')
+          if text.count("day: 10, phase: 'night'") != 2:
+              raise SystemExit('recent-selection DAY10 fixtures changed unexpectedly')
+          text = text.replace("day: 10, phase: 'night'", "day: 9, phase: 'night'")
+          text = text.replace("`night_seen:${event.id}:9`", "`night_seen:${event.id}:8`")
+          recent_test.write_text(text, encoding='utf-8')
           PY
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Verify experiment
         run: |
           npm run typecheck
-          npx vitest run tests/night-cadence-v060.test.ts tests/night-scheduler-v060.test.ts tests/night-recent-selection-v060.test.ts tests/regression-campaign-30d-v060.test.ts
+          npm test
       - name: Commit experiment patch
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src/game/v060/nightScheduler.ts tests/night-scheduler-v060.test.ts
+          git add src/game/v060/nightScheduler.ts tests/night-scheduler-v060.test.ts tests/night-recent-selection-v060.test.ts
           git commit -m "experiment(night): let horde beats replace ordinary slots"
           git push origin HEAD:experiment/horde-replaces-normal-night-20260905
