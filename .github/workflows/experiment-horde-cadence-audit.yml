@@ -38,7 +38,7 @@ jobs:
           import { describe, expect, it } from 'vitest';
           import { V2_AUDIT_POLICIES, runAuditGameV2 } from '../../src/game/v060/playtestAuditV2';
 
-          const RUNS = 120;
+          const RUNS = 600;
           const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
           const won = (result: string | null) => result === 'held' || result === 'perfect';
           const eventTotal = (counts: Record<string, number>, kind: 'all' | 'normal' | 'horde' | 'emergency') => Object.entries(counts)
@@ -74,7 +74,7 @@ jobs:
               });
               mkdirSync('qa/playtest/out', { recursive: true });
               writeFileSync('qa/playtest/out/cadence-metrics.json', JSON.stringify(out, null, 2));
-            }, 120_000);
+            }, 240_000);
           });
           EOF
           done
