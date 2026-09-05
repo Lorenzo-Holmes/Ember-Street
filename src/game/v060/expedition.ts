@@ -1,7 +1,7 @@
 import { nextRandom } from '../rng';
 import type { CheckOutcome, GameState, Survivor } from '../types';
 import { isLocationUnlocked } from './campaignEvents';
-import { locationMemoryRiskModifier } from './locationMemory';
+import { locationMemory, locationMemoryRiskModifier, rememberLocationLoot } from './locationMemory';
 import { markMissing, recordDeath } from './memorial';
 import { applyInjuryTrustLoss, specialtyAvailable, trustCheckModifier } from './trust';
 import {
@@ -151,10 +151,12 @@ function advanceCondition(survivor: Survivor, severe: boolean): Survivor {
 }
 
 function lootFor(state: GameState, multiplier: number): Partial<Record<ExpeditionResource, number>> {
-  const location = state.expeditionState.locationId ? locationForId(state.expeditionState.locationId) : undefined;
-  if (!location) return {};
+  const locationId = state.expeditionState.locationId;
+  const location = locationId ? locationForId(locationId) : undefined;
+  if (!location || !locationId) return {};
   const partyMultiplier = expeditionPartyLootMultiplier(state.expeditionState.activePartyIds.length);
-  const base = Math.max(1, Math.round((2 + location.danger) * multiplier * partyMultiplier));
+  const fullBase = Math.max(1, Math.round((2 + location.danger) * multiplier * partyMultiplier));
+  const base = locationMemory(state, locationId).depleted ? Math.max(1, Math.floor(fullBase * 0.5)) : fullBase;
   const principleDelta = (hasPrinciple(state, 'outward-search') ? 1 : 0) - (hasPrinciple(state, 'preserve-strength') ? 1 : 0);
   const loot: Partial<Record<ExpeditionResource, number>> = {
     [location.primary]: Math.max(1, base + principleDelta),
@@ -199,8 +201,9 @@ export function retreatExpedition(state: GameState): GameState {
 
 export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome, twist?: 'double-six' | 'double-one'): GameState {
   if (!state.expeditionState.departed || !state.expeditionState.locationId) return state;
+  const locationId = state.expeditionState.locationId;
   const partyIds = state.expeditionState.activePartyIds;
-  const risk = expeditionRiskLabel(expeditionRiskScore(state, partyIds, state.expeditionState.locationId));
+  const risk = expeditionRiskLabel(expeditionRiskScore(state, partyIds, locationId));
   const targetId = [...partyIds].sort((a, b) => (state.survivors.find((item) => item.id === a)?.energy ?? 100) - (state.survivors.find((item) => item.id === b)?.energy ?? 100))[0];
   let next: GameState = {
     ...state,
@@ -220,10 +223,10 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
     const canDie = state.day >= 11 && extreme && twist === 'double-one' && Boolean(target && (target.energy < 45 || target.condition === 'minor' || target.condition === 'fatigued'));
     const canGoMissing = state.day >= 6 && (extreme || twist === 'double-one');
     if (canDie && target) {
-      next = recordDeath(next, target.id, `探索 · ${locationForId(state.expeditionState.locationId)?.name ?? '未知地点'}`);
+      next = recordDeath(next, target.id, `探索 · ${locationForId(locationId)?.name ?? '未知地点'}`);
       message = `${target.name}没能回来。`;
     } else if (canGoMissing && target) {
-      next = markMissing(next, target.id, `探索 · ${locationForId(state.expeditionState.locationId)?.name ?? '未知地点'}`);
+      next = markMissing(next, target.id, `探索 · ${locationForId(locationId)?.name ?? '未知地点'}`);
       message = `${target.name}没有回来，也没人知道去了哪里。`;
     } else {
       next = { ...next, survivors: next.survivors.map((survivor) => survivor.id === targetId ? advanceCondition(survivor, true) : survivor) };
@@ -231,8 +234,9 @@ export function resolveExpeditionOutcome(state: GameState, outcome: CheckOutcome
     }
   }
 
-  const locationFlag = `visited:${state.expeditionState.locationId}`;
-  next = applyInjuryTrustLoss(state, next, targetId ? [targetId] : [], `expedition:${state.day}:${state.expeditionState.locationId}:${state.expeditionState.eventId ?? 'street'}`);
+  const locationFlag = `visited:${locationId}`;
+  next = applyInjuryTrustLoss(state, next, targetId ? [targetId] : [], `expedition:${state.day}:${locationId}:${state.expeditionState.eventId ?? 'street'}`);
+  if (outcome !== 'failure') next = rememberLocationLoot(next, locationId);
   const firstVisit = !next.storyFlags.includes(locationFlag);
   const committedSurvivorIds = [...new Set([...next.dayState.committedSurvivorIds, ...partyIds])];
   return {
