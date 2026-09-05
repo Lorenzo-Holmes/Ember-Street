@@ -1,0 +1,72 @@
+name: Human Depletion-Aware Playtest
+
+on:
+  push:
+    branches:
+      - qa/human-depletion-aware-20260905
+    paths:
+      - 'qa/human-production/**'
+      - 'playwright.human.config.ts'
+      - '.github/workflows/human-depletion-aware-playtest.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  human-depletion-aware:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PRODUCTION_URL: https://ember-street.1106314996.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Make adaptive player react to depletion cues
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('qa/human-production/adaptive-human.pw.ts')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              "import { availableExpeditionLocations, expeditionRiskLabel, expeditionRiskScore, locationForId } from '../../src/game/v060/expedition';",
+              "import { availableExpeditionLocations, expeditionRiskLabel, expeditionRiskScore, locationForId } from '../../src/game/v060/expedition';\nimport { locationLootVisitCount, locationMemory } from '../../src/game/v060/locationMemory';",
+          )
+          old = "  const firstVisit = s.storyFlags.includes(`visited:${location.id}`) ? 0 : strategy.id === 'explorer' ? 12 : 4;\n  const risk = expeditionRiskScore(s, partyIds, location.id);\n  return resource + firstVisit - risk * (strategy.id === 'explorer' ? 1.0 : 2.0);"
+          new = "  const firstVisit = s.storyFlags.includes(`visited:${location.id}`) ? 0 : strategy.id === 'explorer' ? 12 : 4;\n  const lootVisits = locationLootVisitCount(s, location.id);\n  const depletedPenalty = locationMemory(s, location.id).depleted\n    ? (strategy.id === 'explorer' ? 18 : 24)\n    : lootVisits >= 2\n      ? (strategy.id === 'explorer' ? 8 : 12)\n      : lootVisits === 1 ? 2 : 0;\n  const risk = expeditionRiskScore(s, partyIds, location.id);\n  return resource + firstVisit - depletedPenalty - risk * (strategy.id === 'explorer' ? 1.0 : 2.0);"
+          if old not in text:
+              raise SystemExit('routeScore patch target not found')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+
+      - name: Typecheck playtest branch
+        run: npm run typecheck
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify production endpoint
+        run: curl --fail --silent --show-error --location --max-time 20 "$PRODUCTION_URL/" -o /tmp/ember-street-production.html
+
+      - name: Run depletion-aware human strategies
+        run: npx playwright test --config=playwright.human.config.ts
+
+      - name: Upload depletion-aware evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: human-depletion-aware-evidence
+          path: |
+            test-results
+            playwright-human-report
+          if-no-files-found: warn
