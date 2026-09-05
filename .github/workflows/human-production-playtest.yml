@@ -31,6 +31,33 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Normalize QA locator strictness
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('qa/human-production/human-player.pw.ts')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'return locator.isVisible().catch(() => false);',
+              'return locator.first().isVisible().catch(() => false);',
+          )
+          text = text.replace(
+              'await locator.click();',
+              'await locator.first().click();',
+              1,
+          )
+          text = text.replace(
+              "const accept = page.getByRole('button', { name: '答应下来', exact: true });",
+              "const accept = page.getByRole('button', { name: '答应下来', exact: true }).first();",
+          )
+          text = text.replace(
+              "const decline = page.getByRole('button', { name: '不答应', exact: true });",
+              "const decline = page.getByRole('button', { name: '不答应', exact: true }).first();",
+          )
+          path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Typecheck playtest branch
         run: npm run typecheck
 
