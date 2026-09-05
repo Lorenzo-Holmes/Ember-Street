@@ -50,6 +50,41 @@ A01–A29 have been explicitly confirmed by the user as approved Ember Street pr
 | A28 | 医院隔离病房 | `hospital-isolation-ward` |
 | A29 | 避难所加固材料箱 | `warehouse-protection-crate` |
 
+## Building level expansion
+
+The building system has six facilities with Lv0–3 runtime state. Lv0 is the closed/unrepaired state and reuses the Lv1 art with UI treatment; the canonical art expansion therefore contains 18 level slots, not 24 unique images.
+
+A06 already occupies the Shelter Lv1 slot, so only 17 new canonical masters are required. Reserve A30–A46 as follows; do not mark these IDs `locked` in `visualAssets.ts` until the corresponding WebP pixels have passed visual QA and are present in the repository.
+
+| ID | Building | Level | Gameplay mapping | Import status |
+|---|---|---:|---|---|
+| A30 | 路线屋 | 1 | `searchStation` | pending import |
+| A31 | 路线屋 | 2 | `searchStation` | pending import |
+| A32 | 路线屋 | 3 | `searchStation` | pending import |
+| A33 | 修车铺 | 1 | `workshop` | pending import |
+| A34 | 修车铺 | 2 | `workshop` | pending import |
+| A35 | 修车铺 | 3 | `workshop` | pending import |
+| A36 | 诊疗室 | 1 | `clinic` | pending import |
+| A37 | 诊疗室 | 2 | `clinic` | pending import |
+| A38 | 诊疗室 | 3 | `clinic` | pending import |
+| A39 | 街口岗 | 1 | `watchPost` | pending import |
+| A40 | 街口岗 | 2 | `watchPost` | pending import |
+| A41 | 街口岗 | 3 | `watchPost` | pending import |
+| A42 | 广播间 | 1 | `radio` | pending import |
+| A43 | 广播间 | 2 | `radio` | pending import |
+| A44 | 广播间 | 3 | `radio` | pending import |
+| A06 | 宿营屋 | 1 | `shelter` | locked existing master |
+| A45 | 宿营屋 | 2 | `shelter` | pending import |
+| A46 | 宿营屋 | 3 | `shelter` | pending import |
+
+Building visual continuity rules:
+
+- Lv1, Lv2 and Lv3 for one building must depict the same place from effectively the same camera position.
+- Upgrade feedback comes from repair, restored utilities, additional functional equipment and long-term use; it must not read as a new building or a wealth/technology upgrade.
+- Lv3 remains a civilian disaster-survival space, not a military base, command center, professional hospital, industrial workshop or modern broadcast station.
+- A06 remains the authoritative Shelter Lv1 master. Shelter Lv2/Lv3 must be derived from its room language rather than replacing it with a separate shelter design.
+- Level-specific runtime selection is handled through `buildingVisual(buildingId, level)`. Until a level asset is imported, the function must fall back safely rather than rendering a missing image.
+
 ## Runtime files
 
 The local release package contains seven verified WebP sheets:
