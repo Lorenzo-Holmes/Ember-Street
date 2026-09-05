@@ -129,17 +129,45 @@ function emergencyCountFor(state: GameState, roll: number): number {
   return roll < emergencyRisk(state) ? 1 : 0;
 }
 
+export const NORMAL_NIGHT_RECENT_COOLDOWN_DAYS = 2;
+
+function normalEventSeenRecently(state: GameState, eventId: string): boolean {
+  const prefix = `night_seen:${eventId}:`;
+  for (const flag of state.storyFlags) {
+    if (!flag.startsWith(prefix)) continue;
+    const seenDay = Number(flag.slice(prefix.length));
+    if (!Number.isFinite(seenDay)) continue;
+    const age = state.day - seenDay;
+    if (age >= 1 && age <= NORMAL_NIGHT_RECENT_COOLDOWN_DAYS) return true;
+  }
+  return false;
+}
+
 function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
   const pool = eligible(NORMAL_NIGHT_EVENTS, state);
+  const preferred = pool.filter((event) => !normalEventSeenRecently(state, event.id));
   const selected: V060NightEvent[] = []; let nextState = rngState;
+  const unselected = (source: V060NightEvent[], category?: AnchorCategory) => source.filter((event) =>
+    (!category || event.category === category) && !selected.some((item) => item.id === event.id));
+
   for (const category of nightAnchorCategories(state.day)) {
-    const candidates = pool.filter((event) => event.category === category && !selected.some((item) => item.id === event.id));
-    if (!candidates.length || selected.length >= count) continue;
+    if (selected.length >= count) break;
+    const freshCandidates = unselected(preferred, category);
+    const candidates = freshCandidates.length ? freshCandidates : unselected(pool, category);
+    if (!candidates.length) continue;
     const [picked, next] = pickWeightedWithoutReplacement(candidates, 1, nextState, state); nextState = next; selected.push(...picked);
   }
-  const remaining = pool.filter((event) => !selected.some((item) => item.id === event.id));
-  const [fill, next] = pickWeightedWithoutReplacement(remaining, Math.max(0, count - selected.length), nextState, state);
-  return [[...selected, ...fill], next];
+
+  const freshRemaining = unselected(preferred);
+  const [freshFill, afterFresh] = pickWeightedWithoutReplacement(freshRemaining, Math.max(0, count - selected.length), nextState, state);
+  nextState = afterFresh; selected.push(...freshFill);
+
+  if (selected.length < count) {
+    const fallback = unselected(pool);
+    const [fallbackFill, afterFallback] = pickWeightedWithoutReplacement(fallback, count - selected.length, nextState, state);
+    nextState = afterFallback; selected.push(...fallbackFill);
+  }
+  return [selected, nextState];
 }
 
 export function scheduleNight(input: GameState): GameState {
