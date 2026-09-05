@@ -29,15 +29,13 @@ const SPRITES: readonly SpriteGroup[] = [
   { path: '/assets/canonical/events-a.webp', columns: 3, rows: 2, ids: ['A05', 'A19', 'A20', 'A21', 'A22', 'A23'] },
   { path: '/assets/canonical/events-b1.webp', columns: 3, rows: 1, ids: ['A24', 'A25', 'A26'] },
   { path: '/assets/canonical/events-b2.webp', columns: 3, rows: 1, ids: ['A27', 'A28', 'A29'] },
-  { path: '/assets/canonical/buildings-a.webp', columns: 3, rows: 3, ids: ['A30', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36', 'A37', 'A38'] },
-  { path: '/assets/canonical/buildings-b.webp', columns: 3, rows: 3, ids: ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46'] },
 ] as const;
 
 /**
  * Canonical art registry for Ember Street.
  * A-numbers are production identifiers only; player-facing UI uses world/gameplay copy.
  * A01-A29 are the locked baseline. Building level art A30-A46 is reserved separately and
- * must not enter this registry until the corresponding verified WebP pixels are imported.
+ * must not enter this registry or runtime sprite table until verified WebP pixels exist.
  */
 export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A01', kind: 'character', title: '林夏', gameplayId: 'lin-xia', status: 'locked' },
