@@ -1,0 +1,56 @@
+name: Experiment Horde Cadence Patch
+
+on:
+  push:
+    branches:
+      - experiment/horde-replaces-normal-night-20260905
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-test:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: experiment/horde-replaces-normal-night-20260905
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply exact cadence experiment
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          scheduler = Path('src/game/v060/nightScheduler.ts')
+          text = scheduler.read_text(encoding='utf-8')
+          old = """  const normalEventBudget = normalNightEventBudget(state.day);\n  const hordeSlots = hordeActive ? 2 : 0;\n  const eventTotal = normalEventBudget + hordeSlots;\n  const [normalEvents, afterNormal] = normalComposition(state, normalEventBudget, rngState); rngState = afterNormal;\n"""
+          new = """  const baseNormalEventBudget = normalNightEventBudget(state.day);\n  const hordeSlots = hordeActive ? 2 : 0;\n  // Horde beats replace ordinary night noise instead of stacking fully on top of it.\n  const normalEventBudget = hordeActive ? Math.max(1, baseNormalEventBudget - hordeSlots) : baseNormalEventBudget;\n  const eventTotal = normalEventBudget + hordeSlots;\n  const [normalEvents, afterNormal] = normalComposition(state, normalEventBudget, rngState); rngState = afterNormal;\n"""
+          if old not in text:
+              raise SystemExit('scheduler target snippet not found')
+          scheduler.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test = Path('tests/night-scheduler-v060.test.ts')
+          text = test.read_text(encoding='utf-8')
+          old = "expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(5);"
+          new = "expect(state.nightState.hordeActive).toBe(true); expect(state.nightState.eventTotal).toBe(3);"
+          if old not in text:
+              raise SystemExit('night scheduler expectation not found')
+          test.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify experiment
+        run: |
+          npm run typecheck
+          npx vitest run tests/night-cadence-v060.test.ts tests/night-scheduler-v060.test.ts tests/night-recent-selection-v060.test.ts tests/regression-campaign-30d-v060.test.ts
+      - name: Commit experiment patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/game/v060/nightScheduler.ts tests/night-scheduler-v060.test.ts
+          git commit -m "experiment(night): let horde beats replace ordinary slots"
+          git push origin HEAD:experiment/horde-replaces-normal-night-20260905
