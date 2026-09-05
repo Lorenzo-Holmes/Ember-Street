@@ -1,0 +1,151 @@
+name: Apply Night Cooldown Patch
+
+on:
+  push:
+    branches:
+      - fix/night-event-recent-cooldown-20260905
+    paths:
+      - '.github/workflows/patch-night-cooldown.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/night-event-recent-cooldown-20260905
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Patch scheduler and add regression tests
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          scheduler = Path('src/game/v060/nightScheduler.ts')
+          text = scheduler.read_text(encoding='utf-8')
+          old = '''function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
+            const pool = eligible(NORMAL_NIGHT_EVENTS, state);
+            const selected: V060NightEvent[] = []; let nextState = rngState;
+            for (const category of nightAnchorCategories(state.day)) {
+              const candidates = pool.filter((event) => event.category === category && !selected.some((item) => item.id === event.id));
+              if (!candidates.length || selected.length >= count) continue;
+              const [picked, next] = pickWeightedWithoutReplacement(candidates, 1, nextState, state); nextState = next; selected.push(...picked);
+            }
+            const remaining = pool.filter((event) => !selected.some((item) => item.id === event.id));
+            const [fill, next] = pickWeightedWithoutReplacement(remaining, Math.max(0, count - selected.length), nextState, state);
+            return [[...selected, ...fill], next];
+          }'''.replace('          ', '')
+          new = '''export const NORMAL_NIGHT_RECENT_COOLDOWN_DAYS = 2;
+
+          function normalEventSeenRecently(state: GameState, eventId: string): boolean {
+            const prefix = `night_seen:${eventId}:`;
+            for (const flag of state.storyFlags) {
+              if (!flag.startsWith(prefix)) continue;
+              const seenDay = Number(flag.slice(prefix.length));
+              if (!Number.isFinite(seenDay)) continue;
+              const age = state.day - seenDay;
+              if (age >= 1 && age <= NORMAL_NIGHT_RECENT_COOLDOWN_DAYS) return true;
+            }
+            return false;
+          }
+
+          function normalComposition(state: GameState, count: number, rngState: number): [V060NightEvent[], number] {
+            const pool = eligible(NORMAL_NIGHT_EVENTS, state);
+            const preferred = pool.filter((event) => !normalEventSeenRecently(state, event.id));
+            const selected: V060NightEvent[] = []; let nextState = rngState;
+            const unselected = (source: V060NightEvent[], category?: AnchorCategory) => source.filter((event) =>
+              (!category || event.category === category) && !selected.some((item) => item.id === event.id));
+
+            for (const category of nightAnchorCategories(state.day)) {
+              if (selected.length >= count) break;
+              const freshCandidates = unselected(preferred, category);
+              const candidates = freshCandidates.length ? freshCandidates : unselected(pool, category);
+              if (!candidates.length) continue;
+              const [picked, next] = pickWeightedWithoutReplacement(candidates, 1, nextState, state); nextState = next; selected.push(...picked);
+            }
+
+            const freshRemaining = unselected(preferred);
+            const [freshFill, afterFresh] = pickWeightedWithoutReplacement(freshRemaining, Math.max(0, count - selected.length), nextState, state);
+            nextState = afterFresh; selected.push(...freshFill);
+
+            if (selected.length < count) {
+              const fallback = unselected(pool);
+              const [fallbackFill, afterFallback] = pickWeightedWithoutReplacement(fallback, count - selected.length, nextState, state);
+              nextState = afterFallback; selected.push(...fallbackFill);
+            }
+            return [selected, nextState];
+          }'''.replace('          ', '')
+          if old not in text:
+            raise SystemExit('normalComposition patch target not found')
+          scheduler.write_text(text.replace(old, new), encoding='utf-8')
+
+          test = Path('tests/night-recent-selection-v060.test.ts')
+          test.write_text('''import { describe, expect, it } from 'vitest';
+          import { createV060InitialState } from '../src/game/v060/campaign';
+          import { NORMAL_NIGHT_EVENTS } from '../src/game/v060/nightEvents';
+          import { eligibleEvent, nightAnchorCategories, normalNightEventBudget, scheduleNight } from '../src/game/v060/nightScheduler';
+          import type { GameState } from '../src/game/types';
+
+          function normalIds(state: GameState): Set<string> {
+            return new Set(NORMAL_NIGHT_EVENTS.filter((event) => eligibleEvent(state, event)).map((event) => event.id));
+          }
+
+          function scheduledNormalIds(state: GameState): string[] {
+            const ids = normalIds(state);
+            return scheduleNight(state).nightState.scheduledEventIds.filter((id) => ids.has(id));
+          }
+
+          describe('v0.6 normal-night recent selection cooldown', () => {
+            it('prefers events not seen in the previous two nights when enough alternatives exist', () => {
+              const base: GameState = { ...createV060InitialState(95201), day: 10, phase: 'night' };
+              const eligible = NORMAL_NIGHT_EVENTS.filter((event) => eligibleEvent(base, event));
+              const budget = normalNightEventBudget(base.day);
+              const fresh = new Set<string>();
+              for (const category of nightAnchorCategories(base.day)) {
+                const candidate = eligible.find((event) => event.category === category && !fresh.has(event.id));
+                if (candidate) fresh.add(candidate.id);
+              }
+              for (const event of eligible) {
+                if (fresh.size >= budget) break;
+                fresh.add(event.id);
+              }
+              expect(fresh.size).toBeGreaterThanOrEqual(budget);
+              const recentFlags = eligible.filter((event) => !fresh.has(event.id)).map((event) => `night_seen:${event.id}:9`);
+              const state = { ...base, storyFlags: [...base.storyFlags, ...recentFlags] };
+              const scheduled = scheduledNormalIds(state);
+              expect(scheduled).toHaveLength(budget);
+              expect(scheduled.every((id) => fresh.has(id))).toBe(true);
+            });
+
+            it('falls back to recent events instead of shrinking the nightly event budget', () => {
+              const base: GameState = { ...createV060InitialState(95202), day: 10, phase: 'night' };
+              const eligible = NORMAL_NIGHT_EVENTS.filter((event) => eligibleEvent(base, event));
+              const keepFresh = eligible[0]?.id;
+              expect(keepFresh).toBeTruthy();
+              const recentFlags = eligible.filter((event) => event.id !== keepFresh).map((event) => `night_seen:${event.id}:9`);
+              const state = { ...base, storyFlags: [...base.storyFlags, ...recentFlags] };
+              const scheduled = scheduledNormalIds(state);
+              expect(scheduled).toHaveLength(normalNightEventBudget(base.day));
+              expect(new Set(scheduled).size).toBe(scheduled.length);
+            });
+          });
+          '''.replace('          ', ''), encoding='utf-8')
+          PY
+      - name: Validate patch
+        run: |
+          npm install --no-audit --no-fund
+          npm run typecheck
+          npm test -- --run tests/night-repeat-cooldown-v060.test.ts tests/night-recent-selection-v060.test.ts
+      - name: Commit patch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/game/v060/nightScheduler.ts tests/night-recent-selection-v060.test.ts
+          git commit -m "fix(night): avoid recent normal-event repeats when possible"
+          git push origin HEAD:fix/night-event-recent-cooldown-20260905
