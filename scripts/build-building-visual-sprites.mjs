@@ -71,10 +71,10 @@ for (const group of groups) {
     },
   })
     .composite(composites)
-    .webp({ quality: 82, alphaQuality: 100, effort: 5, smartSubsample: true })
+    .webp({ quality: 55, alphaQuality: 100, effort: 5, smartSubsample: true })
     .toFile(output);
 
   console.log(`${group.name}: ${group.ids.join(', ')} · ${(fs.statSync(output).size / 1024).toFixed(1)} KiB`);
 }
 
-console.log('Building sprites built. Next: register A30–A46 as locked assets, run npm test, npm run audit:assets:strict, and npm run build.');
+console.log('Building sprites built. Next: run npm test, npm run audit:assets:strict, npm run build, npm run audit:xhs, and npm run test:ui-smoke.');
