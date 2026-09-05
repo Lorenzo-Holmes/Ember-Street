@@ -329,6 +329,7 @@ export function runAuditGameV2(seed: number, policy: AuditV2Policy, options: Aud
 
   for (let guard = 0; guard < 30 && state.phase !== 'ending'; guard += 1) {
     state = injectResidents(state, options);
+    peakResidents = Math.max(peakResidents, state.civilianResidents);
     state = resolvePrompts(state, policy);
     state = housekeeping(state, policy);
     const plan = planDay(state, policy);
