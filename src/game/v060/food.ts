@@ -48,6 +48,25 @@ function rationStretchFor(state: GameState, cooks: Survivor[], residentCount: nu
   return Math.min(Math.max(0, residentCount - 1), 1 + matureKitchenBonus);
 }
 
+/**
+ * Rest can only restore as much energy as the previous night's ration coverage supports.
+ * This deliberately does not deal damage or kill anyone; it only closes the loophole where
+ * prolonged starvation could be erased by choosing Rest (or by leaving the game offline).
+ */
+export function hungerAdjustedRestRecovery(state: GameState, baseRecovery: number): number {
+  const base = Math.max(0, Math.floor(baseRecovery));
+  if (!base) return 0;
+  const rationCoverage = Math.max(0, Math.min(1, state.mealState?.rationCoverage ?? 1));
+  const shortageDays = Math.max(0, state.mealState?.consecutiveShortageDays ?? 0);
+  if (rationCoverage >= 1) return base;
+  if (rationCoverage <= 0) {
+    if (shortageDays >= 2) return 0;
+    return Math.max(1, Math.floor(base / 3));
+  }
+  const multiplier = rationCoverage < 0.6 ? 0.5 : 0.75;
+  return Math.max(1, Math.floor(base * multiplier));
+}
+
 export function previewMeal(state: GameState): MealPreview {
   const coreResidents = state.survivors.filter(residentPresent);
   const residentCount = coreResidents.length + Math.max(0, state.civilianResidents);
@@ -74,7 +93,7 @@ export function previewMeal(state: GameState): MealPreview {
   const foodQuality = qualityForCoverage(rationCoverage);
   const quality = qualityFromRank(Math.min(qualityRank(cookingQuality), qualityRank(foodQuality)));
 
-  let energyRecovery = 4;
+  let energyRecovery = rationCoverage <= 0 ? 0 : 4;
   let hopeDelta = 0;
   if (quality === 'struggling') { energyRecovery = 8; hopeDelta = -1; }
   if (quality === 'hot') { energyRecovery = 11; hopeDelta = 0; }
@@ -117,13 +136,16 @@ export function resolveMeal(state: GameState): GameState {
     residentsFed: preview.residentsFed, rationCoverage: preview.rationCoverage,
     consecutiveShortageDays: preview.consecutiveShortageDays, wellFed: preview.wellFed, wellFedPlus: preview.wellFedPlus,
   };
+  const mealMessage = preview.rationCoverage <= 0
+    ? '今晚没有口粮可分。睡一晚也填不回这份空缺。'
+    : `今晚吃的是${mealLabel(preview.quality)}。${preview.energyRecovery > 0 ? '睡一晚，大家能缓回一些力气。' : '这顿饭填不回多少力气。'}`;
   return {
     ...state,
     inventory: { ...state.inventory, ration: Math.max(0, state.inventory.ration - preview.rationConsumed) },
     hope: Math.max(0, Math.min(100, state.hope + preview.hopeDelta)),
     survivors,
     mealState,
-    lastMessage: `今晚吃的是${mealLabel(preview.quality)}。${preview.energyRecovery > 0 ? '睡一晚，大家能缓回一些力气。' : '这顿饭填不回多少力气。'}${preview.hopeDelta > 0 ? '至少没人空着肚子。' : preview.hopeDelta < 0 ? '还是有人没分到足够的东西。' : ''}`,
+    lastMessage: `${mealMessage}${preview.hopeDelta > 0 ? '至少没人空着肚子。' : preview.hopeDelta < 0 ? '还是有人没分到足够的东西。' : ''}`,
   };
 }
 
