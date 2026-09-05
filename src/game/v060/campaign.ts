@@ -14,7 +14,7 @@ import {
 import { lockDayAssignments, survivorAvailableForDay, unlockNextDayAssignments } from './dayManagement';
 import { currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, locationForId, resolveExpeditionOutcome, retreatExpedition } from './expedition';
 import { applyExpeditionStoryOutcome, expeditionSpecialtyBonus } from './expeditionStories';
-import { resolveMeal } from './food';
+import { hungerAdjustedRestRecovery, resolveMeal } from './food';
 import { resolveEnding } from './endings';
 import { recordDeath, recoverMissing } from './memorial';
 import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from './mortality';
@@ -100,14 +100,17 @@ export function upgradeSaveToV060(input: GameState): GameState {
 }
 
 function spendEnergyForJobs(state: GameState): GameState {
-  const cost: Record<string, number> = { expedition: 0, repair: 9, medical: 7, watch: 9, radio: 7, cook: 8, rest: -24 };
+  const cost: Record<string, number> = { expedition: 0, repair: 9, medical: 7, watch: 9, radio: 7, cook: 8, rest: 0 };
   return {
     ...state,
     survivors: state.survivors.map((survivor) => {
       if (survivor.condition === 'dead' || survivor.condition === 'missing') return survivor;
       const job = state.dayAssignments[survivor.id] ?? 'rest';
       const preserveRestBonus = job === 'rest' && hasPrinciple(state, 'preserve-strength') ? 6 : 0;
-      const energy = clamp(survivor.energy - (cost[job] ?? 0) + preserveRestBonus);
+      const restRecovery = job === 'rest' ? hungerAdjustedRestRecovery(state, 24 + preserveRestBonus) : 0;
+      const energy = job === 'rest'
+        ? clamp(survivor.energy + restRecovery)
+        : clamp(survivor.energy - (cost[job] ?? 0));
       let condition = survivor.condition;
       if (job === 'rest' && condition === 'fatigued' && energy >= 55) condition = 'healthy';
       if (job !== 'rest' && energy < 25 && condition === 'healthy') condition = 'fatigued';
@@ -257,7 +260,7 @@ export function searchForMissing(state: GameState, survivorId: string, method: M
       dayState: { ...state.dayState, committedSurvivorIds: [...state.dayState.committedSurvivorIds, ...helperIds] },
     };
   } else {
-  if (state.buildings.radio <= 0 || state.inventory.power < 5) return { ...state, lastMessage: '广播间还不能用，或者电不够撑到回应。' };
+    if (state.buildings.radio <= 0 || state.inventory.power < 5) return { ...state, lastMessage: '广播间还不能用，或者电不够撑到回应。' };
     modifier = Math.max(0, state.buildings.radio - 1);
     next = { ...state, inventory: { ...state.inventory, power: state.inventory.power - 5 } };
   }

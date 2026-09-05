@@ -1,5 +1,6 @@
 import { promoteV2ToV3 } from './storage/migrations';
 import type { GameState } from './types';
+import { hungerAdjustedRestRecovery } from './v060/food';
 
 const KEY_V3 = 'ember-street-save-v3';
 const KEY_V2 = 'ember-street-save-v2';
@@ -34,10 +35,12 @@ export function applyOfflineProgress(state: GameState, elapsedMs: number): GameS
   const hours = bounded / 3_600_000;
   const repairers = state.survivors.filter((s) => state.dayAssignments[s.id] === 'repair' && s.condition !== 'dead' && s.condition !== 'missing').length;
   const gainedMaterials = Math.floor(hours * repairers * 0.5);
+  const baseOfflineRecovery = Math.floor(hours * 4);
+  const offlineRecovery = hungerAdjustedRestRecovery(state, baseOfflineRecovery);
   const survivors = state.survivors.map((survivor) => {
     if (survivor.condition === 'dead' || survivor.condition === 'missing') return survivor;
     if (state.dayAssignments[survivor.id] !== 'rest') return survivor;
-    return { ...survivor, energy: Math.min(100, survivor.energy + Math.floor(hours * 4)) };
+    return { ...survivor, energy: Math.min(100, survivor.energy + offlineRecovery) };
   });
   const changedEnergy = survivors.some((item, index) => item.energy !== state.survivors[index]?.energy);
   if (!gainedMaterials && !changedEnergy) return state;
@@ -45,7 +48,7 @@ export function applyOfflineProgress(state: GameState, elapsedMs: number): GameS
     ...state,
     inventory: { ...state.inventory, materials: state.inventory.materials + gainedMaterials },
     survivors,
-      lastMessage: `你离开的这段时间，留在街里的人捡回了 ${gainedMaterials} 份材料。没人擅自出街，夜里的事也没有往前算。`,
+    lastMessage: `你离开的这段时间，留在街里的人捡回了 ${gainedMaterials} 份材料。没人擅自出街，夜里的事也没有往前算。`,
   };
 }
 
