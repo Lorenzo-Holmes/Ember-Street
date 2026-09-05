@@ -15,7 +15,7 @@ function scheduledNormalIds(state: GameState): string[] {
 
 describe('v0.6 normal-night recent selection cooldown', () => {
   it('prefers events not seen in the previous two nights when enough alternatives exist', () => {
-    const base: GameState = { ...createV060InitialState(95201), day: 10, phase: 'night' };
+    const base: GameState = { ...createV060InitialState(95201), day: 9, phase: 'night' };
     const eligible = NORMAL_NIGHT_EVENTS.filter((event) => eligibleEvent(base, event));
     const budget = normalNightEventBudget(base.day);
     const fresh = new Set<string>();
@@ -28,7 +28,7 @@ describe('v0.6 normal-night recent selection cooldown', () => {
       fresh.add(event.id);
     }
     expect(fresh.size).toBeGreaterThanOrEqual(budget);
-    const recentFlags = eligible.filter((event) => !fresh.has(event.id)).map((event) => `night_seen:${event.id}:9`);
+    const recentFlags = eligible.filter((event) => !fresh.has(event.id)).map((event) => `night_seen:${event.id}:8`);
     const state = { ...base, storyFlags: [...base.storyFlags, ...recentFlags] };
     const scheduled = scheduledNormalIds(state);
     expect(scheduled).toHaveLength(budget);
@@ -36,11 +36,11 @@ describe('v0.6 normal-night recent selection cooldown', () => {
   });
 
   it('falls back to recent events instead of shrinking the nightly event budget', () => {
-    const base: GameState = { ...createV060InitialState(95202), day: 10, phase: 'night' };
+    const base: GameState = { ...createV060InitialState(95202), day: 9, phase: 'night' };
     const eligible = NORMAL_NIGHT_EVENTS.filter((event) => eligibleEvent(base, event));
     const keepFresh = eligible[0]?.id;
     expect(keepFresh).toBeTruthy();
-    const recentFlags = eligible.filter((event) => event.id !== keepFresh).map((event) => `night_seen:${event.id}:9`);
+    const recentFlags = eligible.filter((event) => event.id !== keepFresh).map((event) => `night_seen:${event.id}:8`);
     const state = { ...base, storyFlags: [...base.storyFlags, ...recentFlags] };
     const scheduled = scheduledNormalIds(state);
     expect(scheduled).toHaveLength(normalNightEventBudget(base.day));
