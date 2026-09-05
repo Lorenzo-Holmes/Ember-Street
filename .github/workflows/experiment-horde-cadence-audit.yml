@@ -1,0 +1,106 @@
+name: Experiment Horde Cadence Audit
+
+on:
+  push:
+    branches:
+      - experiment/horde-replaces-normal-night-20260905
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout baseline main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: baseline
+      - name: Checkout experiment
+        uses: actions/checkout@v4
+        with:
+          ref: experiment/horde-replaces-normal-night-20260905
+          path: experiment
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: |
+          (cd baseline && npm install --no-audit --no-fund)
+          (cd experiment && npm install --no-audit --no-fund)
+      - name: Add identical audit probe
+        run: |
+          for dir in baseline experiment; do
+            cat > "$dir/qa/playtest/tmp-cadence-metrics.test.ts" <<'EOF'
+          import { mkdirSync, writeFileSync } from 'node:fs';
+          import { describe, expect, it } from 'vitest';
+          import { V2_AUDIT_POLICIES, runAuditGameV2 } from '../../src/game/v060/playtestAuditV2';
+
+          const RUNS = 120;
+          const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
+          const won = (result: string | null) => result === 'held' || result === 'perfect';
+          const eventTotal = (counts: Record<string, number>, kind: 'all' | 'normal' | 'horde' | 'emergency') => Object.entries(counts)
+            .filter(([id]) => kind === 'all'
+              || (kind === 'normal' && !id.startsWith('horde-') && !id.startsWith('emergency-') && !id.startsWith('mortality-') && !id.startsWith('final-horde-'))
+              || (kind === 'horde' && id.startsWith('horde-'))
+              || (kind === 'emergency' && (id.startsWith('emergency-') || id.startsWith('mortality-'))))
+            .reduce((sum, [, count]) => sum + count, 0);
+
+          describe('cadence A/B metrics', () => {
+            it('writes deterministic policy metrics', () => {
+              const out: Record<string, unknown> = {};
+              V2_AUDIT_POLICIES.forEach((policy, policyIndex) => {
+                const runs = Array.from({ length: RUNS }, (_, i) => runAuditGameV2(970001 + policyIndex * 10000 + i, policy));
+                expect(runs.every((run) => run.completed)).toBe(true);
+                const endings: Record<string, number> = {};
+                for (const run of runs) endings[run.endingId ?? 'none'] = (endings[run.endingId ?? 'none'] ?? 0) + 1;
+                out[policy.id] = {
+                  runs: RUNS,
+                  successRate: runs.filter((run) => won(run.finalHordeResult)).length / RUNS,
+                  averageDeaths: avg(runs.map((run) => run.deaths)),
+                  averageMissing: avg(runs.map((run) => run.missing)),
+                  averageHotMealDays: avg(runs.map((run) => run.hotMealDays)),
+                  averageExpeditions: avg(runs.map((run) => run.expeditions)),
+                  averageAllNightEvents: avg(runs.map((run) => eventTotal(run.eventCounts, 'all'))),
+                  averageNormalNightEvents: avg(runs.map((run) => eventTotal(run.eventCounts, 'normal'))),
+                  averageHordeEvents: avg(runs.map((run) => eventTotal(run.eventCounts, 'horde'))),
+                  averageEmergencyEvents: avg(runs.map((run) => eventTotal(run.eventCounts, 'emergency'))),
+                  averageFinalDefense: avg(runs.map((run) => run.days.at(-1)?.defense ?? 0)),
+                  averageFinalHope: avg(runs.map((run) => run.days.at(-1)?.hope ?? 0)),
+                  endings,
+                };
+              });
+              mkdirSync('qa/playtest/out', { recursive: true });
+              writeFileSync('qa/playtest/out/cadence-metrics.json', JSON.stringify(out, null, 2));
+            }, 120_000);
+          });
+          EOF
+          done
+      - name: Run baseline audit
+        run: cd baseline && npx vitest run qa/playtest/tmp-cadence-metrics.test.ts
+      - name: Run experiment audit
+        run: cd experiment && npx vitest run qa/playtest/tmp-cadence-metrics.test.ts
+      - name: Compare metrics
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          base = json.loads(Path('baseline/qa/playtest/out/cadence-metrics.json').read_text())
+          exp = json.loads(Path('experiment/qa/playtest/out/cadence-metrics.json').read_text())
+          keys = ['successRate','averageDeaths','averageMissing','averageHotMealDays','averageExpeditions','averageAllNightEvents','averageNormalNightEvents','averageHordeEvents','averageEmergencyEvents','averageFinalDefense','averageFinalHope']
+          rows = {}
+          for policy in base:
+              rows[policy] = {k: {'main': base[policy][k], 'experiment': exp[policy][k], 'delta': exp[policy][k] - base[policy][k]} for k in keys}
+          Path('cadence-comparison.json').write_text(json.dumps(rows, indent=2))
+          print(json.dumps(rows, indent=2))
+          PY
+      - name: Upload comparison
+        uses: actions/upload-artifact@v4
+        with:
+          name: horde-cadence-ab-audit
+          path: |
+            baseline/qa/playtest/out/cadence-metrics.json
+            experiment/qa/playtest/out/cadence-metrics.json
+            cadence-comparison.json
