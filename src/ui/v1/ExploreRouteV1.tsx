@@ -3,6 +3,7 @@ import type { GameState } from '../../game/types';
 import { canTakeDayAssignment, expeditionRouteFor, expeditionRouteLimit } from '../../game/v060/dayManagement';
 import { EXPEDITION_LOCATIONS, expeditionRiskLabel, expeditionRiskScore } from '../../game/v060/expedition';
 import { isLocationUnlocked } from '../../game/v060/campaignEvents';
+import { LOCATION_DEPLETION_LOOT_VISITS, locationLootVisitCount, locationMemory } from '../../game/v060/locationMemory';
 import { locationVisual, visualAssetStyle } from '../visualAssets';
 import { resourceListLabel } from './labels';
 import './explore-night.css';
@@ -30,6 +31,17 @@ function bestAdditionalCompanionRisk(state: GameState, partyIds: string[], survi
     && canTakeDayAssignment(state, candidate.id, 'expedition').allowed);
   if (!candidates.length) return null;
   return Math.min(...candidates.map((candidate) => expeditionRiskScore(state, [...partyIds, candidate.id], locationId)));
+}
+
+function scavengingNote(state: GameState, locationId: string): string | null {
+  const lootVisits = locationLootVisitCount(state, locationId);
+  if (!lootVisits) return null;
+  if (locationMemory(state, locationId).depleted) {
+    return `物资快空 · 已经带回过 ${lootVisits} 次，主要物资只剩零散一些`;
+  }
+  const remaining = LOCATION_DEPLETION_LOOT_VISITS - lootVisits;
+  if (remaining === 1) return `已经带回过 ${lootVisits} 次 · 再成功搜一次，这里就会开始见底`;
+  return `已经带回过 ${lootVisits} 次 · 主要物资暂时还找得到`;
 }
 
 export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }: ExploreRouteV1Props) {
@@ -69,6 +81,7 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
           const bestCompanionLabel = bestCompanionScore !== null && bestCompanionScore < currentRiskScore
             ? riskLabel(expeditionRiskLabel(bestCompanionScore))
             : null;
+          const lootNote = scavengingNote(state, location.id);
           const blocked = !existingDistinct.has(location.id) && existingDistinct.size >= routeLimit;
           return (
             <button className={`v1e-location ${active ? 'active' : ''}`} disabled={blocked} key={location.id} onClick={() => setLocationId(location.id)}>
@@ -77,6 +90,7 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
                 <div><strong>{location.name}</strong><em>{blocked ? '今天记不了更多路' : riskLabel(risk)}</em></div>
                 <p>{location.description}</p>
                 <small>能翻到：{resourceListLabel(location.primary, location.secondary, location.tertiary)} · {companyNote(prospectiveParty.length)}</small>
+                {lootNote && <small className="v1e-depletion-hint">{lootNote}</small>}
                 {bestCompanionLabel && <small className="v1e-companion-hint">再安排 1 人走同一路线，风险最低可到：{bestCompanionLabel}</small>}
               </div>
             </button>
