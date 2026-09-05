@@ -8,6 +8,7 @@
     "dev:codespaces": "vite --host 0.0.0.0 --port 5173",
     "build": "tsc -b && vite build",
     "build:minitool": "tsc -b && node scripts/build-minitool.mjs",
+    "build:building-assets": "node scripts/build-building-visual-sprites.mjs",
     "audit:minitool": "node scripts/audit-minitool.mjs",
     "package:minitool": "node scripts/package-minitool.mjs",
     "test": "vitest run",

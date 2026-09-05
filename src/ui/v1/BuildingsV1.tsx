@@ -30,7 +30,7 @@ export default function BuildingsV1({ state, onCommit }: BuildingsV1Props) {
           const level = state.buildings[id];
           const next = definition.levels[level] ?? null;
           const check = canUpgradeBuilding(state, id);
-          const asset = buildingVisual(id);
+          const asset = buildingVisual(id, level);
           const isOpen = openId === id;
           return (
             <article className={`v1-building ${asset ? '' : 'v1-building--text'} ${isOpen ? 'is-open' : ''}`} key={id}>

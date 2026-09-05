@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 export type VisualAssetKind = 'character' | 'location' | 'building' | 'event';
 export type VisualAssetStatus = 'locked' | 'needs-correction' | 'unresolved';
+export type BuildingVisualLevel = 1 | 2 | 3;
 
 export interface VisualAsset {
   canonicalId: `A${number}`;
@@ -10,6 +11,7 @@ export interface VisualAsset {
   status: VisualAssetStatus;
   gameplayId?: string;
   continuityId?: string;
+  level?: BuildingVisualLevel;
 }
 
 interface SpriteGroup {
@@ -27,13 +29,15 @@ const SPRITES: readonly SpriteGroup[] = [
   { path: '/assets/canonical/events-a.webp', columns: 3, rows: 2, ids: ['A05', 'A19', 'A20', 'A21', 'A22', 'A23'] },
   { path: '/assets/canonical/events-b1.webp', columns: 3, rows: 1, ids: ['A24', 'A25', 'A26'] },
   { path: '/assets/canonical/events-b2.webp', columns: 3, rows: 1, ids: ['A27', 'A28', 'A29'] },
+  { path: '/assets/canonical/buildings-a.webp', columns: 3, rows: 3, ids: ['A30', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36', 'A37', 'A38'] },
+  { path: '/assets/canonical/buildings-b.webp', columns: 3, rows: 3, ids: ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46'] },
 ] as const;
 
 /**
  * Canonical art registry for Ember Street.
  * A-numbers are production identifiers only; player-facing UI uses world/gameplay copy.
- * A01-A29 are all user-approved and locked. Runtime art is bundled in seven verified,
- * mobile-sized WebP sprite sheets for reliable offline rendering in the Xiaohongshu tool.
+ * A01-A46 are local, locked runtime masters. Building visuals carry explicit Lv1-Lv3
+ * metadata so the repair page can show the same facility changing as the player upgrades it.
  */
 export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A01', kind: 'character', title: '林夏', gameplayId: 'lin-xia', status: 'locked' },
@@ -41,7 +45,7 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A03', kind: 'location', title: '便利店', gameplayId: 'convenience-store', status: 'locked' },
   { canonicalId: 'A04', kind: 'location', title: '西街药店', gameplayId: 'west-pharmacy', status: 'locked' },
   { canonicalId: 'A05', kind: 'event', title: '半开的卷帘门', gameplayId: 'convenience-half-shutter', continuityId: 'convenience-store', status: 'locked' },
-  { canonicalId: 'A06', kind: 'building', title: '宿营屋 · 初级状态', gameplayId: 'shelter', status: 'locked' },
+  { canonicalId: 'A06', kind: 'building', title: '宿营屋 · 初级状态', gameplayId: 'shelter', level: 1, status: 'locked' },
   { canonicalId: 'A07', kind: 'character', title: '阿禾', gameplayId: 'ahe', status: 'locked' },
   { canonicalId: 'A08', kind: 'character', title: '程医生', gameplayId: 'cheng', status: 'locked' },
   { canonicalId: 'A09', kind: 'character', title: '阿梁', gameplayId: 'aliang', status: 'locked' },
@@ -65,12 +69,34 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A27', kind: 'event', title: '卷帘门后全是货架', gameplayId: 'warehouse-full-racks', continuityId: 'warehouse', status: 'locked' },
   { canonicalId: 'A28', kind: 'event', title: '医院隔离病房', gameplayId: 'hospital-isolation-ward', continuityId: 'hospital', status: 'locked' },
   { canonicalId: 'A29', kind: 'event', title: '避难所加固材料箱', gameplayId: 'warehouse-protection-crate', continuityId: 'warehouse', status: 'locked' },
+  { canonicalId: 'A30', kind: 'building', title: '路线屋 · Lv1', gameplayId: 'searchStation', level: 1, status: 'locked' },
+  { canonicalId: 'A31', kind: 'building', title: '路线屋 · Lv2', gameplayId: 'searchStation', level: 2, status: 'locked' },
+  { canonicalId: 'A32', kind: 'building', title: '路线屋 · Lv3', gameplayId: 'searchStation', level: 3, status: 'locked' },
+  { canonicalId: 'A33', kind: 'building', title: '修车铺 · Lv1', gameplayId: 'workshop', level: 1, status: 'locked' },
+  { canonicalId: 'A34', kind: 'building', title: '修车铺 · Lv2', gameplayId: 'workshop', level: 2, status: 'locked' },
+  { canonicalId: 'A35', kind: 'building', title: '修车铺 · Lv3', gameplayId: 'workshop', level: 3, status: 'locked' },
+  { canonicalId: 'A36', kind: 'building', title: '诊疗室 · Lv1', gameplayId: 'clinic', level: 1, status: 'locked' },
+  { canonicalId: 'A37', kind: 'building', title: '诊疗室 · Lv2', gameplayId: 'clinic', level: 2, status: 'locked' },
+  { canonicalId: 'A38', kind: 'building', title: '诊疗室 · Lv3', gameplayId: 'clinic', level: 3, status: 'locked' },
+  { canonicalId: 'A39', kind: 'building', title: '街口岗 · Lv1', gameplayId: 'watchPost', level: 1, status: 'locked' },
+  { canonicalId: 'A40', kind: 'building', title: '街口岗 · Lv2', gameplayId: 'watchPost', level: 2, status: 'locked' },
+  { canonicalId: 'A41', kind: 'building', title: '街口岗 · Lv3', gameplayId: 'watchPost', level: 3, status: 'locked' },
+  { canonicalId: 'A42', kind: 'building', title: '广播间 · Lv1', gameplayId: 'radio', level: 1, status: 'locked' },
+  { canonicalId: 'A43', kind: 'building', title: '广播间 · Lv2', gameplayId: 'radio', level: 2, status: 'locked' },
+  { canonicalId: 'A44', kind: 'building', title: '广播间 · Lv3', gameplayId: 'radio', level: 3, status: 'locked' },
+  { canonicalId: 'A45', kind: 'building', title: '宿营屋 · Lv2', gameplayId: 'shelter', level: 2, status: 'locked' },
+  { canonicalId: 'A46', kind: 'building', title: '宿营屋 · Lv3', gameplayId: 'shelter', level: 3, status: 'locked' },
 ] as const;
 
 export const UNRESOLVED_CANONICAL_IDS = [] as const;
 
-function byGameplayId(kind: VisualAssetKind, gameplayId: string): VisualAsset | undefined {
-  return CANONICAL_VISUAL_ASSETS.find((asset) => asset.kind === kind && asset.gameplayId === gameplayId && asset.status === 'locked');
+function byGameplayId(kind: VisualAssetKind, gameplayId: string, level?: BuildingVisualLevel): VisualAsset | undefined {
+  const matches = CANONICAL_VISUAL_ASSETS.filter((asset) => asset.kind === kind && asset.gameplayId === gameplayId && asset.status === 'locked');
+  if (level !== undefined) {
+    const exact = matches.find((asset) => asset.level === level);
+    if (exact) return exact;
+  }
+  return matches.find((asset) => asset.level === undefined) ?? matches[0];
 }
 
 export function visualAssetStyle(asset?: VisualAsset): CSSProperties | undefined {
@@ -93,4 +119,9 @@ export function visualAssetStyle(asset?: VisualAsset): CSSProperties | undefined
 export const characterVisual = (survivorId: string) => byGameplayId('character', survivorId);
 export const locationVisual = (locationId: string) => byGameplayId('location', locationId);
 export const eventVisual = (eventId: string) => byGameplayId('event', eventId);
-export const buildingVisual = (buildingId: string) => byGameplayId('building', buildingId);
+export const buildingVisual = (buildingId: string, level?: number) => {
+  const requestedLevel = level === undefined
+    ? undefined
+    : Math.max(1, Math.min(3, Math.floor(level))) as BuildingVisualLevel;
+  return byGameplayId('building', buildingId, requestedLevel);
+};
