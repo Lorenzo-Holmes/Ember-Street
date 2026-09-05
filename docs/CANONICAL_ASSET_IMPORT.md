@@ -85,9 +85,21 @@ Building visual continuity rules:
 - A06 remains the authoritative Shelter Lv1 master. Shelter Lv2/Lv3 must be derived from its room language rather than replacing it with a separate shelter design.
 - Level-specific runtime selection is handled through `buildingVisual(buildingId, level)`. Until a level asset is imported, the function must fall back safely rather than rendering a missing image.
 
+### Building import procedure
+
+1. Put the 17 approved new masters in a local staging directory using their reserved IDs as file names: `A30.png` through `A46.png` (PNG/JPG/JPEG/WebP are accepted).
+2. Run `npm run build:building-assets -- <staging-directory>`. The script normalizes each tile to 480×320 and writes two mobile-sized WebP sheets:
+   - `public/assets/canonical/buildings-a.webp` — A30–A38
+   - `public/assets/canonical/buildings-b.webp` — A39–A46
+3. Add A30–A46 to `CANONICAL_VISUAL_ASSETS` with `kind: 'building'`, the reserved `gameplayId`, `level: 1 | 2 | 3`, and `status: 'locked'` only after the pixel masters are approved.
+4. Run `npm test`, `npm run audit:assets:strict`, `npm run build`, `npm run audit:xhs`, and `npm run test:ui-smoke`.
+5. Perform real-device/mobile-width QA of Lv0→Lv1→Lv2→Lv3 transitions. Lv0 deliberately requests Lv1 art and relies on the closed-state UI treatment.
+
+The build script refuses missing IDs instead of silently creating incomplete sheets. The strict asset audit remains A01–A29-compatible until new registry IDs are present; once A30+ are registered, it automatically requires the corresponding building sprite sheets and contiguous canonical coverage.
+
 ## Runtime files
 
-The local release package contains seven verified WebP sheets:
+The current locked release package contains seven verified WebP sheets:
 
 - `public/assets/canonical/characters-a.webp` — A01, A02, A07
 - `public/assets/canonical/characters-b.webp` — A08, A09, A10
@@ -97,11 +109,11 @@ The local release package contains seven verified WebP sheets:
 - `public/assets/canonical/events-b1.webp` — A24, A25, A26
 - `public/assets/canonical/events-b2.webp` — A27, A28, A29
 
-The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning. Obsolete one-file-per-A SVG wrappers and the former truncated large sprites are intentionally excluded from the runtime package.
+The building expansion reserves two additional sheets but they are not part of the locked runtime package until their approved pixels are imported. The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning. Obsolete one-file-per-A SVG wrappers and the former truncated large sprites are intentionally excluded from the runtime package.
 
 ## Source packages
 
-The authoritative source uploads for this import were:
+The authoritative source uploads for the A01–A29 import were:
 
 - `a01-a21(2).zip`
 - `a22-a29 (2)(1).zip`
