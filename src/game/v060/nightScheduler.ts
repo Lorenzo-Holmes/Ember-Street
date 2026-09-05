@@ -196,8 +196,10 @@ export function scheduleNight(input: GameState): GameState {
   let rngState = state.rngState;
   const [hordeRoll, afterHordeRoll] = nextRandom(rngState); rngState = afterHordeRoll;
   const hordeActive = hordeRoll < hordeChance(state);
-  const normalEventBudget = normalNightEventBudget(state.day);
+  const baseNormalEventBudget = normalNightEventBudget(state.day);
   const hordeSlots = hordeActive ? 2 : 0;
+  // Horde beats replace ordinary night noise instead of stacking fully on top of it.
+  const normalEventBudget = hordeActive ? Math.max(1, baseNormalEventBudget - hordeSlots) : baseNormalEventBudget;
   const eventTotal = normalEventBudget + hordeSlots;
   const [normalEvents, afterNormal] = normalComposition(state, normalEventBudget, rngState); rngState = afterNormal;
   const [hordeEvents, afterHorde] = pickWithoutReplacement(eligible(HORDE_EVENTS, state), hordeSlots, rngState); rngState = afterHorde;
