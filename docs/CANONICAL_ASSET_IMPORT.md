@@ -1,20 +1,20 @@
 # Ember Street — Canonical Visual Asset Runtime Contract
 
-A01–A29 have been explicitly confirmed by the user as approved Ember Street project visuals. They are the authoritative visual basis for the current mobile UI.
+A01–A46 are the current local visual registry for the mobile UI. A01–A29 remain the previously approved baseline; A30–A46 add level-specific building visuals while A06 continues to serve as the authoritative Shelter Lv1 master.
 
 ## Release rules
 
 1. Player UI never renders A-series identifiers. A-numbers exist only in production metadata and asset governance.
 2. Runtime visuals are entirely local under `public/assets/canonical/`. No CDN or runtime network dependency is permitted.
-3. All A01–A29 are `locked` for this release. Do not independently reclassify an approved image as needing correction based on an earlier draft discussion.
-4. Runtime uses seven small WebP sprite sheets. The split keeps every binary below the repository connector's truncation threshold and is safer for the Xiaohongshu embedded WebView/package pipeline than the former three large sheets.
+3. Locked assets must have matching local WebP pixels before they enter `CANONICAL_VISUAL_ASSETS`.
+4. Runtime uses small WebP sprite sheets for reliable offline rendering in the Xiaohongshu embedded WebView/package pipeline.
 5. Release validation must run:
    - `npm run audit:assets:strict`
    - `npm run build`
    - `npm run audit:xhs`
    - `npm run test:ui-smoke`
-6. The strict asset audit verifies not only file existence but also RIFF/WebP headers and declared-vs-actual byte length. A truncated WebP therefore fails CI.
-7. Final visual QA uses real-image browser screenshots at 390×844, checking character crop, location focal point, event text contrast, first-screen CTA visibility, and absence of player-visible production IDs.
+6. The strict asset audit verifies file existence, RIFF/WebP headers, declared-vs-actual byte length, registry continuity, and sprite coverage.
+7. Final visual QA uses real-image browser screenshots at 390×844 and checks crop, focal point, level readability, first-screen CTA visibility, and absence of player-visible production IDs.
 
 ## Canonical mapping
 
@@ -25,7 +25,7 @@ A01–A29 have been explicitly confirmed by the user as approved Ember Street pr
 | A03 | 便利店 | `convenience-store` |
 | A04 | 西街药店 | `west-pharmacy` |
 | A05 | 半开的卷帘门 | `convenience-half-shutter` |
-| A06 | 宿营屋 · 初级状态 | `shelter` |
+| A06 | 宿营屋 · Lv1 | `shelter` |
 | A07 | 阿禾 | `ahe` |
 | A08 | 程医生 | `cheng` |
 | A09 | 阿梁 | `aliang` |
@@ -49,57 +49,50 @@ A01–A29 have been explicitly confirmed by the user as approved Ember Street pr
 | A27 | 卷帘门后全是货架 | `warehouse-full-racks` |
 | A28 | 医院隔离病房 | `hospital-isolation-ward` |
 | A29 | 避难所加固材料箱 | `warehouse-protection-crate` |
+| A30 | 路线屋 · Lv1 | `searchStation` |
+| A31 | 路线屋 · Lv2 | `searchStation` |
+| A32 | 路线屋 · Lv3 | `searchStation` |
+| A33 | 修车铺 · Lv1 | `workshop` |
+| A34 | 修车铺 · Lv2 | `workshop` |
+| A35 | 修车铺 · Lv3 | `workshop` |
+| A36 | 诊疗室 · Lv1 | `clinic` |
+| A37 | 诊疗室 · Lv2 | `clinic` |
+| A38 | 诊疗室 · Lv3 | `clinic` |
+| A39 | 街口岗 · Lv1 | `watchPost` |
+| A40 | 街口岗 · Lv2 | `watchPost` |
+| A41 | 街口岗 · Lv3 | `watchPost` |
+| A42 | 广播间 · Lv1 | `radio` |
+| A43 | 广播间 · Lv2 | `radio` |
+| A44 | 广播间 · Lv3 | `radio` |
+| A45 | 宿营屋 · Lv2 | `shelter` |
+| A46 | 宿营屋 · Lv3 | `shelter` |
 
-## Building level expansion
+## Building visual contract
 
-The building system has six facilities with Lv0–3 runtime state. Lv0 is the closed/unrepaired state and reuses the Lv1 art with UI treatment; the canonical art expansion therefore contains 18 level slots, not 24 unique images.
+The building system has six facilities with Lv0–3 runtime state. Lv0 is the closed/unrepaired state and deliberately reuses Lv1 art with the closed-state UI treatment, so the art set contains 18 level slots rather than 24 unique images.
 
-A06 already occupies the Shelter Lv1 slot, so only 17 new canonical masters are required. Reserve A30–A46 as follows; do not mark these IDs `locked` in `visualAssets.ts` until the corresponding WebP pixels have passed visual QA and are present in the repository.
-
-| ID | Building | Level | Gameplay mapping | Import status |
-|---|---|---:|---|---|
-| A30 | 路线屋 | 1 | `searchStation` | pending import |
-| A31 | 路线屋 | 2 | `searchStation` | pending import |
-| A32 | 路线屋 | 3 | `searchStation` | pending import |
-| A33 | 修车铺 | 1 | `workshop` | pending import |
-| A34 | 修车铺 | 2 | `workshop` | pending import |
-| A35 | 修车铺 | 3 | `workshop` | pending import |
-| A36 | 诊疗室 | 1 | `clinic` | pending import |
-| A37 | 诊疗室 | 2 | `clinic` | pending import |
-| A38 | 诊疗室 | 3 | `clinic` | pending import |
-| A39 | 街口岗 | 1 | `watchPost` | pending import |
-| A40 | 街口岗 | 2 | `watchPost` | pending import |
-| A41 | 街口岗 | 3 | `watchPost` | pending import |
-| A42 | 广播间 | 1 | `radio` | pending import |
-| A43 | 广播间 | 2 | `radio` | pending import |
-| A44 | 广播间 | 3 | `radio` | pending import |
-| A06 | 宿营屋 | 1 | `shelter` | locked existing master |
-| A45 | 宿营屋 | 2 | `shelter` | pending import |
-| A46 | 宿营屋 | 3 | `shelter` | pending import |
-
-Building visual continuity rules:
-
-- Lv1, Lv2 and Lv3 for one building must depict the same place from effectively the same camera position.
-- Upgrade feedback comes from repair, restored utilities, additional functional equipment and long-term use; it must not read as a new building or a wealth/technology upgrade.
+- Lv1, Lv2 and Lv3 for one building depict the same functional place and preserve the same overall room identity.
+- Upgrade feedback comes from repair, restored utilities, additional functional equipment and long-term use; it must not read as a wealth/technology upgrade.
 - Lv3 remains a civilian disaster-survival space, not a military base, command center, professional hospital, industrial workshop or modern broadcast station.
-- A06 remains the authoritative Shelter Lv1 master. Shelter Lv2/Lv3 must be derived from its room language rather than replacing it with a separate shelter design.
-- Level-specific runtime selection is handled through `buildingVisual(buildingId, level)`. Until a level asset is imported, the function must fall back safely rather than rendering a missing image.
+- A06 remains the authoritative Shelter Lv1 master. A45/A46 preserve its room language and only extend cooking, storage and long-term use.
+- Runtime selection is `buildingVisual(buildingId, level)`. Lv0 is clamped to Lv1.
 
-### Building import procedure
+## Building asset build procedure
 
-1. Put the 17 approved new masters in a local staging directory using their reserved IDs as file names: `A30.png` through `A46.png` (PNG/JPG/JPEG/WebP are accepted).
-2. Run `npm run build:building-assets -- <staging-directory>`. The script normalizes each tile to 480×320 and writes two mobile-sized WebP sheets:
-   - `public/assets/canonical/buildings-a.webp` — A30–A38
-   - `public/assets/canonical/buildings-b.webp` — A39–A46
-3. Add A30–A46 to `CANONICAL_VISUAL_ASSETS` with `kind: 'building'`, the reserved `gameplayId`, `level: 1 | 2 | 3`, and `status: 'locked'` only after the pixel masters are approved.
-4. Run `npm test`, `npm run audit:assets:strict`, `npm run build`, `npm run audit:xhs`, and `npm run test:ui-smoke`.
-5. Perform real-device/mobile-width QA of Lv0→Lv1→Lv2→Lv3 transitions. Lv0 deliberately requests Lv1 art and relies on the closed-state UI treatment.
+Approved masters use canonical file names `A30.png` through `A46.png` in a staging directory. Run:
 
-The build script refuses missing IDs instead of silently creating incomplete sheets. The strict asset audit remains A01–A29-compatible until new registry IDs are present; once A30+ are registered, it automatically requires the corresponding building sprite sheets and contiguous canonical coverage.
+`npm run build:building-assets -- <staging-directory>`
+
+The script normalizes each tile to 480×320 and writes two compressed WebP sheets:
+
+- `public/assets/canonical/buildings-a.webp` — A30–A38
+- `public/assets/canonical/buildings-b.webp` — A39–A46
+
+The build script refuses missing IDs instead of silently creating incomplete sheets.
 
 ## Runtime files
 
-The current locked release package contains seven verified WebP sheets:
+The locked runtime package now contains nine verified WebP sheets:
 
 - `public/assets/canonical/characters-a.webp` — A01, A02, A07
 - `public/assets/canonical/characters-b.webp` — A08, A09, A10
@@ -108,14 +101,16 @@ The current locked release package contains seven verified WebP sheets:
 - `public/assets/canonical/events-a.webp` — A05, A19, A20, A21, A22, A23
 - `public/assets/canonical/events-b1.webp` — A24, A25, A26
 - `public/assets/canonical/events-b2.webp` — A27, A28, A29
+- `public/assets/canonical/buildings-a.webp` — A30–A38
+- `public/assets/canonical/buildings-b.webp` — A39–A46
 
-The building expansion reserves two additional sheets but they are not part of the locked runtime package until their approved pixels are imported. The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning. Obsolete one-file-per-A SVG wrappers and the former truncated large sprites are intentionally excluded from the runtime package.
+The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning.
 
 ## Source packages
 
-The authoritative source uploads for the A01–A29 import were:
+The authoritative source uploads for the A01–A29 baseline were:
 
 - `a01-a21(2).zip`
 - `a22-a29 (2)(1).zip`
 
-Both packages were explicitly confirmed by the user as containing previously reviewed, compliant project imagery. Where a package contained early/reference and later clean variants, the runtime package uses the selected final master while the source package remains the provenance record.
+The A30–A46 building expansion was reviewed as a separate level-specific set before sprite import. The source/staging pack remains the provenance record; runtime uses only the compressed WebP sheets.
