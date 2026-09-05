@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 
 export type VisualAssetKind = 'character' | 'location' | 'building' | 'event';
 export type VisualAssetStatus = 'locked' | 'needs-correction' | 'unresolved';
+export type BuildingVisualLevel = 1 | 2 | 3;
 
 export interface VisualAsset {
   canonicalId: `A${number}`;
@@ -10,6 +11,7 @@ export interface VisualAsset {
   status: VisualAssetStatus;
   gameplayId?: string;
   continuityId?: string;
+  level?: BuildingVisualLevel;
 }
 
 interface SpriteGroup {
@@ -41,7 +43,7 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A03', kind: 'location', title: '便利店', gameplayId: 'convenience-store', status: 'locked' },
   { canonicalId: 'A04', kind: 'location', title: '西街药店', gameplayId: 'west-pharmacy', status: 'locked' },
   { canonicalId: 'A05', kind: 'event', title: '半开的卷帘门', gameplayId: 'convenience-half-shutter', continuityId: 'convenience-store', status: 'locked' },
-  { canonicalId: 'A06', kind: 'building', title: '宿营屋 · 初级状态', gameplayId: 'shelter', status: 'locked' },
+  { canonicalId: 'A06', kind: 'building', title: '宿营屋 · 初级状态', gameplayId: 'shelter', level: 1, status: 'locked' },
   { canonicalId: 'A07', kind: 'character', title: '阿禾', gameplayId: 'ahe', status: 'locked' },
   { canonicalId: 'A08', kind: 'character', title: '程医生', gameplayId: 'cheng', status: 'locked' },
   { canonicalId: 'A09', kind: 'character', title: '阿梁', gameplayId: 'aliang', status: 'locked' },
@@ -69,8 +71,13 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
 
 export const UNRESOLVED_CANONICAL_IDS = [] as const;
 
-function byGameplayId(kind: VisualAssetKind, gameplayId: string): VisualAsset | undefined {
-  return CANONICAL_VISUAL_ASSETS.find((asset) => asset.kind === kind && asset.gameplayId === gameplayId && asset.status === 'locked');
+function byGameplayId(kind: VisualAssetKind, gameplayId: string, level?: BuildingVisualLevel): VisualAsset | undefined {
+  const matches = CANONICAL_VISUAL_ASSETS.filter((asset) => asset.kind === kind && asset.gameplayId === gameplayId && asset.status === 'locked');
+  if (level !== undefined) {
+    const exact = matches.find((asset) => asset.level === level);
+    if (exact) return exact;
+  }
+  return matches.find((asset) => asset.level === undefined) ?? matches[0];
 }
 
 export function visualAssetStyle(asset?: VisualAsset): CSSProperties | undefined {
@@ -93,4 +100,9 @@ export function visualAssetStyle(asset?: VisualAsset): CSSProperties | undefined
 export const characterVisual = (survivorId: string) => byGameplayId('character', survivorId);
 export const locationVisual = (locationId: string) => byGameplayId('location', locationId);
 export const eventVisual = (eventId: string) => byGameplayId('event', eventId);
-export const buildingVisual = (buildingId: string) => byGameplayId('building', buildingId);
+export const buildingVisual = (buildingId: string, level?: number) => {
+  const requestedLevel = level === undefined
+    ? undefined
+    : Math.max(1, Math.min(3, Math.floor(level))) as BuildingVisualLevel;
+  return byGameplayId('building', buildingId, requestedLevel);
+};
