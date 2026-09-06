@@ -52,6 +52,10 @@ test('V1 home is illustration-first and keeps the primary day action reachable o
   await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
   await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
 
+  const primary = await page.locator('.v1-day-action').boundingBox();
+  expect(primary).toBeTruthy();
+  expect(primary!.y + primary!.height).toBeLessThanOrEqual(844);
+
   const nav = page.locator('nav[aria-label="主导航"]');
   await expect(nav.getByRole('button')).toHaveCount(4);
   await expect(nav.getByRole('button', { name: '据点', exact: true })).toBeVisible();

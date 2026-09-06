@@ -1,5 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
+const localBrowser = process.env.CI ? {} : { channel: 'msedge' as const };
+
 export default defineConfig({
   testDir: './qa/ui-overhaul',
   testMatch: '**/*.pw.ts',
@@ -13,6 +15,7 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173',
     browserName: 'chromium',
+    ...localBrowser,
     screenshot: 'only-on-failure',
     trace: 'retain-on-failure',
     video: 'retain-on-failure',

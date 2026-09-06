@@ -1988,3 +1988,118 @@ body:has(.notebook-page) .v1-bottom-nav button.active::after {
     font-size: 1.42rem;
   }
 }
+
+/* Keep the core daytime decision inside the first 390×844 screen without
+   removing any home information. The home page uses a denser notebook layout;
+   detail pages keep the roomier typography above. */
+@media (max-width: 390px) {
+  .notebook-page--home {
+    padding-top: 58px;
+  }
+
+  .notebook-page--home .v1-status-strip {
+    padding-bottom: 8px;
+  }
+
+  .notebook-page--home .v1-status-strip strong {
+    font-size: 1.9rem;
+  }
+
+  .notebook-page--home .v1-status-strip__weather b {
+    font-size: .98rem;
+  }
+
+  .notebook-page--home .v1-status-strip__weather small {
+    margin-top: 2px;
+    font-size: .76rem;
+    line-height: 1.35;
+  }
+
+  .notebook-page--home .v1-resource-strip {
+    margin: 6px 0;
+    padding: 5px 0 7px;
+  }
+
+  .notebook-page--home .v1-resource-strip > span {
+    padding: 4px 1px 3px;
+  }
+
+  .notebook-page--home .v1-resource-strip i {
+    font-size: .66rem;
+  }
+
+  .notebook-page--home .v1-resource-strip b {
+    margin-top: 1px;
+    font-size: .94rem;
+  }
+
+  .notebook-page--home .v1-defense-panel {
+    margin: 8px 0;
+    padding: 8px 4px;
+  }
+
+  .notebook-page--home .v1-defense-panel h2 {
+    font-size: 1.05rem;
+  }
+
+  .notebook-page--home .v1-defense-panel__value strong {
+    font-size: 1.55rem;
+  }
+
+  .notebook-page--home .v1-defense-panel__value small,
+  .notebook-page--home .v1-defense-panel__value em,
+  .notebook-page--home .v1-defense-panel header span {
+    font-size: .72rem;
+  }
+
+  .notebook-page--home .v1-defense-panel p {
+    margin-top: 5px;
+    font-size: .75rem;
+    line-height: 1.35;
+  }
+
+  .notebook-page--home .v1-defense-panel summary {
+    padding-top: 5px;
+    font-size: .72rem;
+  }
+
+  .notebook-page--home .v1-home-hero {
+    margin: 2px 0 8px;
+  }
+
+  .notebook-page--home .v1-home-hero__art {
+    aspect-ratio: 16 / 9;
+  }
+
+  .notebook-page--home .v1-home-hero__copy {
+    right: 12px;
+    bottom: 8px;
+    left: 12px;
+  }
+
+  .notebook-page--home .v1-home-hero__copy h1 {
+    margin: 2px 0;
+    font-size: 1.13rem;
+    line-height: 1.3;
+  }
+
+  .notebook-page--home .v1-home-hero__copy p {
+    font-size: .72rem;
+  }
+
+  .notebook-page--home .v1-today-summary {
+    margin-top: 8px;
+    padding: 10px 12px;
+  }
+
+  .notebook-page--home .v1-today-summary p {
+    margin-top: 5px;
+    font-size: .82rem;
+    line-height: 1.4;
+  }
+
+  .notebook-page--home .v1-day-action {
+    margin-top: 10px;
+    padding: 12px 14px;
+  }
+}
