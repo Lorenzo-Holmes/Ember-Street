@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 const sourceDirArg = process.argv[2];
 if (!sourceDirArg) {
   console.error('Usage: npm run build:building-assets -- <approved-source-directory>');
-  console.error('Expected files are named by canonical ID (A30..A46) as PNG/JPG/JPEG/WebP.');
+  console.error('Expected files are named by canonical ID (A30..A47) as PNG/JPG/JPEG/WebP.');
   process.exit(1);
 }
 

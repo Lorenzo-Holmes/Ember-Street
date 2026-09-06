@@ -32,7 +32,7 @@ const allSpriteSpecs = [
   ['events-b1.webp', ['A24', 'A25', 'A26']],
   ['events-b2.webp', ['A27', 'A28', 'A29']],
   ['buildings-a.webp', ['A30', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36', 'A37', 'A38']],
-  ['buildings-b.webp', ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46']],
+  ['buildings-b.webp', ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46', 'A47']],
 ];
 const spriteSpecs = allSpriteSpecs
   .map(([name, ids]) => [name, ids.filter((id) => expectedSet.has(id))])
@@ -40,7 +40,7 @@ const spriteSpecs = allSpriteSpecs
 
 const frozenSpriteHashes = new Map([
   ['buildings-a.webp', '2cf279da70a23a56e5032d6263450da5bec1c6fd7095ea5ec2ca28a181f31df0'],
-  ['buildings-b.webp', 'c0ca1d2846d8eaecf1e79076c21f67a24826ae0970b9cdcfb48dc7eed48bbcc5'],
+  ['buildings-b.webp', '50c046ce115b9c09d24a5a502800f699f6f6b1be68f7b74d1a7619377f9f4648'],
 ]);
 
 function validateWebP(name) {
