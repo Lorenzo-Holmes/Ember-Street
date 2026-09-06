@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const root = process.cwd();
 const sourcePath = join(root, 'src', 'ui', 'visualAssets.ts');
@@ -37,6 +38,11 @@ const spriteSpecs = allSpriteSpecs
   .map(([name, ids]) => [name, ids.filter((id) => expectedSet.has(id))])
   .filter(([, ids]) => ids.length > 0);
 
+const frozenSpriteHashes = new Map([
+  ['buildings-a.webp', '2cf279da70a23a56e5032d6263450da5bec1c6fd7095ea5ec2ca28a181f31df0'],
+  ['buildings-b.webp', 'c0ca1d2846d8eaecf1e79076c21f67a24826ae0970b9cdcfb48dc7eed48bbcc5'],
+]);
+
 function validateWebP(name) {
   const absolute = join(assetDir, name);
   if (!existsSync(absolute)) return { name, exists: false, size: 0, valid: false, issue: 'missing' };
@@ -48,7 +54,12 @@ function validateWebP(name) {
   const declared = bytes.readUInt32LE(4) + 8;
   if (riff !== 'RIFF' || webp !== 'WEBP') return { name, exists: true, size, valid: false, issue: `bad header ${riff}/${webp}` };
   if (declared !== size) return { name, exists: true, size, valid: false, issue: `truncated/corrupt RIFF: declares ${declared} bytes, file has ${size}` };
-  return { name, exists: true, size, valid: true, issue: '' };
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const expectedHash = frozenSpriteHashes.get(name);
+  if (expectedHash && sha256 !== expectedHash) {
+    return { name, exists: true, size, valid: false, issue: `frozen SHA-256 mismatch: ${sha256}`, sha256 };
+  }
+  return { name, exists: true, size, valid: true, issue: '', sha256 };
 }
 
 const sprites = spriteSpecs.map(([name, ids]) => ({ ...validateWebP(name), ids }));

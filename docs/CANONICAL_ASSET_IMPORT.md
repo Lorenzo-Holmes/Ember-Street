@@ -1,20 +1,20 @@
 # Ember Street — Canonical Visual Asset Runtime Contract
 
-A01–A46 are the current local visual registry for the mobile UI. A01–A29 remain the previously approved baseline; A30–A46 add level-specific building visuals while A06 continues to serve as the authoritative Shelter Lv1 master.
+A01–A46 are the current locked visual registry for the mobile UI. A01–A29 remain the previously approved baseline; A30–A46 add level-specific building visuals while A06 continues to serve as the Shelter Lv1 master.
 
 ## Release rules
 
 1. Player UI never renders A-series identifiers. A-numbers exist only in production metadata and asset governance.
 2. Runtime visuals are entirely local under `public/assets/canonical/`. No CDN or runtime network dependency is permitted.
 3. Locked assets must have matching local WebP pixels before they enter `CANONICAL_VISUAL_ASSETS`.
-4. Runtime uses small WebP sprite sheets for reliable offline rendering in the Xiaohongshu embedded WebView/package pipeline.
+4. Runtime uses nine local WebP sprite sheets. No runtime network fetch is required.
 5. Release validation must run:
    - `npm run audit:assets:strict`
    - `npm run build`
    - `npm run audit:xhs`
    - `npm run test:ui-smoke`
-6. The strict asset audit verifies file existence, RIFF/WebP headers, declared-vs-actual byte length, registry continuity, and sprite coverage.
-7. Final visual QA uses real-image browser screenshots at 390×844 and checks crop, focal point, level readability, first-screen CTA visibility, and absence of player-visible production IDs.
+6. The strict asset audit verifies file existence, RIFF/WebP headers, declared-vs-actual byte length, registry continuity, sprite coverage, and the frozen SHA-256 values for the A30–A46 building sheets. A truncated, substituted, or accidentally re-encoded building sheet therefore fails CI.
+7. Final visual QA uses real-image browser screenshots at 390×844, checking crop, focal point, building-level readability, first-screen CTA visibility, and absence of player-visible production IDs.
 
 ## Canonical mapping
 
@@ -69,12 +69,12 @@ A01–A46 are the current local visual registry for the mobile UI. A01–A29 rem
 
 ## Building visual contract
 
-The building system has six facilities with Lv0–3 runtime state. Lv0 is the closed/unrepaired state and deliberately reuses Lv1 art with the closed-state UI treatment, so the art set contains 18 level slots rather than 24 unique images.
+The six facilities have Lv0–3 runtime state. Lv0 deliberately reuses the Lv1 art under the closed/unrepaired UI treatment, so the visual set contains 18 level slots rather than 24 unique images.
 
 - Lv1, Lv2 and Lv3 for one building depict the same functional place and preserve the same overall room identity.
-- Upgrade feedback comes from repair, restored utilities, additional functional equipment and long-term use; it must not read as a wealth/technology upgrade.
+- Upgrade feedback comes from repair, restored utilities, additional functional equipment and long-term use; it must not read as a wealth or technology upgrade.
 - Lv3 remains a civilian disaster-survival space, not a military base, command center, professional hospital, industrial workshop or modern broadcast station.
-- A06 remains the authoritative Shelter Lv1 master. A45/A46 preserve its room language and only extend cooking, storage and long-term use.
+- A06 remains the authoritative Shelter Lv1 master. A45/A46 preserve its room language and extend cooking, storage and long-term use.
 - Runtime selection is `buildingVisual(buildingId, level)`. Lv0 is clamped to Lv1.
 
 ## Building asset build procedure
@@ -83,16 +83,21 @@ Approved masters use canonical file names `A30.png` through `A46.png` in a stagi
 
 `npm run build:building-assets -- <staging-directory>`
 
-The script normalizes each tile to 480×320 and writes two compressed WebP sheets:
+The script normalizes each tile to 480×320 and writes two 1440×960 WebP sheets at quality 82:
 
 - `public/assets/canonical/buildings-a.webp` — A30–A38
 - `public/assets/canonical/buildings-b.webp` — A39–A46
 
-The build script refuses missing IDs instead of silently creating incomplete sheets.
+The script refuses missing masters rather than silently producing an incomplete runtime sheet. The approved release binaries are frozen by hash; after rebuilding, `npm run audit:assets:strict` is the authority for whether the result is byte-identical to the locked release artifact.
+
+Frozen release hashes:
+
+- `buildings-a.webp` — `2cf279da70a23a56e5032d6263450da5bec1c6fd7095ea5ec2ca28a181f31df0`
+- `buildings-b.webp` — `c0ca1d2846d8eaecf1e79076c21f67a24826ae0970b9cdcfb48dc7eed48bbcc5`
 
 ## Runtime files
 
-The locked runtime package now contains nine verified WebP sheets:
+The local release package contains nine verified WebP sheets:
 
 - `public/assets/canonical/characters-a.webp` — A01, A02, A07
 - `public/assets/canonical/characters-b.webp` — A08, A09, A10
@@ -104,13 +109,15 @@ The locked runtime package now contains nine verified WebP sheets:
 - `public/assets/canonical/buildings-a.webp` — A30–A38
 - `public/assets/canonical/buildings-b.webp` — A39–A46
 
-The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning.
+The production mapping lives in `src/ui/visualAssets.ts`. React renders the local sheets directly through CSS background positioning. Obsolete one-file-per-A SVG wrappers and truncated sprite files are intentionally excluded from the runtime package.
 
 ## Source packages
 
-The authoritative source uploads for the A01–A29 baseline were:
+The authoritative source uploads for this import were:
 
 - `a01-a21(2).zip`
 - `a22-a29 (2)(1).zip`
 
-The A30–A46 building expansion was reviewed as a separate level-specific set before sprite import. The source/staging pack remains the provenance record; runtime uses only the compressed WebP sheets.
+Both packages were explicitly confirmed by the user as containing previously reviewed, compliant project imagery. Where a package contained early/reference and later clean variants, the runtime package uses the selected final master while the source package remains the provenance record.
+
+The A30–A46 building expansion was reviewed separately as a level-specific set. Its final selected masters are normalized into the two building sprite sheets above; staging/source files are not required at runtime.
