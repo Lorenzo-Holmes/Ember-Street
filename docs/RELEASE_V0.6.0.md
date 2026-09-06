@@ -4,7 +4,7 @@
 
 v0.6.0 is the core-play redesign of Ember Street. The former seven-slot / rack / order / combo night runtime has been removed from the player path and from `GameState`; legacy seven-slot fields exist only inside the v2→v3 migration boundary so old resources can be salvaged into the new inventory.
 
-The new loop is: **day assignments → expedition / construction / food → dusk lock → 5–6 three-choice night events → emergencies / hordes → DAY29 final horde → DAY30 ending resolver**.
+The new loop is: **day assignments → expedition / construction / food → dusk lock → 2/3/4 date-tiered three-choice night events → emergencies / hordes → DAY29 final horde → DAY30 ending resolver**.
 
 ## Campaign
 
@@ -32,13 +32,16 @@ Six facilities support Lv0–3: search station, workshop, clinic, watch post, sh
 
 ## Night
 
-- 5 main events on normal nights.
-- 6 main events on horde nights.
+- 2 ordinary slots on DAY1–5, 3 on DAY6–23 and 4 on DAY24–28.
+- Horde beats replace part of the ordinary budget; DAY29 uses its fixed six-stage finale.
 - Emergency events are inserted separately and do not consume main-event slots.
 - Every player-facing decision event exposes exactly three choices.
 - DAY10 / 20 / 29 force horde scheduling.
 - No real-time reading countdown.
 - Seeded scheduling and dice make the same state reproducible.
+- All 51 static night definitions and both per-survivor crisis templates declare semantic `visualKey` values. The player UI resolves them centrally to locked local art instead of falling back to one shelter image.
+- Normal scheduling avoids a generic visual used earlier in the same schedule or in the previous two nights when a legal semantic alternative exists. Fixed/urgent story beats retain narrative priority.
+- Missing art uses a dark textual fallback without disabling the event choices.
 
 ## Save integrity
 

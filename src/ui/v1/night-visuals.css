@@ -1,0 +1,113 @@
+/* Night Event Visual Upgrade v1: semantic art, resilient loading and narrow-screen safeguards. */
+.v1n-art {
+  height: auto;
+  aspect-ratio: 4 / 3;
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, .08);
+  border-bottom: 1px solid rgba(255, 255, 255, .08);
+  background: #0d1211;
+}
+
+.v1n-art .v1n-art__image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background-color: #111512;
+}
+
+.v1n-art__probe {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.v1n-art .v1n-art__fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 22px;
+  text-align: center;
+  color: #c8c2b7;
+  background: linear-gradient(145deg, rgba(31, 37, 34, .97), rgba(9, 13, 12, .98));
+  transition: opacity .18s ease;
+}
+
+.v1n-art__fallback strong {
+  font-size: .86rem;
+  letter-spacing: .06em;
+}
+
+.v1n-art__fallback small {
+  display: block;
+  margin-top: 5px;
+  color: #7d827b;
+  font-size: .68rem;
+}
+
+.v1n-art[data-art-state="ready"] .v1n-art__fallback {
+  opacity: 0;
+}
+
+.v1n-art[data-art-state="error"] .v1n-art__image {
+  opacity: .16;
+}
+
+.v1n-art figcaption {
+  position: absolute;
+  right: 9px;
+  bottom: 8px;
+  padding: 4px 7px;
+  border: 1px solid rgba(224, 215, 195, .18);
+  background: rgba(7, 10, 9, .78);
+  color: #bbb19b;
+  font-size: .62rem;
+  letter-spacing: .08em;
+}
+
+.v1n-event-copy {
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.v1n-choices {
+  padding-top: 10px;
+}
+
+.v1n-choices button {
+  min-width: 0;
+  min-height: 48px;
+  overflow-wrap: break-word;
+}
+
+.v1n-night-head > div,
+.v1n-resource-strip span {
+  min-width: 0;
+}
+
+.v1n-page {
+  padding-bottom: 40px;
+  padding-bottom: calc(40px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+}
+
+/* Chrome 61 does not understand aspect-ratio. Keep the same outer 4:3 box there. */
+@supports not (aspect-ratio: 4 / 3) {
+  .v1n-art { height: 369px; }
+
+  @media (max-width: 520px) {
+    .v1n-art { height: calc(75vw - 21px); }
+  }
+
+  @media (max-width: 390px) {
+    .v1n-art { height: calc(75vw - 15px); }
+  }
+}
+
+@media (max-width: 340px) {
+  .v1n-resource-strip { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .v1n-art__fallback { transition: none; }
+}

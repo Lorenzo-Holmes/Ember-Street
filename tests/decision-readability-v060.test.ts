@@ -10,7 +10,7 @@ import type { NightChoice, V060NightEvent } from '../src/game/v060/nightEvents';
 
 function eventWith(id: string, choice: NightChoice): V060NightEvent {
   const noop: NightChoice = { id: 'noop', label: '等待', detail: '等待。', strategy: 'consequence', direct: {} };
-  return { id, category: 'emergency', minDay: 1, maxDay: 29, title: '测试事件', body: '测试。', choices: [choice, noop, { ...noop, id: 'noop-2' }] };
+  return { id, category: 'emergency', visualKey: 'night_external_threat', minDay: 1, maxDay: 29, title: '测试事件', body: '测试。', choices: [choice, noop, { ...noop, id: 'noop-2' }] };
 }
 
 describe('v0.6 decision readability', () => {

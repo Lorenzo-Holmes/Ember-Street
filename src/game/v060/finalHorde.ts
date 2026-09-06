@@ -48,7 +48,7 @@ const consequence = (id: string, label: string, detail: string, effect: NightEff
 
 export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
   {
-    id: 'final-horde-north-gate', category: 'horde', minDay: 29, maxDay: 29,
+    id: 'final-horde-north-gate', category: 'horde', visualKey: 'night_external_threat', minDay: 29, maxDay: 29,
     title: '第一阵 · 北门',
     body: '第一波尸群没有试探，直接撞向北门。现在要决定谁去顶、要不要把仓房里的东西全压上去，还是把人撤进第二道门。',
     choices: [
@@ -61,7 +61,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'final-horde-power-grid', category: 'horde', minDay: 29, maxDay: 29,
+    id: 'final-horde-power-grid', category: 'horde', visualKey: 'night_power_failure', minDay: 29, maxDay: 29,
     title: '第二阵 · 主灯熄灭',
     body: '撞击让主灯线路跳闸。工坊里还有备件，老线路也还能抢修；另一种办法，是干脆熄掉外围，把电留给最不能黑的地方。',
     choices: [
@@ -74,7 +74,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'final-horde-clinic', category: 'horde', minDay: 29, maxDay: 29,
+    id: 'final-horde-clinic', category: 'horde', visualKey: 'night_return_injured', minDay: 29, maxDay: 29,
     title: '第三阵 · 伤员挤进诊疗室',
     body: '围栏后的伤员开始挤满诊疗角。今晚没有“都照顾好”这种选项：要靠程医生分诊，要打开药箱，或者先让还能走的人回到防线上。',
     choices: [
@@ -87,7 +87,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'final-horde-community', category: 'horde', minDay: 29, maxDay: 29,
+    id: 'final-horde-community', category: 'horde', visualKey: 'night_conflict', minDay: 29, maxDay: 29,
     title: '第四阵 · 街里开始慌乱',
     body: '真正让队伍散掉的不是尸群，而是哭声和“门是不是要破了”的传言。这里可以靠人心、靠储备，也可以把能动的人全部赶去守线。',
     choices: [
@@ -100,7 +100,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'final-horde-reroute', category: 'horde', minDay: 29, maxDay: 29,
+    id: 'final-horde-reroute', category: 'horde', visualKey: 'night_external_threat', minDay: 29, maxDay: 29,
     title: '第五阵 · 尸群从侧街绕后',
     body: '正面的撞击刚缓下来，侧街又传来新的声音。过去画下的路线还能帮人判断来路；也可以封死巷口，或者主动开一条口子把人和尸群分开。',
     choices: [
@@ -113,7 +113,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'final-horde-last-line', category: 'horde', minDay: 29, maxDay: 29,
+    id: 'final-horde-last-line', category: 'horde', visualKey: 'night_shelter_damage', minDay: 29, maxDay: 29,
     title: '第六阵 · 最后一条线',
     body: '天边已经发白。要么让所有还能站的人守住这里，要么搬空仓房，要么承认外层守不住，先把人带进去。',
     choices: [

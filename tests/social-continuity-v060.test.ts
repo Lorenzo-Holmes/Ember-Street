@@ -64,7 +64,7 @@ describe('v0.6 social pressure', () => {
   it('makes social crisis events more likely at breaking pressure', () => {
     const base = withDay(createV060InitialState(701005), 12);
     const event: NightEvent = {
-      id: 'argument-rations', category: 'survivor', minDay: 1, maxDay: 29,
+      id: 'argument-rations', category: 'survivor', visualKey: 'night_conflict', minDay: 1, maxDay: 29,
       title: '争执', body: 'test', choices: [dummyChoice('a'), dummyChoice('b'), dummyChoice('c')],
     };
     const calm = nightEventWeight(base, event);

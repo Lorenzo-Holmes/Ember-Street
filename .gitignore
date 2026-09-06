@@ -13,6 +13,7 @@ coverage
 /output/
 /test-results/
 /playwright-report/
+/playwright-production-report/
 /qa/playtest/out/
 /qa/ui-overhaul/screenshots/
 *.tsbuildinfo

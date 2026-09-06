@@ -68,6 +68,31 @@ A01–A47 are the current locked visual registry for the mobile UI. A01–A29 re
 | A46 | 宿营屋 · Lv3 | `shelter` |
 | A47 | 宿营屋 · Lv1 | `shelter` |
 
+## Night event visual contract
+
+Before `Night Event Visual Upgrade v1`, `NightEventV1` attempted an exact lookup with the gameplay event ID. None of the night IDs matched the canonical exploration-event IDs, so essentially every ordinary, emergency, horde and dynamic night event fell through to the same A06 shelter overview. The assets were present and valid; the missing semantic mapping was the actual source of repetition.
+
+Night content now declares `visualKey`, and only `NIGHT_VISUAL_DEFINITIONS` in `src/ui/visualAssets.ts` converts that key into production art. The registry deliberately reuses approved environment-led scenes rather than introducing unreviewed one-off character art.
+
+| `visualKey` | Player-facing scene | Locked art / runtime sheet | Static event coverage |
+| --- | --- | --- | --- |
+| `night_door_visitor` | 门外有人 | A20 / `events-a.webp` | `gate-knocking` |
+| `night_medical` | 临时诊疗角 | A28 / `events-b2.webp` | `clinic-blackout`, `fever-resident`; dynamic medical crisis |
+| `night_return_injured` | 有人带伤回来 | A25 / `events-b1.webp` | `horde-clinic`, `final-horde-clinic` |
+| `night_conflict` | 灯下的分歧 | A22 / `events-a.webp` | ration / blanket / hidden-food disputes, panic, final community stage |
+| `night_external_threat` | 街外的动静 | A23 / `events-a.webp` | footsteps, dogs, distant lights, moving shadows, exterior horde stages |
+| `night_empty_bed` | 空下来的床位 | A06 / `places-a.webp` | missing-name, missing-child emergency |
+| `night_theft` | 被翻动的物资 | A27 / `events-b2.webp` | medicine count, ration mice |
+| `night_quiet` | 短暂安静 | A45 / `buildings-b.webp` | nightmare, tea, cat, watch swap |
+| `night_package` | 门口留下的东西 | A29 / `events-b2.webp` | registered P1 category; no current story event forces it |
+| `night_departure` | 半开的出口 | A05 / `events-a.webp` | doorway sleeper; dynamic low-hope departure |
+| `night_power_failure` | 灯灭以后 | A21 / `events-a.webp` | generator / battery / main-light failures |
+| `night_radio_signal` | 频道里的声音 | A42 / `buildings-b.webp` | radio leak, voices, military burst, distress call |
+| `night_shelter_damage` | 撑到天亮的屋子 | A47 / `buildings-b.webp` | fence, awning, window, barrel, gate/wall/final-line damage |
+| `night_fire_hazard` | 失控前的火光 | A24 / `events-b1.webp` | gas hiss, clinic fire, generator fire |
+
+All five P0 categories and all five P1 registry categories resolve to locked art. `night_package` remains intentionally unused until a matching story event exists; no unrelated event is mislabeled merely to exercise the image. No new binary asset was added, so the nine-sheet offline payload and the 10 MiB release budget are unchanged.
+
 ## Building visual contract
 
 The six facilities have Lv0–3 runtime state. Lv0 deliberately reuses the Lv1 art under the closed/unrepaired UI treatment, so the visual set contains 18 level slots rather than 24 unique images.

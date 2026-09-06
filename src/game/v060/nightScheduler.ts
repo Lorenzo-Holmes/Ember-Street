@@ -17,7 +17,7 @@ import { advanceUntreatedRisk, clearUntreatedRisk, loseCommunityResidents } from
 import { mortalityEventById, pendingMortalityEventIds } from './mortalityEvents';
 import { appendDawnBrief } from './morningBrief';
 import { beginDefenseNight } from './defenseFeedback';
-import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
+import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type NightVisualKey, type V060NightEvent } from './nightEvents';
 import { applyInjuryTrustLoss, specialtyAvailable, trustCheckModifier } from './trust';
 import { appendJournal, journalChanges } from './journal';
 import { tutorialNightOrder } from './tutorial';
@@ -26,6 +26,7 @@ const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = { search: 'expedition', r
 const ROLE_BUILDING: Partial<Record<Role, BuildingId>> = { search: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio', rest: 'shelter' };
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, value));
 const playable = (survivor: Survivor) => survivor.condition !== 'dead' && survivor.condition !== 'missing';
+const NIGHT_VISUAL_SEEN_PREFIX = 'night_visual_seen:';
 
 type AnchorCategory = 'threat' | 'infrastructure' | 'survivor';
 
@@ -49,27 +50,61 @@ function drawIndex(rngState: number, size: number): [number, number] {
   return [Math.min(size - 1, Math.floor(value * size)), next];
 }
 
-function pickWithoutReplacement<T>(pool: T[], count: number, rngState: number): [T[], number] {
-  const available = [...pool]; const selected: T[] = []; let nextState = rngState;
+export const NIGHT_VISUAL_RECENT_COOLDOWN_DAYS = 2;
+
+export function nightVisualSeenRecently(state: GameState, visualKey: NightVisualKey): boolean {
+  const prefix = `${NIGHT_VISUAL_SEEN_PREFIX}${visualKey}:`;
+  for (const flag of state.storyFlags) {
+    if (!flag.startsWith(prefix)) continue;
+    const seenDay = Number(flag.slice(prefix.length));
+    if (!Number.isFinite(seenDay)) continue;
+    const age = state.day - seenDay;
+    if (age >= 1 && age <= NIGHT_VISUAL_RECENT_COOLDOWN_DAYS) return true;
+  }
+  return false;
+}
+
+function diverseVisualCandidates(state: GameState, pool: V060NightEvent[], usedVisuals: ReadonlySet<NightVisualKey>): V060NightEvent[] {
+  const unusedFresh = pool.filter((event) => !usedVisuals.has(event.visualKey) && !nightVisualSeenRecently(state, event.visualKey));
+  if (unusedFresh.length) return unusedFresh;
+  const unused = pool.filter((event) => !usedVisuals.has(event.visualKey));
+  if (unused.length) return unused;
+  const fresh = pool.filter((event) => !nightVisualSeenRecently(state, event.visualKey));
+  return fresh.length ? fresh : pool;
+}
+
+function pickDiverseWithoutReplacement(pool: V060NightEvent[], count: number, rngState: number, state: GameState, initialVisuals: readonly NightVisualKey[] = []): [V060NightEvent[], number] {
+  const available = [...pool]; const selected: V060NightEvent[] = []; let nextState = rngState;
+  const usedVisuals = new Set<NightVisualKey>(initialVisuals);
   while (available.length && selected.length < count) {
-    const [index, next] = drawIndex(nextState, available.length); nextState = next; selected.push(available.splice(index, 1)[0]);
+    const candidates = diverseVisualCandidates(state, available, usedVisuals);
+    const [index, next] = drawIndex(nextState, candidates.length); nextState = next;
+    const picked = candidates[index];
+    selected.push(picked);
+    usedVisuals.add(picked.visualKey);
+    available.splice(available.findIndex((event) => event.id === picked.id), 1);
   }
   return [selected, nextState];
 }
 
-function pickWeightedWithoutReplacement(pool: V060NightEvent[], count: number, rngState: number, state: GameState): [V060NightEvent[], number] {
+function pickWeightedWithoutReplacement(pool: V060NightEvent[], count: number, rngState: number, state: GameState, initialVisuals: readonly NightVisualKey[] = []): [V060NightEvent[], number] {
   const available = [...pool]; const selected: V060NightEvent[] = []; let nextState = rngState;
+  const usedVisuals = new Set<NightVisualKey>(initialVisuals);
   while (available.length && selected.length < count) {
-    const weights = available.map((event) => Math.max(1, nightEventWeight(state, event)));
+    const candidates = diverseVisualCandidates(state, available, usedVisuals);
+    const weights = candidates.map((event) => Math.max(1, nightEventWeight(state, event)));
     const total = weights.reduce((sum, value) => sum + value, 0);
     const [roll, next] = nextRandom(nextState); nextState = next;
     let cursor = roll * total;
-    let index = available.length - 1;
-    for (let i = 0; i < available.length; i += 1) {
+    let index = candidates.length - 1;
+    for (let i = 0; i < candidates.length; i += 1) {
       cursor -= weights[i];
       if (cursor < 0) { index = i; break; }
     }
-    selected.push(available.splice(index, 1)[0]);
+    const picked = candidates[index];
+    selected.push(picked);
+    usedVisuals.add(picked.visualKey);
+    available.splice(available.findIndex((event) => event.id === picked.id), 1);
   }
   return [selected, nextState];
 }
@@ -157,16 +192,16 @@ function normalComposition(state: GameState, count: number, rngState: number): [
     const freshCandidates = unselected(preferred, category);
     const candidates = freshCandidates.length ? freshCandidates : unselected(pool, category);
     if (!candidates.length) continue;
-    const [picked, next] = pickWeightedWithoutReplacement(candidates, 1, nextState, state); nextState = next; selected.push(...picked);
+    const [picked, next] = pickWeightedWithoutReplacement(candidates, 1, nextState, state, selected.map((event) => event.visualKey)); nextState = next; selected.push(...picked);
   }
 
   const freshRemaining = unselected(preferred);
-  const [freshFill, afterFresh] = pickWeightedWithoutReplacement(freshRemaining, Math.max(0, count - selected.length), nextState, state);
+  const [freshFill, afterFresh] = pickWeightedWithoutReplacement(freshRemaining, Math.max(0, count - selected.length), nextState, state, selected.map((event) => event.visualKey));
   nextState = afterFresh; selected.push(...freshFill);
 
   if (selected.length < count) {
     const fallback = unselected(pool);
-    const [fallbackFill, afterFallback] = pickWeightedWithoutReplacement(fallback, count - selected.length, nextState, state);
+    const [fallbackFill, afterFallback] = pickWeightedWithoutReplacement(fallback, count - selected.length, nextState, state, selected.map((event) => event.visualKey));
     nextState = afterFallback; selected.push(...fallbackFill);
   }
   return [selected, nextState];
@@ -206,12 +241,18 @@ export function scheduleNight(input: GameState): GameState {
   const normalEventBudget = hordeActive ? Math.max(1, baseNormalEventBudget - hordeSlots) : baseNormalEventBudget;
   const eventTotal = normalEventBudget + hordeSlots;
   const [normalEvents, afterNormal] = normalComposition(state, normalEventBudget, rngState); rngState = afterNormal;
-  const [hordeEvents, afterHorde] = pickWithoutReplacement(eligible(HORDE_EVENTS, state), hordeSlots, rngState); rngState = afterHorde;
+  const [hordeEvents, afterHorde] = pickDiverseWithoutReplacement(eligible(HORDE_EVENTS, state), hordeSlots, rngState, state, normalEvents.map((event) => event.visualKey)); rngState = afterHorde;
   const scheduled = [...normalEvents];
   if (hordeEvents[0]) scheduled.splice(Math.min(1, scheduled.length), 0, hordeEvents[0]);
   if (hordeEvents[1]) scheduled.splice(Math.min(3, scheduled.length), 0, hordeEvents[1]);
   const [emergencyRoll, afterEmergencyRoll] = nextRandom(rngState); rngState = afterEmergencyRoll;
-  const [emergencies, afterEmergency] = pickWeightedWithoutReplacement(eligible(EMERGENCY_EVENTS, state), emergencyCountFor(state, emergencyRoll), rngState, state); rngState = afterEmergency;
+  const [emergencies, afterEmergency] = pickWeightedWithoutReplacement(
+    eligible(EMERGENCY_EVENTS, state),
+    emergencyCountFor(state, emergencyRoll),
+    rngState,
+    state,
+    [...normalEvents, ...hordeEvents].map((event) => event.visualKey),
+  ); rngState = afterEmergency;
   const scheduledEventIds = tutorialNightOrder(state, scheduled.slice(0, eventTotal).map((event) => event.id));
   const mortalityIds = pendingMortalityEventIds(state);
   const emergencyEventIds = [...new Set([...mortalityIds, ...emergencies.map((event) => event.id)])];
@@ -410,14 +451,19 @@ function applyCivilianIncident(state: GameState, eventId: string, choiceId: stri
   return state;
 }
 
-function rememberNightEvent(state: GameState, eventId: string): GameState {
-  const flag = `night_seen:${eventId}:${state.day}`;
-  return state.storyFlags.includes(flag) ? state : { ...state, storyFlags: [...state.storyFlags, flag] };
+function rememberNightEvent(state: GameState, eventId: string, visualKey?: NightVisualKey): GameState {
+  const eventFlag = `night_seen:${eventId}:${state.day}`;
+  // Dynamic crisis effects can clear their own trigger before completion, so prefer the key captured by the UI action.
+  const resolvedVisualKey = visualKey ?? eventById(state, eventId)?.visualKey;
+  const visualFlag = resolvedVisualKey ? `${NIGHT_VISUAL_SEEN_PREFIX}${resolvedVisualKey}:${state.day}` : null;
+  const candidates = visualFlag ? [eventFlag, visualFlag] : [eventFlag];
+  const additions = candidates.filter((flag) => !state.storyFlags.includes(flag));
+  return additions.length ? { ...state, storyFlags: [...state.storyFlags, ...additions] } : state;
 }
 
-function completeCurrentEvent(state: GameState, eventId: string): GameState {
+function completeCurrentEvent(state: GameState, eventId: string, visualKey?: NightVisualKey): GameState {
   const already = state.nightState.resolutions.includes(eventId);
-  const remembered = already ? state : rememberNightEvent(state, eventId);
+  const remembered = already ? state : rememberNightEvent(state, eventId, visualKey);
   const resolutions = already ? remembered.nightState.resolutions : [...remembered.nightState.resolutions, eventId];
   const temporary = { ...remembered, nightState: { ...remembered.nightState, resolutions, currentEventId: null } };
   const nextId = nextNightEventId(temporary);
@@ -460,7 +506,7 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
   next = appendDawnBrief(before, next, event.title);
   next = appendJournal(next, { id: `day:${state.day}:night:${event.id}:choice`, day: state.day, kind: 'night',
     title: event.title, body: `选择：${choice.label}。${journalChanges(before, next)}` });
-  return completeCurrentEvent(next, event.id);
+  return completeCurrentEvent(next, event.id, event.visualKey);
 }
 
 export function acceptNightCheckResult(state: GameState): GameState {
@@ -480,5 +526,5 @@ export function acceptNightCheckResult(state: GameState): GameState {
   const outcomes = { failure: '没能办成', partial: '只办成了一部分', success: '办成了', critical: '比预想中顺利' };
   next = appendJournal(next, { id: `day:${state.day}:night:${event.id}:result`, day: state.day, kind: 'night',
     title: `${event.title} · 结果`, body: `${choice.label}：${outcomes[check.outcome]}。${journalChanges(before, next)}` });
-  return completeCurrentEvent(next, event.id);
+  return completeCurrentEvent(next, event.id, event.visualKey);
 }

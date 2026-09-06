@@ -233,8 +233,8 @@ Rules:
 
 - A numbers are internal production identifiers only.
 - No `<img src="/A03.png">` scattered through JSX.
-- A27 and A29 remain blocked until corrected/approved masters are imported.
-- A19 is intentionally unresolved rather than guessed.
+- A01–A47 are now locked and covered by the verified local sprite registry; the earlier A19/A27/A29 hold notes are closed.
+- Night events use semantic `visualKey` values and resolve them only through the same mapping layer; JSX must not branch on A-series IDs or individual event IDs.
 - Binary files must be bundled locally for the final 小红书小工具 build.
 
 ## 8. Visual language

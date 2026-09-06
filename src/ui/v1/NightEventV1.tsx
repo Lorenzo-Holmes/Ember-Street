@@ -1,11 +1,14 @@
+import { useEffect, useState } from 'react';
 import type { GameState } from '../../game/types';
+import type { NightVisualKey } from '../../game/v060/nightEvents';
 import { canTrustReroll, OUTCOME_LABEL, rerollLowestDie, rollPendingCheck } from '../../game/dice';
 import { effectiveNightChoiceCostLabel, enhanceFinalHordePreview } from '../../game/v060/day29Comprehension';
 import { nightChoicePreview } from '../../game/v060/decisionReadability';
 import { defenseNumber } from '../../game/v060/defenseFeedback';
 import { acceptNightCheckResult, canAffordNightChoice, chooseNightOption, currentNightEvent, scheduleNight } from '../../game/v060/nightScheduler';
-import { buildingVisual, eventVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
+import { nightVisual, nightVisualLabel, visualAssetSource, visualAssetStyle, type VisualAsset } from '../visualAssets';
 import './explore-night.css';
+import './night-visuals.css';
 
 interface NightEventV1Props {
   state: GameState;
@@ -18,8 +21,23 @@ function nightProgressLabel(index: number, total: number, horde: boolean): strin
   return progress <= 0.34 ? '入夜不久' : progress <= 0.67 ? '夜已经深了' : '天快亮了';
 }
 
-function NightArt({ asset, label }: { asset?: VisualAsset; label: string }) {
-  return <div className="v1n-art" aria-label={label} style={visualAssetStyle(asset)}>{!asset ? <div><strong>{label}</strong><small>黑暗里看不清发生了什么</small></div> : null}</div>;
+function NightArt({ asset, label, visualKey }: { asset?: VisualAsset; label: string; visualKey: NightVisualKey }) {
+  const source = visualAssetSource(asset);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>(source ? 'loading' : 'error');
+
+  useEffect(() => setLoadState(source ? 'loading' : 'error'), [source]);
+
+  return (
+    <figure className="v1n-art" role="img" aria-label={label} data-night-visual-key={visualKey} data-art-state={loadState}>
+      <div className="v1n-art__image" style={visualAssetStyle(asset)}/>
+      {source ? <img className="v1n-art__probe" src={source} alt="" aria-hidden="true" onLoad={() => setLoadState('ready')} onError={() => setLoadState('error')}/> : null}
+      <div className="v1n-art__fallback" aria-hidden={loadState === 'ready'}>
+        <strong>{nightVisualLabel(visualKey)}</strong>
+        <small>灯太暗，只能先听清发生了什么</small>
+      </div>
+      <figcaption>{nightVisualLabel(visualKey)}</figcaption>
+    </figure>
+  );
 }
 
 function NightHeader({ day, title, detail }: { day: number; title?: string; detail?: string }) {
@@ -57,13 +75,12 @@ export default function NightEventV1({ state, onCommit }: NightEventV1Props) {
 
   const event = currentNightEvent(state);
   if (!event) return <main className="v1n-page notebook-page notebook-page--night"><NightHeader day={state.day}/><section className="v1n-opening"><h1>今晚暂时没有新的声音。</h1></section></main>;
-  const exactArt = eventVisual(event.id);
-  const art = exactArt ?? buildingVisual('shelter');
+  const art = nightVisual(event.visualKey);
   return (
     <main className="v1n-page notebook-page notebook-page--night">
       <NightHeader day={state.day} title={state.nightState.hordeActive ? '尸潮正在靠近' : '余烬长街 · 入夜'} detail={nightProgressLabel(state.nightState.eventIndex, state.nightState.eventTotal, state.nightState.hordeActive)}/>
       <section className="v1n-resource-strip"><span>口粮 <b>{state.inventory.ration}</b></span><span>电力 <b>{state.inventory.power}</b></span><span>防线 <b>{defenseNumber(state.defense)}</b></span><span>希望 <b>{state.hope}</b></span></section>
-      <NightArt asset={art} label={exactArt ? event.title : '余烬长街 · 夜里的据点'}/>
+      <NightArt asset={art} visualKey={event.visualKey} label={`${event.title} · ${nightVisualLabel(event.visualKey)}`}/>
       <section className="v1n-event-copy"><span>夜里发生的</span><h1>{event.title}</h1><p>{event.body}</p>{event.quote ? <blockquote>{event.quote}</blockquote> : null}</section>
       <div className="v1n-choices">
         {event.choices.map((choice) => {

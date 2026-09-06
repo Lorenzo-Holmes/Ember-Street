@@ -68,6 +68,8 @@ async function departAndEndDay(page: Page) {
   await expect(guide(page)).toHaveAttribute('data-stage', 'FIRST_NIGHT');
   await page.getByRole('button', { name: '关掉外面的灯', exact: true }).click();
   await expect(page.locator('.v1n-event-copy h1')).toHaveText('围栏外有人敲门');
+  await expect(page.locator('.v1n-art')).toHaveAttribute('data-night-visual-key', 'night_door_visitor');
+  await expect(page.locator('.v1n-art')).toHaveAttribute('data-art-state', 'ready');
 }
 
 async function finishNight(page: Page) {

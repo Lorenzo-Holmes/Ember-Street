@@ -48,6 +48,7 @@ function medicalCrisisEvent(state: GameState, survivorId: string): V060NightEven
   return {
     id: `mortality-medical:${survivorId}`,
     category: 'emergency',
+    visualKey: 'night_medical',
     minDay: 6,
     maxDay: 29,
     title: critical ? `${survivor.name}的伤口开始发黑` : `${survivor.name}的高烧没有退`,
@@ -68,6 +69,7 @@ function lowHopeEvent(state: GameState, survivorId: string): V060NightEvent | un
   return {
     id: `mortality-hope:${survivorId}`,
     category: 'survivor',
+    visualKey: 'night_departure',
     minDay: 6,
     maxDay: 29,
     title: `${survivor.name}把东西装进了包里`,

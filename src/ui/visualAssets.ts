@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import type { NightVisualKey } from '../game/v060/nightEvents';
 
 export type VisualAssetKind = 'character' | 'location' | 'building' | 'event';
 export type VisualAssetStatus = 'locked' | 'needs-correction' | 'unresolved';
@@ -19,6 +20,13 @@ interface SpriteGroup {
   columns: number;
   rows: number;
   ids: readonly VisualAsset['canonicalId'][];
+}
+
+interface NightVisualDefinition {
+  label: string;
+  kind: 'event' | 'building';
+  gameplayId: string;
+  level?: BuildingVisualLevel;
 }
 
 const SPRITES: readonly SpriteGroup[] = [
@@ -91,6 +99,31 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
 
 export const UNRESOLVED_CANONICAL_IDS = [] as const;
 
+/**
+ * Night Event Visual Upgrade v1.
+ *
+ * Event data owns the semantic key. This table is the only place where that key
+ * is translated into approved production art, so JSX never branches on event ids.
+ * Several keys intentionally reuse environment-led canonical art: the night UI
+ * needs durable civilian storytelling more than literal one-off character shots.
+ */
+export const NIGHT_VISUAL_DEFINITIONS: Readonly<Record<NightVisualKey, NightVisualDefinition>> = {
+  night_door_visitor: { label: '门外有人', kind: 'event', gameplayId: 'apartment-door-402' },
+  night_medical: { label: '临时诊疗角', kind: 'event', gameplayId: 'hospital-isolation-ward' },
+  night_return_injured: { label: '有人带伤回来', kind: 'event', gameplayId: 'hospital-er-light' },
+  night_conflict: { label: '灯下的分歧', kind: 'event', gameplayId: 'school-gym-roster' },
+  night_external_threat: { label: '街外的动静', kind: 'event', gameplayId: 'subway-wind' },
+  night_empty_bed: { label: '空下来的床位', kind: 'building', gameplayId: 'shelter' },
+  night_theft: { label: '被翻动的物资', kind: 'event', gameplayId: 'warehouse-full-racks' },
+  night_quiet: { label: '短暂安静', kind: 'building', gameplayId: 'shelter', level: 2 },
+  night_package: { label: '门口留下的东西', kind: 'event', gameplayId: 'warehouse-protection-crate' },
+  night_departure: { label: '半开的出口', kind: 'event', gameplayId: 'convenience-half-shutter' },
+  night_power_failure: { label: '灯灭以后', kind: 'event', gameplayId: 'repair-jack-crate' },
+  night_radio_signal: { label: '频道里的声音', kind: 'building', gameplayId: 'radio', level: 1 },
+  night_shelter_damage: { label: '撑到天亮的屋子', kind: 'building', gameplayId: 'shelter', level: 1 },
+  night_fire_hazard: { label: '失控前的火光', kind: 'event', gameplayId: 'gas-tank-pressure' },
+};
+
 function byGameplayId(kind: VisualAssetKind, gameplayId: string, level?: BuildingVisualLevel): VisualAsset | undefined {
   const matches = CANONICAL_VISUAL_ASSETS.filter((asset) => asset.kind === kind && asset.gameplayId === gameplayId && asset.status === 'locked');
   if (level !== undefined) {
@@ -117,9 +150,21 @@ export function visualAssetStyle(asset?: VisualAsset): CSSProperties | undefined
   };
 }
 
+export function visualAssetSource(asset?: VisualAsset): string | undefined {
+  if (!asset) return undefined;
+  return SPRITES.find((item) => item.ids.includes(asset.canonicalId))?.path;
+}
+
 export const characterVisual = (survivorId: string) => byGameplayId('character', survivorId);
 export const locationVisual = (locationId: string) => byGameplayId('location', locationId);
 export const eventVisual = (eventId: string) => byGameplayId('event', eventId);
+export function nightVisual(visualKey: NightVisualKey): VisualAsset | undefined {
+  const definition = NIGHT_VISUAL_DEFINITIONS[visualKey];
+  return definition.kind === 'event'
+    ? byGameplayId('event', definition.gameplayId)
+    : byGameplayId('building', definition.gameplayId, definition.level);
+}
+export const nightVisualLabel = (visualKey: NightVisualKey): string => NIGHT_VISUAL_DEFINITIONS[visualKey].label;
 export const buildingVisual = (buildingId: string, level?: number) => {
   const requestedLevel = level === undefined
     ? undefined

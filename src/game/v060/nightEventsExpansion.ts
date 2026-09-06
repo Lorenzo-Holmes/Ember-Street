@@ -60,6 +60,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'awning-metal-tap',
     category: 'threat',
+    visualKey: 'night_shelter_damage',
     minDay: 1,
     maxDay: 12,
     title: '南口雨棚一直在敲铁皮',
@@ -73,6 +74,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'bicycle-alarm',
     category: 'threat',
+    visualKey: 'night_external_threat',
     minDay: 2,
     maxDay: 14,
     title: '街外有辆电动车反复报警',
@@ -86,6 +88,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'roof-shadow',
     category: 'threat',
+    visualKey: 'night_external_threat',
     minDay: 6,
     maxDay: 22,
     title: '对面楼顶有影子停了很久',
@@ -99,6 +102,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'dragging-cart',
     category: 'threat',
+    visualKey: 'night_external_threat',
     minDay: 13,
     maxDay: 28,
     title: '巷子里传来拖车轮子的声音',
@@ -112,6 +116,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'shelter-window-loose',
     category: 'infrastructure',
+    visualKey: 'night_shelter_damage',
     minDay: 1,
     maxDay: 12,
     title: '宿营屋有扇窗一直撞墙',
@@ -125,6 +130,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'battery-acid-smell',
     category: 'infrastructure',
+    visualKey: 'night_power_failure',
     minDay: 2,
     maxDay: 16,
     title: '修车铺里有一股电瓶液的酸味',
@@ -138,6 +144,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'kitchen-gas-hiss',
     category: 'infrastructure',
+    visualKey: 'night_fire_hazard',
     minDay: 5,
     maxDay: 20,
     title: '饭馆后厨传来很轻的漏气声',
@@ -151,6 +158,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'water-barrel-crack',
     category: 'infrastructure',
+    visualKey: 'night_shelter_damage',
     minDay: 10,
     maxDay: 28,
     title: '接雨水的桶裂了一道缝',
@@ -164,6 +172,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'blanket-dispute',
     category: 'survivor',
+    visualKey: 'night_conflict',
     minDay: 1,
     maxDay: 10,
     title: '有人为了两床厚毯子僵住了',
@@ -177,6 +186,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'night-watch-swap',
     category: 'survivor',
+    visualKey: 'night_quiet',
     minDay: 3,
     maxDay: 16,
     title: '有人说自己今晚实在守不住了',
@@ -190,6 +200,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'hidden-can',
     category: 'survivor',
+    visualKey: 'night_conflict',
     minDay: 6,
     maxDay: 22,
     title: '床底下找到了一只藏起来的罐头',
@@ -203,6 +214,7 @@ export const EXPANDED_NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
     id: 'doorway-sleeper',
     category: 'survivor',
+    visualKey: 'night_departure',
     minDay: 12,
     maxDay: 28,
     title: '有人抱着包睡在门边',

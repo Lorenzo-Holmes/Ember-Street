@@ -80,6 +80,14 @@ Ordinary event budgets are 2 on DAY1–5, 3 on DAY6–23 and 4 on DAY24–28. Ho
 
 All decision events expose exactly three choices. Checked choices create `PendingCheck`; deterministic dice resolve them. A v3 save preserves `phase`, `nightState`, `pendingCheck` and `rngState`, so reload cannot reroll an already determined result.
 
+### Night Event Visual Upgrade v1
+
+The night content layer owns `visualKey: NightVisualKey`. There are 51 static event IDs (31 ordinary, 6 random-horde, 8 emergency and 6 final-horde) plus two per-survivor dynamic templates for medical crisis and low-hope departure. Every definition declares one of 14 semantic keys; `NightEventV1` never branches on event IDs. `src/ui/visualAssets.ts` is the single translation boundary from `visualKey` to a locked canonical event/building asset.
+
+When a night event resolves, the scheduler appends `night_visual_seen:<visualKey>:<day>` beside the existing `night_seen:<eventId>:<day>` flag. Candidate selection first seeks an illustration category that is both unused in the current schedule and absent from the previous two nights. It then falls back deterministically through unused, recent-safe and finally any legal candidate, so event budgets never shrink. Fixed finale order and urgent per-person mortality events retain narrative priority when no semantically correct alternative exists.
+
+No new save-envelope field or schema version is required. Old v2/v3 saves simply have no visual-history flags and start building them after the next resolved event. The current event ID remains stored in `nightState`, while its art is a pure lookup from the event definition, so refresh cannot redraw a different scene. A missing local sprite sheet produces a deliberate dark textual fallback and leaves all three choices playable.
+
 ## Endings
 
 `resolveEnding()` is a pure priority resolver over survivor state, civilian population, rescued count, hope, buildings, radio/contact flags, evacuation routes, main light and the DAY29 grade. Exactly 13 endings are defined. Unlock history is stored separately in `ember-street-meta-v1`.
