@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { createHash } from 'node:crypto';
 
 const root = process.cwd();
 const sourcePath = join(root, 'src', 'ui', 'visualAssets.ts');
@@ -9,17 +10,20 @@ const assetDir = join(root, 'public', 'assets', 'canonical');
 
 const registry = [...source.matchAll(/canonicalId:\s*'(A\d+)'[\s\S]*?status:\s*'(locked|needs-correction|unresolved)'/g)]
   .map((match) => ({ id: match[1], status: match[2] }));
-const expectedIds = Array.from({ length: 29 }, (_, index) => `A${String(index + 1).padStart(2, '0')}`);
 const foundIds = registry.map((asset) => asset.id);
-const uniqueIds = [...new Set(foundIds)].sort();
+const numericId = (id) => Number(id.slice(1));
+const uniqueIds = [...new Set(foundIds)].sort((a, b) => numericId(a) - numericId(b));
+const maxCanonicalId = Math.max(29, ...uniqueIds.map(numericId));
+const expectedIds = Array.from({ length: maxCanonicalId }, (_, index) => `A${String(index + 1).padStart(2, '0')}`);
+const expectedSet = new Set(expectedIds);
 const missingIds = expectedIds.filter((id) => !uniqueIds.includes(id));
-const extraIds = uniqueIds.filter((id) => !expectedIds.includes(id));
+const extraIds = uniqueIds.filter((id) => !expectedSet.has(id));
 const duplicateIds = uniqueIds.filter((id) => foundIds.filter((item) => item === id).length !== 1);
 const nonLocked = registry.filter((asset) => asset.status !== 'locked');
 const unresolvedMatch = source.match(/UNRESOLVED_CANONICAL_IDS\s*=\s*\[([^\]]*)\]/);
 const unresolved = unresolvedMatch ? [...unresolvedMatch[1].matchAll(/'(A\d+)'/g)].map((item) => item[1]) : [];
 
-const spriteSpecs = [
+const allSpriteSpecs = [
   ['characters-a.webp', ['A01', 'A02', 'A07']],
   ['characters-b.webp', ['A08', 'A09', 'A10']],
   ['places-a.webp', ['A03', 'A04', 'A06', 'A11', 'A12', 'A13']],
@@ -27,7 +31,17 @@ const spriteSpecs = [
   ['events-a.webp', ['A05', 'A19', 'A20', 'A21', 'A22', 'A23']],
   ['events-b1.webp', ['A24', 'A25', 'A26']],
   ['events-b2.webp', ['A27', 'A28', 'A29']],
+  ['buildings-a.webp', ['A30', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36', 'A37', 'A38']],
+  ['buildings-b.webp', ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46']],
 ];
+const spriteSpecs = allSpriteSpecs
+  .map(([name, ids]) => [name, ids.filter((id) => expectedSet.has(id))])
+  .filter(([, ids]) => ids.length > 0);
+
+const frozenSpriteHashes = new Map([
+  ['buildings-a.webp', '2cf279da70a23a56e5032d6263450da5bec1c6fd7095ea5ec2ca28a181f31df0'],
+  ['buildings-b.webp', 'c0ca1d2846d8eaecf1e79076c21f67a24826ae0970b9cdcfb48dc7eed48bbcc5'],
+]);
 
 function validateWebP(name) {
   const absolute = join(assetDir, name);
@@ -40,14 +54,19 @@ function validateWebP(name) {
   const declared = bytes.readUInt32LE(4) + 8;
   if (riff !== 'RIFF' || webp !== 'WEBP') return { name, exists: true, size, valid: false, issue: `bad header ${riff}/${webp}` };
   if (declared !== size) return { name, exists: true, size, valid: false, issue: `truncated/corrupt RIFF: declares ${declared} bytes, file has ${size}` };
-  return { name, exists: true, size, valid: true, issue: '' };
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const expectedHash = frozenSpriteHashes.get(name);
+  if (expectedHash && sha256 !== expectedHash) {
+    return { name, exists: true, size, valid: false, issue: `frozen SHA-256 mismatch: ${sha256}`, sha256 };
+  }
+  return { name, exists: true, size, valid: true, issue: '', sha256 };
 }
 
 const sprites = spriteSpecs.map(([name, ids]) => ({ ...validateWebP(name), ids }));
 const invalidSprites = sprites.filter((sprite) => !sprite.valid);
 const coverage = spriteSpecs.flatMap(([, ids]) => ids);
 const coverageMissing = expectedIds.filter((id) => !coverage.includes(id));
-const coverageExtra = [...new Set(coverage)].filter((id) => !expectedIds.includes(id));
+const coverageExtra = [...new Set(coverage)].filter((id) => !expectedSet.has(id));
 const coverageDuplicates = [...new Set(coverage)].filter((id) => coverage.filter((item) => item === id).length !== 1);
 
 const allowedRuntime = new Set(spriteSpecs.map(([name]) => name));
@@ -55,8 +74,8 @@ const files = existsSync(assetDir) ? readdirSync(assetDir) : [];
 const obsolete = files.filter((name) => name === '.upload-note' || name.endsWith('.svg') || name.startsWith('canonical-'));
 const unexpectedWebP = files.filter((name) => name.endsWith('.webp') && !allowedRuntime.has(name));
 
-console.log(`Canonical registry: ${registry.length}/29 entries · ${uniqueIds.length} unique IDs`);
-console.log(`Locked canonical IDs: ${registry.filter((asset) => asset.status === 'locked').length}/29`);
+console.log(`Canonical registry: ${registry.length}/${expectedIds.length} entries · ${uniqueIds.length} unique IDs`);
+console.log(`Locked canonical IDs: ${registry.filter((asset) => asset.status === 'locked').length}/${expectedIds.length}`);
 console.log(`Runtime sprite sheets byte-valid: ${sprites.filter((sprite) => sprite.valid).length}/${sprites.length}`);
 console.log(`Runtime image payload: ${(sprites.reduce((sum, sprite) => sum + sprite.size, 0) / 1024).toFixed(1)} KiB`);
 for (const sprite of sprites) console.log(`  - ${sprite.name}: ${(sprite.size / 1024).toFixed(1)} KiB · ${sprite.valid ? 'RIFF OK' : sprite.issue}`);
@@ -73,8 +92,8 @@ if (invalidSprites.length) console.log(`\nInvalid sprite files: ${invalidSprites
 if (obsolete.length) console.log(`\nObsolete runtime assets still present: ${obsolete.join(', ')}`);
 if (unexpectedWebP.length) console.log(`\nUnexpected WebP files: ${unexpectedWebP.join(', ')}`);
 
-const failed = registry.length !== 29 || missingIds.length || extraIds.length || duplicateIds.length || nonLocked.length || unresolved.length || coverageMissing.length || coverageExtra.length || coverageDuplicates.length || invalidSprites.length || obsolete.length || unexpectedWebP.length;
-if (!failed) console.log('\nCanonical A01-A29 package is complete, fully covered, byte-valid, and release-clean.');
+const failed = registry.length !== expectedIds.length || missingIds.length || extraIds.length || duplicateIds.length || nonLocked.length || unresolved.length || coverageMissing.length || coverageExtra.length || coverageDuplicates.length || invalidSprites.length || obsolete.length || unexpectedWebP.length;
+if (!failed) console.log(`\nCanonical A01-A${String(maxCanonicalId).padStart(2, '0')} package is complete, fully covered, byte-valid, and release-clean.`);
 if (strict && failed) {
   console.error('\nStrict canonical asset audit failed.');
   process.exit(1);
