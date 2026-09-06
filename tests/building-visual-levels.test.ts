@@ -3,8 +3,9 @@ import { buildingVisual, visualAssetStyle } from '../src/ui/visualAssets';
 
 describe('level-specific building visuals', () => {
   it('keeps Lv0 on the Lv1 visual and selects all three shelter levels', () => {
-    expect(buildingVisual('shelter', 0)?.canonicalId).toBe('A06');
-    expect(buildingVisual('shelter', 1)?.canonicalId).toBe('A06');
+    expect(buildingVisual('shelter')?.canonicalId).toBe('A06');
+    expect(buildingVisual('shelter', 0)?.canonicalId).toBe('A47');
+    expect(buildingVisual('shelter', 1)?.canonicalId).toBe('A47');
     expect(buildingVisual('shelter', 2)?.canonicalId).toBe('A45');
     expect(buildingVisual('shelter', 3)?.canonicalId).toBe('A46');
   });
@@ -27,6 +28,11 @@ describe('level-specific building visuals', () => {
       backgroundImage: 'url(/assets/canonical/buildings-b.webp)',
       backgroundSize: '300% 300%',
       backgroundPosition: '50% 100%',
+    });
+    expect(visualAssetStyle(buildingVisual('shelter', 1))).toMatchObject({
+      backgroundImage: 'url(/assets/canonical/buildings-b.webp)',
+      backgroundSize: '300% 300%',
+      backgroundPosition: '100% 100%',
     });
   });
 });

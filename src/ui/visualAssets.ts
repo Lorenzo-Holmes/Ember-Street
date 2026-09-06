@@ -30,13 +30,13 @@ const SPRITES: readonly SpriteGroup[] = [
   { path: '/assets/canonical/events-b1.webp', columns: 3, rows: 1, ids: ['A24', 'A25', 'A26'] },
   { path: '/assets/canonical/events-b2.webp', columns: 3, rows: 1, ids: ['A27', 'A28', 'A29'] },
   { path: '/assets/canonical/buildings-a.webp', columns: 3, rows: 3, ids: ['A30', 'A31', 'A32', 'A33', 'A34', 'A35', 'A36', 'A37', 'A38'] },
-  { path: '/assets/canonical/buildings-b.webp', columns: 3, rows: 3, ids: ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46'] },
+  { path: '/assets/canonical/buildings-b.webp', columns: 3, rows: 3, ids: ['A39', 'A40', 'A41', 'A42', 'A43', 'A44', 'A45', 'A46', 'A47'] },
 ] as const;
 
 /**
  * Canonical art registry for Ember Street.
  * A-numbers are production identifiers only; player-facing UI uses world/gameplay copy.
- * A01-A46 are local, locked runtime masters. Building visuals carry explicit Lv1-Lv3
+ * A01-A47 are local, locked runtime masters. Building visuals carry explicit Lv1-Lv3
  * metadata so the repair page can show the same facility changing as the player upgrades it.
  */
 export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
@@ -45,7 +45,7 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A03', kind: 'location', title: '便利店', gameplayId: 'convenience-store', status: 'locked' },
   { canonicalId: 'A04', kind: 'location', title: '西街药店', gameplayId: 'west-pharmacy', status: 'locked' },
   { canonicalId: 'A05', kind: 'event', title: '半开的卷帘门', gameplayId: 'convenience-half-shutter', continuityId: 'convenience-store', status: 'locked' },
-  { canonicalId: 'A06', kind: 'building', title: '宿营屋 · 初级状态', gameplayId: 'shelter', level: 1, status: 'locked' },
+  { canonicalId: 'A06', kind: 'building', title: '宿营屋 · 据点总览', gameplayId: 'shelter', status: 'locked' },
   { canonicalId: 'A07', kind: 'character', title: '阿禾', gameplayId: 'ahe', status: 'locked' },
   { canonicalId: 'A08', kind: 'character', title: '程医生', gameplayId: 'cheng', status: 'locked' },
   { canonicalId: 'A09', kind: 'character', title: '阿梁', gameplayId: 'aliang', status: 'locked' },
@@ -86,6 +86,7 @@ export const CANONICAL_VISUAL_ASSETS: readonly VisualAsset[] = [
   { canonicalId: 'A44', kind: 'building', title: '广播间 · Lv3', gameplayId: 'radio', level: 3, status: 'locked' },
   { canonicalId: 'A45', kind: 'building', title: '宿营屋 · Lv2', gameplayId: 'shelter', level: 2, status: 'locked' },
   { canonicalId: 'A46', kind: 'building', title: '宿营屋 · Lv3', gameplayId: 'shelter', level: 3, status: 'locked' },
+  { canonicalId: 'A47', kind: 'building', title: '宿营屋 · Lv1', gameplayId: 'shelter', level: 1, status: 'locked' },
 ] as const;
 
 export const UNRESOLVED_CANONICAL_IDS = [] as const;

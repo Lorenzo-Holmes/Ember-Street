@@ -28,8 +28,8 @@ groups = (
     ),
     (
         "buildings-b.webp",
-        tuple(f"A{i}" for i in range(39, 47)),
-        "c0ca1d2846d8eaecf1e79076c21f67a24826ae0970b9cdcfb48dc7eed48bbcc5",
+        tuple(f"A{i}" for i in range(39, 48)),
+        "50c046ce115b9c09d24a5a502800f699f6f6b1be68f7b74d1a7619377f9f4648",
     ),
 )
 
@@ -87,7 +87,7 @@ try:
 
     for temporary, destination in temporary_outputs:
         os.replace(temporary, destination)
-    print("Building sprites rebuilt byte-identically to the frozen A30-A46 release.")
+    print("Building sprites rebuilt byte-identically to the frozen A30-A47 release.")
 except Exception:
     for temporary, _ in temporary_outputs:
         temporary.unlink(missing_ok=True)
