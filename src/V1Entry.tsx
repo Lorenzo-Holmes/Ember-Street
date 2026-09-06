@@ -30,6 +30,8 @@ import V1BottomNav, { type V1NavTarget } from './ui/v1/V1BottomNav';
 import { createPreviewState, DevSceneNav, previewSceneFromLocation } from './ui/v1/DevScenePreview';
 import { CampaignEventV1, DawnV1, DuskV1, EndingV1, NightSummaryV1 } from './ui/v1/StoryPhasesV1';
 import TitleScreen, { PlayerMenu } from './ui/v1/TitleScreen';
+import TutorialGuide from './ui/v1/TutorialGuide';
+import { completeTutorialFromLog, reconcileTutorial, tutorialDispatchBlocker, tutorialLogHasPriority } from './game/v060/tutorial';
 
 function CommunityDepartureScreen({ state, onResolved }: { state: GameState; onResolved: (next: GameState) => void }) {
   const departure = pendingCommunityDeparture(state);
@@ -151,9 +153,11 @@ function GameSession({ initialState, onReturnToTitle }: {
   const [routeSurvivorId, setRouteSurvivorId] = useState<string | null>(null);
   const recordedEnding = useRef<string | null>(null);
 
-  const page = (content: ReactNode) => <>{content}{previewScene
+  const page = (content: ReactNode) => <div className={snapshot.tutorial && !snapshot.tutorial.tutorialSkipped ? 'v1-tutorial-session' : undefined}>
+    {!previewScene && <TutorialGuide state={snapshot} onCommit={commit} onNavigate={(target) => { setRouteSurvivorId(null); setNav(target); }}/>}
+    {content}{previewScene
     ? <DevSceneNav active={previewScene}/>
-    : <PlayerMenu state={snapshot} onReturnToTitle={() => onReturnToTitle()}/>}</>;
+    : <PlayerMenu state={snapshot} onReturnToTitle={() => onReturnToTitle()}/>}</div>;
 
   useEffect(() => {
     if (typeof window === 'undefined' || previewScene) return undefined;
@@ -183,8 +187,9 @@ function GameSession({ initialState, onReturnToTitle }: {
   }, [nav, routeSurvivorId]);
 
   const commit = (next: GameState) => {
-    if (!previewScene) saveGame(next, true);
-    setSnapshot(next);
+    const reconciled = reconcileTutorial(next);
+    if (!previewScene) saveGame(reconciled, true);
+    setSnapshot(reconciled);
   };
 
   const restart = () => {
@@ -251,7 +256,7 @@ function GameSession({ initialState, onReturnToTitle }: {
   }
 
   const attention = dayAttentionSummary(snapshot);
-  const fixedEvent = !snapshot.expeditionState.departed ? pendingCampaignEvent(snapshot) : null;
+  const fixedEvent = !snapshot.expeditionState.departed && !tutorialLogHasPriority(snapshot, nav === 'records') ? pendingCampaignEvent(snapshot) : null;
   const urgentSocialChoice = Boolean(pendingPrincipleDecision(snapshot) || pendingCommunityRequest(snapshot));
   if (fixedEvent) {
     return page(<CampaignEventV1 state={snapshot} event={fixedEvent} onCommit={(current, eventId) => commit(resolveCampaignEvent(current, eventId))}/>);
@@ -265,6 +270,7 @@ function GameSession({ initialState, onReturnToTitle }: {
 
   const navigate = (target: V1NavTarget) => setNav(target);
   const finishAssignments = () => {
+    if (tutorialDispatchBlocker(snapshot)) return;
     const locked = lockDayAssignmentsAndRoute(snapshot);
     const next = locked.phase === 'expedition' ? beginNextPlannedExpedition(locked) : locked;
     commit(next);
@@ -279,13 +285,14 @@ function GameSession({ initialState, onReturnToTitle }: {
   }
   if (nav === 'survivors') {
     const incomplete = incompleteExpeditionSurvivorIds(snapshot);
-    return page(<><SurvivorsV1 state={snapshot} onCommit={commit} onDone={finishAssignments} onChooseRoute={setRouteSurvivorId} doneDisabled={incomplete.length > 0} doneHint="还有人的路没定下来"/><V1BottomNav active="survivors" onNavigate={navigate}/></>);
+    const tutorialBlocker = tutorialDispatchBlocker(snapshot);
+    return page(<><SurvivorsV1 state={snapshot} onCommit={commit} onDone={finishAssignments} onChooseRoute={setRouteSurvivorId} doneDisabled={incomplete.length > 0 || Boolean(tutorialBlocker)} doneHint={tutorialBlocker ?? '还有人的路没定下来'}/><V1BottomNav active="survivors" onNavigate={navigate}/></>);
   }
   if (nav === 'buildings') {
     return page(<><BuildingsV1 state={snapshot} onCommit={commit}/><V1BottomNav active="buildings" onNavigate={navigate}/></>);
   }
   if (nav === 'records') {
-    return page(<><RecordsV1 state={snapshot}/><V1BottomNav active="records" onNavigate={navigate}/></>);
+    return page(<><RecordsV1 state={snapshot} onLogOpened={snapshot.tutorial?.tutorialStage === 'OPEN_LOG' ? () => commit(completeTutorialFromLog(snapshot)) : undefined}/><V1BottomNav active="records" onNavigate={navigate}/></>);
   }
   return page(<HomeBaseView state={snapshot} onCommit={commit} onNavigate={navigate}/>);
 }

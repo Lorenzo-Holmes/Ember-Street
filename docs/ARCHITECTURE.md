@@ -2,7 +2,7 @@
 
 ## Runtime
 
-`src/main.tsx` mounts `V060App` and `v060.css`. The player path is fully v0.6; the former seven-slot App/engine runtime is removed.
+`src/main.tsx` mounts `V1Entry`. Its title screen enters `GameSession`, which renders the mobile notebook views over the v0.6 core. The former seven-slot App/engine runtime is not a player entry point.
 
 Core files:
 
@@ -17,10 +17,13 @@ Core files:
 - `src/game/v060/food.ts`: population-aware cooking coverage.
 - `src/game/v060/buildings.ts`: six Lv0–3 facilities.
 - `src/game/v060/nightEvents.ts`: three-choice night content.
-- `src/game/v060/nightScheduler.ts`: deterministic 5/6-event nights, emergencies and hordes.
+- `src/game/v060/nightScheduler.ts`: deterministic date-tiered nights, emergencies and hordes.
 - `src/game/v060/memorial.ts`: missing rescue, confirmed death and memorial ledger.
 - `src/game/v060/campaign.ts`: DAY1→29 lifecycle and DAY30 transition.
 - `src/game/v060/endings.ts`: 13 ending definitions, resolver and MetaSave.
+- `src/game/v060/tutorial.ts`: opt-in tutorial state machine, legacy normalization and skip rules.
+- `src/game/v060/journal.ts`: bounded, deduplicated records of real work, expedition and night results.
+- `src/ui/v1/TutorialGuide.tsx`: one non-modal notebook note with semantic DOM anchors.
 
 React components only render state and dispatch pure/core actions; core rules remain outside JSX wherever practical.
 
@@ -73,7 +76,7 @@ Meal coverage is computed from total residents, assigned cooks, cook specialty a
 
 ## Night scheduler
 
-Normal nights contain 5 main events; horde nights contain 6. Emergency IDs are inserted separately and do not consume main slots. DAY 10 / 20 / 29 force hordes; other nights use seeded risk derived from campaign conditions.
+Ordinary event budgets are 2 on DAY1–5, 3 on DAY6–23 and 4 on DAY24–28. Horde beats replace ordinary slots rather than stacking fully on top; emergencies are separate. DAY10 / 20 / 29 force hordes, with a dedicated DAY29 finale. Other nights retain seeded risk derived from campaign conditions.
 
 All decision events expose exactly three choices. Checked choices create `PendingCheck`; deterministic dice resolve them. A v3 save preserves `phase`, `nightState`, `pendingCheck` and `rngState`, so reload cannot reroll an already determined result.
 
@@ -86,6 +89,38 @@ All decision events expose exactly three choices. Checked choices create `Pendin
 Run key: `ember-street-save-v3`.
 
 Load order supports v3 first and legacy v2 fallback. v3 resume preserves active phase and deterministic state. v2 migration salvages legacy resources and moves the run onto the v0.6 model.
+
+## Tutorial / New Player Experience v1
+
+The save envelope and run key remain v3. Two optional fields are added:
+
+```ts
+tutorial?: {
+  version: 1;
+  tutorialStage: 'INTRO' | 'RESOURCE_OVERVIEW' | 'ASSIGN_SURVIVOR'
+    | 'SEND_EXPEDITION' | 'END_DAY' | 'FIRST_NIGHT' | 'OPEN_LOG' | 'FREE_PLAY';
+  tutorialCompleted: boolean;
+  tutorialSkipped: boolean;
+  freePlayNoticeSeen: boolean;
+  hintsSeen: ('injury' | 'building' | 'population')[];
+  initialPopulation: number;
+};
+journal?: { id: string; day: number; kind: 'work' | 'expedition' | 'night'; title: string; body: string }[];
+```
+
+Only `sessionEntry.startNewSession()` opts a newly created player save into teaching. `createV060InitialState()` remains a rules-only constructor, so existing simulations and fixtures do not silently acquire tutorial behavior. Missing, invalid or unknown-version tutorial data is treated as opt-out, including legacy DAY1 saves. The migration normalizes valid data and reconciles against the actual day/phase without changing resources, RNG or pending checks.
+
+`GameSession.commit()` reconciles each accepted action before saving. Introduction/resource acknowledgements only advance explanatory stages; work requires a real non-expedition assignment, route confirmation requires the existing route API, and expedition completion is driven by the real return/dusk state. Editing a job before departure can move the guide back to the missing prerequisite. Retreat is valid. No guide button grants resources, chooses a night answer or advances a day.
+
+The tutorial-only dispatch check prevents locking an entirely unpractised DAY1 list. `skipTutorial()` removes that check immediately and only updates tutorial metadata. It preserves the current day, phase, assignments, expedition, RNG and night queue. Completed/skipped saves do not re-enter mandatory teaching on refresh. Corrupt/stale active tutorial flags on DAY3+ fail open rather than trapping a late campaign.
+
+Active first-night teaching prioritizes existing `gate-knocking` in one ordinary slot. The original RNG draws, total budget, horde probability and emergency queue are retained; costs, dice and penalties are unchanged. An already scheduled night is never redrawn. `finalizeDay()` rejects a repeated call after day settlement, preventing a second meal or work payout.
+
+`RecordsV1` completes OPEN_LOG only after its log tab is actually mounted on DAY2. The first log has display priority over ordinary fixed DAY2 unlock notices; those notices remain pending and return when the player leaves the log. They are not falsely marked as seen.
+
+Persistent journal entries are appended at real settlement boundaries with stable IDs: day/work, day/expedition-return-number, and day/night-event/choice-or-result. They record named assignments, destination, actual inventory/state deltas and the chosen action. Checked choices and their later dice result are separate entries. The existing dawn briefs, community departures, profiles and memorial remain in the same Records page. History is capped at 360 entries and rendered 20 entries per page; legacy history that never existed is not invented.
+
+The guide is a single in-flow sticky note, not a pointer-blocking mask. It finds targets using semantic data attributes and existing view classes, and scrolls using measured note/target rectangles. CSS widths and focus controls have baseline implementations, ResizeObserver is optional, and loss of scroll-margin support does not hide the action. Optional injury/building/population notes are persisted individually after core completion. Scene-preview routes stay unassisted.
 
 ## Performance
 

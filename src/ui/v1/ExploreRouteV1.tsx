@@ -8,6 +8,7 @@ import { locationVisual, visualAssetStyle } from '../visualAssets';
 import { resourceListLabel } from './labels';
 import './explore-night.css';
 import './explore-safe-area.css';
+import { tutorialIsActive } from '../../game/v060/tutorial';
 
 interface ExploreRouteV1Props {
   state: GameState;
@@ -48,7 +49,9 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
   const survivor = state.survivors.find((item) => item.id === survivorId);
   const locations = useMemo(() => EXPEDITION_LOCATIONS.filter((location) => isLocationUnlocked(state, location.id)), [state]);
   const currentRoute = expeditionRouteFor(state, survivorId);
-  const [locationId, setLocationId] = useState(currentRoute ?? locations[0]?.id ?? '');
+  const guided = tutorialIsActive(state);
+  const suggested = guided ? [...locations].sort((a, b) => expeditionRiskScore(state, [survivorId], a.id) - expeditionRiskScore(state, [survivorId], b.id))[0]?.id : undefined;
+  const [locationId, setLocationId] = useState(currentRoute ?? suggested ?? locations[0]?.id ?? '');
   const assignedRoutes = state.dayState.expeditionRoutes ?? {};
   const existingDistinct = new Set(Object.entries(assignedRoutes)
     .filter(([id]) => id !== survivorId && state.dayAssignments[id] === 'expedition')
@@ -84,12 +87,13 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
           const lootNote = scavengingNote(state, location.id);
           const blocked = !existingDistinct.has(location.id) && existingDistinct.size >= routeLimit;
           return (
-            <button className={`v1e-location ${active ? 'active' : ''}`} disabled={blocked} key={location.id} onClick={() => setLocationId(location.id)}>
+            <button data-tutorial={location.id === suggested ? 'suggested-route' : undefined} className={`v1e-location ${active ? 'active' : ''}`} disabled={blocked} key={location.id} onClick={() => setLocationId(location.id)}>
               <div className="v1e-art" aria-label={location.name} style={visualAssetStyle(locationVisual(location.id))}/>
               <div className="v1e-location__copy">
                 <div><strong>{location.name}</strong><em>{blocked ? '今天记不了更多路' : riskLabel(risk)}</em></div>
                 <p>{location.description}</p>
                 <small>能翻到：{resourceListLabel(location.primary, location.secondary, location.tertiary)} · {companyNote(prospectiveParty.length)}</small>
+                {location.id === suggested && <small className="v1-tutorial-route-note">先看这条路：眼下风险较低，仍可能受伤或空手回来。</small>}
                 {lootNote && <small className="v1e-depletion-hint">{lootNote}</small>}
                 {bestCompanionLabel && <small className="v1e-companion-hint">再安排 1 人走同一路线，风险最低可到：{bestCompanionLabel}</small>}
               </div>
@@ -97,7 +101,7 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
           );
         })}
       </div>
-      <button className="v1e-primary" disabled={!selectedLocation || selectedBlocked} onClick={() => onConfirm(locationId)}>
+      <button className="v1e-primary" data-tutorial="confirm-route" disabled={!selectedLocation || selectedBlocked} onClick={() => onConfirm(locationId)}>
         {selectedLocation ? `把${survivor?.name ?? '他'}记在${selectedLocation.name}这条路上` : '还没有能走的路'}
       </button>
     </main>

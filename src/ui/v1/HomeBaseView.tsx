@@ -67,7 +67,7 @@ function CommunityRotation({ state, onCommit }: Pick<HomeBaseViewProps, 'state' 
 export default function HomeBaseView({ state, onCommit, onNavigate }: HomeBaseViewProps) {
   const present = corePresent(state);
   const total = present + state.civilianResidents;
-  const shelterAsset = buildingVisual('shelter');
+  const shelterAsset = buildingVisual('shelter', state.buildings.shelter);
   const todayNotes = useMemo(() => {
     const notes: string[] = [];
     const tired = state.survivors.filter((s) => s.condition === 'fatigued' || s.energy < 35).map((s) => s.name);
@@ -85,7 +85,7 @@ export default function HomeBaseView({ state, onCommit, onNavigate }: HomeBaseVi
         <div className="v1-status-strip__weather"><b>{state.forecast.title}</b><small>{state.day === 29 ? '最后的白天' : state.forecast.detail}</small></div>
       </header>
 
-      <section className="v1-resource-strip" aria-label="核心资源">
+      <section className="v1-resource-strip" aria-label="核心资源" data-tutorial="resources">
         <span><ResourceIcon kind="ration"/><i>口粮</i><b>{state.inventory.ration}</b></span>
         <span><ResourceIcon kind="medicine"/><i>药品</i><b>{state.inventory.medicine}</b></span>
         <span><ResourceIcon kind="materials"/><i>材料</i><b>{state.inventory.materials}</b></span>
@@ -109,7 +109,7 @@ export default function HomeBaseView({ state, onCommit, onNavigate }: HomeBaseVi
         {todayNotes.map((note) => <p key={note}>{note}</p>)}
       </section>
 
-      <button className="v1-day-action" onClick={() => onNavigate('survivors')}>
+      <button className="v1-day-action" data-tutorial="day-action" onClick={() => onNavigate('survivors')}>
           <strong>今天谁去哪里</strong>
           <span>天黑前，把每个人的去处记下来。</span>
       </button>

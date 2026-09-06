@@ -11,7 +11,7 @@ import {
   fulfillPromiseForSearch,
   settlePromiseDeadline,
 } from './communityPromises';
-import { lockDayAssignments, survivorAvailableForDay, unlockNextDayAssignments } from './dayManagement';
+import { DAY_ASSIGNMENT_LABEL, lockDayAssignments, survivorAvailableForDay, unlockNextDayAssignments } from './dayManagement';
 import { currentExpeditionEvent, expeditionRiskLabel, expeditionRiskScore, locationForId, resolveExpeditionOutcome, retreatExpedition } from './expedition';
 import { applyExpeditionStoryOutcome, expeditionSpecialtyBonus } from './expeditionStories';
 import { hungerAdjustedRestRecovery, resolveMeal } from './food';
@@ -21,6 +21,7 @@ import { advanceUntreatedRisk, clearUntreatedRisk, queueLowHopeDeparture } from 
 import { hasPrinciple } from './principles';
 import { applyDailySocialPressure, applyMealPressure, createDefaultSocialState, normalizeSocialState } from './socialPressure';
 import { recoverTrustFromCare, specialtyAvailable, trustCheckModifier, trustWorkFactor } from './trust';
+import { appendJournal, journalChanges } from './journal';
 
 const STARTERS = ['lin-xia', 'zhou', 'ahe'];
 const JOIN_DAYS: Record<number, string> = { 6: 'cheng', 12: 'aliang', 18: 'xiaoman' };
@@ -183,6 +184,7 @@ function resolveRadioWork(state: GameState): GameState {
 }
 
 export function finalizeDay(state: GameState): GameState {
+  if (!['street', 'assignment', 'dusk'].includes(state.phase)) return state;
   if (state.expeditionState.departed) return { ...state, lastMessage: '搜索队还没有回来。' };
   let next = state.dayState.assignmentsLocked ? state : lockDayAssignments(state);
   next = spendEnergyForJobs(next);
@@ -199,6 +201,10 @@ export function finalizeDay(state: GameState): GameState {
   next = applyDailySocialPressure(next);
   next = evaluatePromiseProgress(next);
   next = advanceUntreatedRisk(next);
+  const work = next.survivors.filter((person) => person.condition !== 'dead' && person.condition !== 'missing')
+    .map((person) => `${person.name}：${DAY_ASSIGNMENT_LABEL[next.dayAssignments[person.id] ?? 'rest']}`).join('；');
+  next = appendJournal(next, { id: `day:${state.day}:work`, day: state.day, kind: 'work', title: '白天的安排与晚饭',
+    body: `${work}。结算后，${journalChanges(state, next)}` });
   return { ...next, phase: 'night', nightState: createDefaultNightState(), pendingCheck: null, lastMessage: `NIGHT ${next.day} · 今日岗位已经锁定。` };
 }
 
@@ -233,10 +239,21 @@ export function resolveExpeditionStance(state: GameState, stance: ExpeditionStan
   let withStory = applyExpeditionStoryOutcome({ ...state, rngState }, event, outcome);
   if (stance === 'push' && (outcome === 'success' || outcome === 'critical')) withStory = addBonusLoot(withStory, 2);
   const next = resolveExpeditionOutcome(withStory, outcome, twist);
-  return next;
+  return recordExpeditionJournal(state, next, stance === 'careful' ? '谨慎搜寻' : '继续深入');
 }
 
-export function retreatCurrentExpedition(state: GameState): GameState { return retreatExpedition(state); }
+function recordExpeditionJournal(before: GameState, after: GameState, decision: string): GameState {
+  if (!before.expeditionState.departed || after.expeditionState.departed) return after;
+  const names = before.expeditionState.activePartyIds.map((id) => before.survivors.find((person) => person.id === id)?.name ?? '同行的人').join('、');
+  const place = locationForId(before.expeditionState.locationId ?? '')?.name ?? '街外';
+  return appendJournal(after, { id: `day:${before.day}:expedition:${after.dayState.returnedExpeditions}`,
+    day: before.day, kind: 'expedition', title: `${names}去了${place}`,
+    body: `选择：${decision}。${journalChanges(before, after)}${after.lastMessage}` });
+}
+
+export function retreatCurrentExpedition(state: GameState): GameState {
+  return recordExpeditionJournal(state, retreatExpedition(state), '撤回街里');
+}
 
 export type MissingSearchMethod = 'team' | 'radio';
 

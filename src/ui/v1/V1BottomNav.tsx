@@ -17,7 +17,7 @@ export default function V1BottomNav({ active, onNavigate }: V1BottomNavProps) {
   return (
     <nav className="v1-bottom-nav" aria-label="主导航">
       {items.map(([id, label]) => (
-        <button key={id} className={active === id ? 'active' : ''} onClick={() => onNavigate(id)}>{label}</button>
+        <button key={id} data-tutorial-nav={id} className={active === id ? 'active' : ''} onClick={() => onNavigate(id)}>{label}</button>
       ))}
     </nav>
   );

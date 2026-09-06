@@ -11,6 +11,10 @@ coverage
 # Local QA, generated releases and downloaded validation tools
 /.playwright-cli/
 /output/
+/test-results/
+/playwright-report/
+/qa/playtest/out/
+/qa/ui-overhaul/screenshots/
 *.tsbuildinfo
 /.codex/minitool-zip-builder/
 /.codex/minitool-zip-builder-*.skill

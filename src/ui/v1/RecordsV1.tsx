@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { GameState } from '../../game/types';
 import { EXPEDITION_LOCATIONS } from '../../game/v060/expedition';
 import { CAMPAIGN_FIXED_EVENTS, isLocationUnlocked } from '../../game/v060/campaignEvents';
@@ -8,7 +8,7 @@ import { characterVisual, locationVisual, visualAssetStyle, type VisualAsset } f
 import { resourceListLabel } from './labels';
 import './survivors-records.css';
 
-interface RecordsV1Props { state: GameState; }
+interface RecordsV1Props { state: GameState; onLogOpened?: () => void; }
 type RecordsTab = 'log' | 'places' | 'profiles' | 'memorial';
 
 function MiniArt({ asset, label }: { asset?: VisualAsset; label: string }) {
@@ -37,8 +37,10 @@ function profileNote(condition: string | undefined, energy: number, trust: numbe
   return `${CONDITION_NOTE[condition ?? 'healthy']}，${energyLabel(energy)}。${trustLabel(trust)}。`;
 }
 
-export default function RecordsV1({ state }: RecordsV1Props) {
+export default function RecordsV1({ state, onLogOpened }: RecordsV1Props) {
   const [tab, setTab] = useState<RecordsTab>('log');
+  const [journalPage, setJournalPage] = useState(0);
+  useEffect(() => { if (tab === 'log') onLogOpened?.(); }, [tab, onLogOpened]);
   const briefs = dawnBriefEntries(state);
   const departureFlags = state.storyFlags.filter((flag) => flag.startsWith('civilian_departure:')).map((flag) => {
     const [, day, reason, count] = flag.split(':');
@@ -46,6 +48,10 @@ export default function RecordsV1({ state }: RecordsV1Props) {
     return `第 ${day} 天。${count} 个人走了——${reasonLabel}。`;
   });
   const journal = [...departureFlags, ...briefs].slice(-12).reverse();
+  const recorded = [...(state.journal ?? [])].reverse();
+  const pageCount = Math.max(1, Math.ceil(recorded.length / 20));
+  const currentPage = Math.min(journalPage, pageCount - 1);
+  const visibleEntries = recorded.slice(currentPage * 20, currentPage * 20 + 20);
   const discovered = EXPEDITION_LOCATIONS.filter((location) => isLocationUnlocked(state, location.id));
   const presentIds = new Set(state.survivors.map((survivor) => survivor.id));
   const profiles = state.survivors.filter((survivor) => presentIds.has(survivor.id));
@@ -58,7 +64,20 @@ export default function RecordsV1({ state }: RecordsV1Props) {
         {([['log','这几天'],['places','走过的路'],['profiles','还在的人'],['memorial','没回来的人']] as const).map(([id,label]) => <button className={tab===id?'active':''} key={id} onClick={()=>setTab(id)}>{label}</button>)}
       </nav>
 
-      {tab === 'log' && <section className="v1r-log"><header><span>这几天</span><small>只记会要命的事</small></header>{journal.length ? journal.map((entry,index)=><article key={`${entry}-${index}`}><i/><p>{entry}</p></article>) : <p className="v1r-empty">还没写下什么。能一直这样最好。</p>}</section>}
+      {tab === 'log' && <section className="v1r-log" data-tutorial="journal">
+        <header><span>长街日志</span><small>记下做过的事，不替明天写答案</small></header>
+        {visibleEntries.map((entry) => <article className="v1r-journal-entry" key={entry.id}>
+          <small>第 {entry.day} 天 · {entry.kind === 'night' ? '夜里' : entry.kind === 'expedition' ? '街外' : '白天'}</small>
+          <h2 className="v1r-journal-title">{entry.title}</h2><p>{entry.body}</p>
+        </article>)}
+        {pageCount > 1 && <nav className="v1r-journal-pages" aria-label="日志翻页">
+          <button disabled={currentPage === 0} onClick={() => setJournalPage(currentPage - 1)}>较新的记录</button>
+          <span>第 {currentPage + 1}/{pageCount} 页</span>
+          <button disabled={currentPage === pageCount - 1} onClick={() => setJournalPage(currentPage + 1)}>更早的记录</button>
+        </nav>}
+        {currentPage === 0 && journal.map((entry,index)=><article key={`${entry}-${index}`}><i/><p>{entry}</p></article>)}
+        {!journal.length && !recorded.length && <p className="v1r-empty">还没写下什么。能一直这样最好。</p>}
+      </section>}
 
       {tab === 'places' && <section className="v1r-grid"><header><span>走过的路</span><small>记下了 {discovered.length} 处能再去的地方</small></header>{discovered.map((location)=>{const art=locationVisual(location.id);return <article key={location.id} className="v1r-place"><MiniArt asset={art} label={location.name}/><div><h2>{location.name}</h2><p>{location.description}</p><small>{placeWarning(location.danger)}。能翻到：{resourceListLabel(location.primary, location.secondary, location.tertiary)}</small></div></article>})}</section>}
 

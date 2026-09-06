@@ -10,6 +10,7 @@ import { guardCoverageLabel } from '../../game/v060/defenseFeedback';
 import DefensePanel from './DefensePanel';
 import { buildingVisual, characterVisual, locationVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
 import './story-phases.css';
+import { tutorialIsActive } from '../../game/v060/tutorial';
 
 interface CommitProps {
   state: GameState;
@@ -91,7 +92,7 @@ export function DuskV1({ state, onCommit }: CommitProps) {
         <article><span>夜间值守</span><h2>{guardCoverageLabel(prep)}</h2><p>{staffed(prep.medical, '诊疗室')}；{staffed(prep.repair, '修补处')}；广播间{prep.radio === '有人值守' ? '有人听着' : '今晚没人'}。</p><small>值守反映人手安排，不代表门板和围栏已经修好。</small></article>
       </section>
       <section className="v1-phase-checklist"><header><span>入夜前</span><h2>白天露出的麻烦</h2></header><ul>{(signals.length ? signals : ['今晚暂时没有新的坏消息。']).map((signal) => <li key={signal}>{signal}</li>)}</ul></section>
-      <button className="v1-primary-action v1-phase-primary" onClick={() => onCommit(finalizeDay(state))}>合上本子，等天黑</button>
+      <button className="v1-primary-action v1-phase-primary" data-tutorial="end-day" onClick={() => onCommit(finalizeDay(state))}>{tutorialIsActive(state) ? '结束白天，等天黑' : '合上本子，等天黑'}</button>
       {!committed ? <button className="v1-phase-link" onClick={() => onCommit(reopenDayAssignments(state))}>← 还有时间，重新安排</button> : <p className="v1-phase-margin">今天已经有人出过街，这一页不能重写。</p>}
     </main>
   );

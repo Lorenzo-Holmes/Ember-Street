@@ -5,6 +5,8 @@ import type { Buildings, DayAssignment, ExpeditionPlan, GameState, Survivor } fr
 import { normalizeCommunityState } from '../v060/community';
 import { normalizeSocialState } from '../v060/socialPressure';
 import { normalizeDefenseNight } from '../v060/defenseFeedback';
+import { normalizeTutorial, reconcileTutorial } from '../v060/tutorial';
+import { normalizeJournal } from '../v060/journal';
 
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === 'object' ? value as Record<string, unknown> : {};
 const num = (value: unknown, fallback = 0) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -115,8 +117,10 @@ export function promoteV2ToV3(input: unknown): GameState | null {
   const phase: GameState['phase'] = version === 3 && PHASES.includes(rawPhase) ? rawPhase : day >= 30 ? 'ending' : 'street';
   const rawPending = version === 3 && legacy.pendingCheck && typeof legacy.pendingCheck === 'object' ? legacy.pendingCheck as GameState['pendingCheck'] : null;
   const civilianResidents = Math.max(0, Math.floor(num(legacy.civilianResidents, campaignStats.rescued)));
-  return {
+  return reconcileTutorial({
     version: 3,
+    tutorial: normalizeTutorial(legacy.tutorial),
+    journal: normalizeJournal(legacy.journal),
     seed,
     rngState: normalizeSeed(num(legacy.rngState, seed)),
     phase,
@@ -153,5 +157,5 @@ export function promoteV2ToV3(input: unknown): GameState | null {
     chapterComplete: Boolean(legacy.chapterComplete) || day >= 30,
     pendingCheck: rawPending,
     lastMessage: version === 2 ? '旧存档已迁移到 v0.6 · 七格物资已经回收到物资箱。' : String(legacy.lastMessage ?? `DAY ${day}`),
-  };
+  });
 }

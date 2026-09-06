@@ -186,8 +186,31 @@ export interface EndingResult {
   summary: string;
 }
 
+export type TutorialStage = 'INTRO' | 'RESOURCE_OVERVIEW' | 'ASSIGN_SURVIVOR' | 'SEND_EXPEDITION' | 'END_DAY' | 'FIRST_NIGHT' | 'OPEN_LOG' | 'FREE_PLAY';
+export type TutorialHint = 'injury' | 'building' | 'population';
+export interface TutorialState {
+  version: 1;
+  tutorialStage: TutorialStage;
+  tutorialCompleted: boolean;
+  tutorialSkipped: boolean;
+  freePlayNoticeSeen: boolean;
+  hintsSeen: TutorialHint[];
+  initialPopulation: number;
+}
+
+export interface JournalEntry {
+  id: string;
+  day: number;
+  kind: 'work' | 'expedition' | 'night';
+  title: string;
+  body: string;
+}
+
 export interface GameState {
   version: 3;
+  /** Absent in legacy saves and headless simulations. Only a new player session opts in. */
+  tutorial?: TutorialState;
+  journal?: JournalEntry[];
   seed: number;
   rngState: number;
   phase: Phase;

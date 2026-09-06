@@ -19,6 +19,8 @@ import { appendDawnBrief } from './morningBrief';
 import { beginDefenseNight } from './defenseFeedback';
 import { EMERGENCY_EVENTS, HORDE_EVENTS, NORMAL_NIGHT_EVENTS, nightEventById, type NightChoice, type NightEffect, type V060NightEvent } from './nightEvents';
 import { applyInjuryTrustLoss, specialtyAvailable, trustCheckModifier } from './trust';
+import { appendJournal, journalChanges } from './journal';
+import { tutorialNightOrder } from './tutorial';
 
 const ROLE_ASSIGNMENT: Partial<Record<Role, string>> = { search: 'expedition', repair: 'repair', medical: 'medical', watch: 'watch', cook: 'cook', radio: 'radio', rest: 'rest' };
 const ROLE_BUILDING: Partial<Record<Role, BuildingId>> = { search: 'searchStation', repair: 'workshop', medical: 'clinic', watch: 'watchPost', radio: 'radio', rest: 'shelter' };
@@ -171,6 +173,8 @@ function normalComposition(state: GameState, count: number, rngState: number): [
 }
 
 export function scheduleNight(input: GameState): GameState {
+  // Reopening/reloading a scheduled night must not redraw or clear its results.
+  if (input.day < 30 && input.nightState.scheduledEventIds.length) return input;
   if (input.day >= 30) return { ...input, phase: 'ending', nightState: { ...input.nightState, eventIndex: 0, eventTotal: 0, scheduledEventIds: [], emergencyEventIds: [], currentEventId: null, hordeActive: false, hordeStage: null, resolutions: [] }, lastMessage: '第 30 天 · 天亮以后，只剩最后的清点。' };
   const state = beginDefenseNight(advanceUntreatedRisk({ ...input, dawnBrief: [] }));
 
@@ -208,7 +212,7 @@ export function scheduleNight(input: GameState): GameState {
   if (hordeEvents[1]) scheduled.splice(Math.min(3, scheduled.length), 0, hordeEvents[1]);
   const [emergencyRoll, afterEmergencyRoll] = nextRandom(rngState); rngState = afterEmergencyRoll;
   const [emergencies, afterEmergency] = pickWeightedWithoutReplacement(eligible(EMERGENCY_EVENTS, state), emergencyCountFor(state, emergencyRoll), rngState, state); rngState = afterEmergency;
-  const scheduledEventIds = scheduled.slice(0, eventTotal).map((event) => event.id);
+  const scheduledEventIds = tutorialNightOrder(state, scheduled.slice(0, eventTotal).map((event) => event.id));
   const mortalityIds = pendingMortalityEventIds(state);
   const emergencyEventIds = [...new Set([...mortalityIds, ...emergencies.map((event) => event.id)])];
   const urgentMedical = emergencyEventIds.find((id) => id.startsWith('mortality-medical:'));
@@ -443,7 +447,9 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
   const paid = applyCost(state, choice);
   if (choice.check) {
     const context = nightCheckContext(paid, choice);
-    return createPendingCheck(paid, { source: 'night', eventId: event.id, choiceId: choice.id, label: choice.check.label, actorId: context.actor?.id, mode: context.mode, modifiers: context.modifiers });
+    const pending = createPendingCheck(paid, { source: 'night', eventId: event.id, choiceId: choice.id, label: choice.check.label, actorId: context.actor?.id, mode: context.mode, modifiers: context.modifiers });
+    return appendJournal(pending, { id: `day:${state.day}:night:${event.id}:choice`, day: state.day, kind: 'night',
+      title: event.title, body: `选择：${choice.label}。${journalChanges(before, paid)}事情还没有办完。` });
   }
   let next = applyEffect(paid, choice.direct, undefined, event.title);
   if (event.id.startsWith('mortality-medical:')) next = resolveMedicalDirect(next, event.id, choice.id);
@@ -452,6 +458,8 @@ export function chooseNightOption(state: GameState, choiceId: string): GameState
   next = applyCivilianIncident(next, event.id, choice.id);
   next = applyInjuryTrustLoss(before, next, before.survivors.map((survivor) => survivor.id), `night:${state.day}:${event.id}:${choice.id}`);
   next = appendDawnBrief(before, next, event.title);
+  next = appendJournal(next, { id: `day:${state.day}:night:${event.id}:choice`, day: state.day, kind: 'night',
+    title: event.title, body: `选择：${choice.label}。${journalChanges(before, next)}` });
   return completeCurrentEvent(next, event.id);
 }
 
@@ -469,5 +477,8 @@ export function acceptNightCheckResult(state: GameState): GameState {
   if (state.day >= 11 && check.twist === 'double-one' && (event.category === 'horde' || event.category === 'emergency') && actor && (actor.condition === 'serious' || actor.condition === 'critical')) next = recordDeath(next, actor.id, `${event.title} · 双一`);
   next = applyInjuryTrustLoss(before, next, before.survivors.map((survivor) => survivor.id), `night:${state.day}:${event.id}:${choice.id}`);
   next = appendDawnBrief(before, next, event.title);
+  const outcomes = { failure: '没能办成', partial: '只办成了一部分', success: '办成了', critical: '比预想中顺利' };
+  next = appendJournal(next, { id: `day:${state.day}:night:${event.id}:result`, day: state.day, kind: 'night',
+    title: `${event.title} · 结果`, body: `${choice.label}：${outcomes[check.outcome]}。${journalChanges(before, next)}` });
   return completeCurrentEvent(next, event.id);
 }

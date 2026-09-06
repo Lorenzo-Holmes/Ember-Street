@@ -73,9 +73,10 @@ function SurvivorDetail({ state, survivor, onCommit, onClose, onChooseRoute }: {
         const check = canTakeDayAssignment(state, survivor.id, job.id);
         const active = current === job.id;
         const disabled = !check.allowed || state.dayState.assignmentsLocked;
-        return <button key={job.id} className={active ? 'active' : ''} disabled={disabled} onClick={() => {
+        return <button key={job.id} data-tutorial-job={job.id} className={active ? 'active' : ''} disabled={disabled} onClick={() => {
           if (job.id === 'expedition' && onChooseRoute) return onChooseRoute(survivor.id);
-          if (!active) onCommit(assignDayJob(state, survivor.id, job.id));
+          // Implicit rest is not a written assignment: an explicit tap must be saved too.
+          if (!active || !state.dayAssignments[survivor.id]) onCommit(assignDayJob(state, survivor.id, job.id));
           onClose();
           }}><strong>{job.label}</strong><span>{job.note}</span><small>{active && job.id === 'expedition' ? '重新选路' : active ? '已经记下' : disabled ? (check.reason ?? '今天去不了') : job.id === 'expedition' ? '先把路定下' : '记在这里'}</small></button>;
       })}</section>
@@ -102,10 +103,10 @@ export default function SurvivorsV1({ state, onCommit, onDone, onChooseRoute, do
         {state.survivors.map((survivor) => {
           const unavailable = survivor.condition === 'dead' || survivor.condition === 'missing';
           const condition = survivor.condition ?? 'healthy';
-          return <article className={unavailable ? 'muted' : ''} key={survivor.id}><Portrait survivor={survivor}/><div className="v1s-card-copy"><span>{survivor.trait ?? survivor.perk}</span><h2>{survivor.name}</h2><p>{CONDITION_NOTE[condition]}。{strengthNote(survivor.energy)}。</p><small>{unavailable ? CONDITION_NOTE[condition] : assignmentNote(state, survivor.id)}</small></div><button disabled={unavailable} onClick={() => setSelectedId(survivor.id)}>{unavailable ? '不在这里' : '翻开 ›'}</button></article>;
+          return <article className={unavailable ? 'muted' : ''} key={survivor.id}><Portrait survivor={survivor}/><div className="v1s-card-copy"><span>{survivor.trait ?? survivor.perk}</span><h2>{survivor.name}</h2><p>{CONDITION_NOTE[condition]}。{strengthNote(survivor.energy)}。</p><small>{unavailable ? CONDITION_NOTE[condition] : assignmentNote(state, survivor.id)}</small></div><button data-tutorial-person={survivor.id} data-assigned={Boolean(state.dayAssignments[survivor.id])} disabled={unavailable} onClick={() => setSelectedId(survivor.id)}>{unavailable ? '不在这里' : '翻开 ›'}</button></article>;
         })}
       </section>
-      {onDone ? <button className="v1s-done" disabled={doneDisabled} onClick={onDone}>{doneDisabled ? doneHint ?? '还有人的路没定' : '这张名单就这么定'}</button> : null}
+      {onDone ? <button className="v1s-done" data-tutorial="dispatch" disabled={doneDisabled} onClick={onDone}>{doneDisabled ? doneHint ?? '还有人的路没定' : '这张名单就这么定'}</button> : null}
     </main>
   );
 }

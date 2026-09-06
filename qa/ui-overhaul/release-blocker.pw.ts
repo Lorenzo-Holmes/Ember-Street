@@ -61,6 +61,8 @@ test('fresh player path reaches DAY2 through dusk and a complete night', async (
   await page.goto('/');
   await expect(page.getByRole('button', { name: '开始游戏', exact: true })).toBeVisible();
   await page.getByRole('button', { name: '开始游戏', exact: true }).click();
+  // This existing smoke covers the unassisted path; tutorial-v1.pw.ts covers onboarding in full.
+  await page.getByRole('button', { name: '跳过引导', exact: true }).click();
 
   await settleOpeningEvents(page);
   await page.locator('.v1-day-action').click();

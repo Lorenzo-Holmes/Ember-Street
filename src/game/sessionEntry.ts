@@ -1,6 +1,7 @@
 import { inspectGameSave, loadGame, saveGame } from './storage';
 import type { GameState } from './types';
 import { createV060InitialState } from './v060/campaign';
+import { createTutorialState } from './v060/tutorial';
 
 export const PHASE_LABELS: Record<GameState['phase'], string> = {
   dawn: '清晨', street: '白天', assignment: '安排人手', expedition: '外出途中',
@@ -24,7 +25,7 @@ export function startNewSession(replaceConfirmed = false): EntryResult {
   const existing = inspectGameSave();
   if (existing.kind === 'unavailable') return saveError;
   if (existing.kind !== 'empty' && !replaceConfirmed) return { kind: 'confirm-restart' };
-  const state = createV060InitialState();
+  const state = { ...createV060InitialState(), tutorial: createTutorialState() };
   // Overwrite only on explicit confirmation; never delete the previous save first.
   if (!saveGame(state, true)) return saveError;
   return { kind: 'ready', state };

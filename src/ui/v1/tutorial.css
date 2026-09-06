@@ -1,0 +1,45 @@
+.v1-tutorial-session { --tutorial-note-height: 0px; }
+.v1-tutorial-note {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  width: calc(100% - 16px);
+  max-width: 464px;
+  box-sizing: border-box;
+  margin: 0 auto 8px;
+  padding: 9px 12px 6px;
+  color: #ede0c8;
+  background: #302923;
+  border-left: 3px solid #bd9e6d;
+  border-bottom: 1px solid #8d7755;
+  box-shadow: 0 4px 9px #0005;
+  font-family: inherit;
+}
+.v1-tutorial-note__copy > span { font-size: 11px; color: #c7b497; }
+.v1-tutorial-note h2 { font: inherit; font-weight: 600; font-size: 16px; line-height: 1.35; margin: 3px 40px 4px 0; }
+.v1-tutorial-note p { font-size: 13px; line-height: 1.5; margin: 0; }
+.v1-tutorial-note__actions { display: flex; justify-content: space-between; margin-top: 3px; }
+.v1-tutorial-note__actions > * + * { margin-left: 8px; }
+.v1-tutorial-note button { min-height: 44px; border: 0; background: transparent; padding: 6px 2px; color: #f3ddb4; text-decoration: underline; text-underline-offset: 4px; font: inherit; font-size: 13px; cursor: pointer; }
+.v1-tutorial-note button.v1-tutorial-skip { color: #c3b8a7; text-decoration: none; font-size: 12px; }
+.v1-tutorial-note button:focus { outline: 2px solid #f3ddb4; outline-offset: 2px; }
+.v1-tutorial-session [data-tutorial-focus="true"] {
+  outline: 2px solid #a67b38;
+  outline-offset: 3px;
+  scroll-margin-top: var(--tutorial-note-height);
+}
+.v1-tutorial-session button, .v1-tutorial-session [data-tutorial] { scroll-margin-top: var(--tutorial-note-height); }
+.v1-tutorial-session .v1-player-menu { z-index: 46; }
+.v1-tutorial-route-note { display: block; font-size: 12px; font-style: normal; margin-top: 5px; color: #6a4b29; }
+.v1r-log .v1r-journal-title { margin: 0 0 5px; font-size: 14px; font-weight: 600; }
+.v1r-log .v1r-journal-entry { display: block; padding: 12px 4px; border-bottom: 1px dashed #796b564d; }
+.v1r-journal-entry > small { font-size: 11px; opacity: .8; }
+.v1r-journal-pages { display: flex; align-items: center; justify-content: space-between; margin: 8px 0; }
+.v1r-journal-pages button { padding: 5px; min-height: 44px; border: 0; background: transparent; font: inherit; font-size: 12px; color: inherit; text-decoration: underline; }
+.v1r-journal-pages button:disabled { opacity: .45; }
+.v1r-journal-pages span { font-size: 12px; }
+@media (max-width: 360px) {
+  .v1-tutorial-note { padding: 7px 10px 4px; }
+  .v1-tutorial-note h2 { font-size: 15px; }
+  .v1-tutorial-note p { font-size: 12px; }
+}
