@@ -1,4 +1,54 @@
-# Ember Street v0.6.1 — QA Matrix
+# Ember Street v0.6.2 — QA Matrix
+
+## Xiaohongshu Embedded Audio Compatibility Hotfix 验收（2026-09-07）
+
+本轮由小红书创作服务平台真实上传错误触发：比赛“小工具代码包”只接受 `html/css/js/json`、图片和 `woff/woff2`，不接受 `.mp3`。因此 v0.6.1 的本地技能审计虽通过，实际 ZIP 仍会被 `assets/audio/music/bgm_dawn_release.mp3` 等媒体文件拒绝。v0.6.2 不删除任何正式声音，而是只重写小工具打包和播放后端。
+
+### 实现结果
+
+- 普通 Web / Cloudflare 构建仍保留中央注册表中的 **30 个 MP3** 和 `HTMLAudioElement` 播放路径。
+- `build:minitool` 从 `src/audio/audioRegistry.ts` 自动提取全部 30 个注册 MP3，逐条读取真实字节并 Base64 编码；不手工维护第二份声音清单。
+- 小工具最终生成 6 个经典 JS 数据文件：5 个 BGM 分片 + 1 个 SFX 分片。每条数据挂在 `window.__EMBER_AUDIO_DATA__` 下，key 为无扩展名 `embedded:music/...` / `embedded:sfx/...`。
+- mini-tool bundle 内注册表字符串在构建后由 `/assets/audio/...mp3` 改写为 extensionless `embedded:` key，最终包内既无 MP3 文件也无运行时 MP3 URL。
+- `EmberAudioRuntime` 检测到嵌入数据后改用 Web Audio：`atob → Uint8Array → AudioContext.decodeAudioData() → AudioBufferSourceNode`。无嵌入数据时仍走原有网页 MP3 backend。
+- BGM 不做全量 PCM 缓存，只保留当前阶段的解码结果；短 SFX 使用最多 8 条的 LRU 解码缓存，避免 30 个音频同时展开占用移动端内存。
+- `AudioContext` / `webkitAudioContext` 均不可用、`decodeAudioData()` 失败或播放失败时保持静音降级，不修改 `GameState`、不阻塞事件选择。
+- `audit-minitool` 已从允许扩展名中删除 `.mp3`，并扫描每个 `__EMBER_AUDIO_DATA__` Base64 条目、核验单条 1 MiB 硬限制及 `embedded:` 引用闭环。
+
+### 预提交小工具产物验证
+
+`output/releases/ember-street-xhs-20260907T094514Z/app` 用于实现阶段验证，最终发布包会在提交后重新构建，以确保 build report 的 source commit 与发布 commit 一致。
+
+| 检查 | 结果 |
+| --- | --- |
+| 最终目录文件类型 | `.css 1 / .html 1 / .jpg 2 / .js 7 / .json 2 / .webp 11 / .woff2 3` |
+| `.mp3` 文件数量 | **0** |
+| 嵌入声音 | **30/30** |
+| 原始音频解码字节合计 | **2,770,271 bytes** |
+| 最大单条 Base64 解码尺寸 | **560,526 bytes**，低于 1 MiB 硬限制 |
+| `audit-minitool` | 通过；仅 5 首 BGM 超过 100 KiB 性能建议线，属于非阻断 warning |
+| 官方 `minitool-zip-builder 1.6.0` 目录审计 | PASS，27 files / 0 warning |
+| 预提交 ZIP | 4,999,861 bytes（约 4.77 MiB），低于 10 MiB 硬上限 |
+
+### 严格离线 CSP 浏览器验证
+
+用 `scripts/serve-minitool.mjs` 以严格小工具 CSP 启动实际构建产物，并在 Chromium 中给 `AudioContext.prototype.decodeAudioData` / `createBufferSource().start()` 加计数器验证真实执行路径：
+
+- 首页加载：`window.__EMBER_AUDIO_DATA__` 为 **30** 条，网络 `.mp3` 请求为 **0**。
+- 点击“开始游戏”：`decodeAudioData` 从 0→1、source start 从 0→1，确认白天 BGM 真实解码并开始播放；6 个 audio-data JS 均从包内加载。
+- 据点切到“记录”：decode 1→2、source start 1→2，确认 `page_turn` 走 Web Audio，不是静态假数据。
+- 注入正式 `gate-knocking` Night 1 状态：decode/source 继续增加，且网络 `.mp3 = 0`，确认门外敲击通过内存音频播放。
+- 切到 `horde-approach`：decode 5→7、source start 5→7，对应尸潮 BGM + `night_infected_vocal` 均成功走 Web Audio。
+
+这证明当前方案同时满足“ZIP 无音频扩展名”和“仍能播放全部正式声音”两项要求；仍需用户在小红书官方上传器 / 模拟器完成最终平台侧验收。
+
+### 完整回归
+
+- `npm run typecheck`：通过。
+- `npm test`：45 个测试文件通过、6 个报告型文件按设计跳过，**335/335** 执行项通过；新增 extensionless embedded key 回归。
+- `npm run audit:audio`：网页源音频 **30/30** 有效，总载荷约 2.64 MiB。
+- `npm run build`：普通 Web 生产构建通过。
+- `npm run test:ui-smoke`：双后端改造后完整重跑 **46/46** 通过。
 
 ## Audio Interaction & Notebook Motion V2 验收（2026-09-07）
 

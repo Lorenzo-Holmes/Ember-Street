@@ -8,9 +8,14 @@ export function auditMinitool(directory) {
     entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
   const files = walk(root);
   const errors = [];
-  const allowed = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.woff', '.woff2', '.mp3', '.json']);
+  const warnings = [];
+  const allowed = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.woff', '.woff2', '.json']);
   const references = [];
   let largestBase64 = 0;
+  let embeddedAudioBytes = 0;
+  let embeddedAudioCount = 0;
+  const embeddedAudioKeys = new Set();
+  const embeddedAudioRefs = new Set();
   const checkReference = (source, url) => {
     if (/^(data:|blob:|#)/.test(url)) return;
     if (/^(?:[a-z]+:|\/)/i.test(url)) { errors.push(`${path.basename(source)}: non-relative resource ${url}`); return; }
@@ -43,6 +48,16 @@ export function auditMinitool(directory) {
       for (const match of content.matchAll(/url\(\s*['"]?([^'"\)]+)['"]?\s*\)/g)) checkReference(file, match[1].trim());
     }
     if (extension === '.js') {
+      for (const match of content.matchAll(/__EMBER_AUDIO_DATA__\["([^"]+)"\]="([A-Za-z0-9+/=]+)"/g)) {
+        const size = Buffer.from(match[2], 'base64').length;
+        embeddedAudioKeys.add(match[1]);
+        embeddedAudioCount += 1;
+        embeddedAudioBytes += size;
+        largestBase64 = Math.max(largestBase64, size);
+        if (size > 1048576) errors.push(`${relative}: embedded audio entry exceeds 1 MiB: ${match[1]}`);
+        else if (size > 100 * 1024) warnings.push(`${relative}: embedded audio entry exceeds 100 KiB preference: ${match[1]} (${size} bytes)`);
+      }
+      for (const match of content.matchAll(/["'`](embedded:(?:music|sfx)\/[^"'`]+)["'`]/g)) embeddedAudioRefs.add(match[1]);
       const forbidden = [/\bfetch\s*\(/, /\bXMLHttpRequest\b/, /\bnew\s+(?:Worker|SharedWorker|WebSocket|EventSource|RTCPeerConnection)\s*\(/,
         /\bnavigator\.(?:geolocation|clipboard|bluetooth|usb|hid|serial|connection|credentials|locks|getBattery|serviceWorker)\b/,
         /\b(?:eval|WebAssembly)\s*[.(]/, /\bnew\s+Function\s*\(/, /\bwindow\.(?:open|prompt)\s*\(/,
@@ -53,8 +68,13 @@ export function auditMinitool(directory) {
       catch (error) { errors.push(`${relative}: not an ES2017 classic script: ${error.message}`); }
     }
   }
-  return { passed: errors.length === 0, errors: [...new Set(errors)], fileCount: files.length,
+  for (const key of embeddedAudioRefs) if (!embeddedAudioKeys.has(key)) errors.push(`Missing embedded audio payload for ${key}`);
+  if (embeddedAudioRefs.size && embeddedAudioKeys.size !== embeddedAudioRefs.size) {
+    warnings.push(`Embedded audio payload contains ${embeddedAudioKeys.size} entries for ${embeddedAudioRefs.size} referenced keys.`);
+  }
+  return { passed: errors.length === 0, errors: [...new Set(errors)], warnings: [...new Set(warnings)], fileCount: files.length,
     referencedResourceCount: references.length, largestBase64Bytes: largestBase64,
+    embeddedAudioCount, embeddedAudioBytes,
     unpackedBytes: files.reduce((sum, file) => sum + fs.statSync(file).size, 0),
     compatibility: 'Chrome 61 syntax/feature-fallback review; real Android/iOS device testing still required' };
 }

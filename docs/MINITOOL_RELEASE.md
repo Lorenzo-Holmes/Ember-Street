@@ -2,7 +2,9 @@
 
 普通网页仍使用 `npm run build`。小工具构建单独生成经典脚本、兼容样式、图片压缩副本和字体子集，不修改源素材，也不覆盖已经交付的发布包。
 
-音频同样必须完全本地化。当前小工具允许 `.mp3`，但不允许远程流媒体、运行时下载或外部音频 URL；发布前先运行 `npm run audit:audio`，确认注册表中的全部音频引用都存在、MP3 头有效且总音频预算合格。Audio V2 当前注册 30 个运行时 MP3，但审计不再把“30”写成未来新增音效必须同步修改的魔法数字。
+音频同样必须完全本地化，但比赛“小工具代码包”的实际上传白名单**不包含 `.mp3/.wav/.ogg/.m4a`**。普通 Web 版本仍使用 30 个本地 MP3；`build:minitool` 会读取同一注册表，把每个 MP3 转为一个 extensionless Web Audio key，并把 Base64 数据写入外置经典 `.js` 文件。小工具运行时通过 `AudioContext.decodeAudioData()` 按需解码，最终 ZIP 中不得出现任何媒体音频文件。五首 BGM 单条解码后约 266–547 KiB，超过 100 KiB 的性能建议线但均低于 1 MiB 的 Base64 硬限制；短音效按需缓存，BGM 不做全量解码缓存。
+
+发布前必须同时运行 `npm run audit:audio`（验证 Web 版源 MP3）和 `node scripts/audit-minitool.mjs APP_DIRECTORY`（验证小工具最终白名单、30 条内嵌声音、单条 Base64 上限及引用闭环）。小工具审计已把 `.mp3` 从允许扩展名中移除，避免再次生成平台无法上传的包。
 
 ## 环境
 

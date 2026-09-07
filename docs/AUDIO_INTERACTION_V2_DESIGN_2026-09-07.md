@@ -2,17 +2,17 @@
 ## Audio Interaction & Notebook Motion V2 设计文档
 
 日期：2026-09-07  
-状态：IMPLEMENTED / v0.6.1 COMPLETE  
+状态：IMPLEMENTED / v0.6.2 XHS AUDIO HOTFIX
 范围：事件音效、探索结算音效、主导航翻页反馈、探索地点“手绘圈选”动效  
 原则：只增强表现层，不修改资源数值、事件概率、RNG、存档结构、教程规则或结局逻辑。
 
 ### 实施结果（2026-09-07）
 
-设计已按本文落地为 v0.6.1。最终采用 6 个明确锁定的 Mixkit Free License 条目，其中敲门与野狗同名替换旧合成 cue，并新增感染者、翻页、画圈、探索收获 4 个运行时文件；来源、条目 ID、处理方式和 SHA-256 见 `docs/audio/SFX_SOURCE_LEDGER_V2.md`。注册表现为 30 个本地 MP3，音频审计实测总载荷约 **2.64 MiB**，低于实施前约 2.70 MiB，也低于 3.2 MiB 门禁。
+设计已按本文落地为 v0.6.1，并在 v0.6.2 增加小红书专用音频兼容后端。最终采用 6 个明确锁定的 Mixkit Free License 条目，其中敲门与野狗同名替换旧合成 cue，并新增感染者、翻页、画圈、探索收获 4 个运行时文件；来源、条目 ID、处理方式和 SHA-256 见 `docs/audio/SFX_SOURCE_LEDGER_V2.md`。中央注册表仍是 30 个 MP3 源，音频审计实测总载荷约 **2.64 MiB**，低于 3.2 MiB 源素材门禁；普通 Web 直接播放这些 MP3，小红书构建则把全部 30 条转换成 JS Base64 + Web Audio。
 
 交互实现采用独立短音通道：翻页、画圈、探索收获不触发 ambience ducking，并有按 cue 限流。一级导航内容由 `NotebookPageTransition` 包裹、底部导航本体留在容器外；探索红圈由双 SVG ellipse 的 stroke-dashoffset 动画绘制；探索收获则比较结算前后真实库存 delta。浏览器实测确认同一导航与同一地点重复点击均不重复请求对应音频，撤退也不会请求 `sfx_expedition_loot.mp3`。
 
-最终回归还发现并修正了翻页初版的移动端瞬时水平 overflow：不再 transform 整个过渡外壳，而是由固定宽度 / 裁切的外壳包住内部 `.notebook-page-turn__sheet`，仅内部纸页运动。修复后专项 tutorial + V1 mobile 19/19、完整 UI smoke 46/46 通过；最终小工具 ZIP 约 4.74 MiB，SHA-256 为 `9038967b20defac3a59a75c2f47468b3275a4e88566cc5fb33d853adf7b1928c`。
+最终回归还发现并修正了翻页初版的移动端瞬时水平 overflow：不再 transform 整个过渡外壳，而是由固定宽度 / 裁切的外壳包住内部 `.notebook-page-turn__sheet`，仅内部纸页运动。修复后专项 tutorial + V1 mobile 19/19、完整 UI smoke 46/46 通过。v0.6.1 曾生成含 MP3 的小工具 ZIP，但真实上传器随后证明媒体扩展名不在比赛代码包白名单中，因此该 ZIP 已被 v0.6.2 的“0 MP3 / 30 条 Base64 Web Audio”产物取代，不再作为发布候选。
 
 ---
 

@@ -3,6 +3,7 @@ import '../src/game/v060/nightEventsExpansion';
 import { AMBIENCE_AUDIO, NIGHT_AUDIO, UI_AUDIO } from '../src/audio/audioRegistry';
 import { ambienceForState } from '../src/audio/AudioDirector';
 import { DEFAULT_AUDIO_PREFERENCES, normalizeAudioPreferences } from '../src/audio/audioPreferences';
+import { embeddedAudioKeyForAsset } from '../src/audio/audioRuntime';
 import { createV060InitialState } from '../src/game/v060/campaign';
 import { FINAL_HORDE_EVENTS } from '../src/game/v060/finalHorde';
 import { lowHopeDepartureFlag, medicalCrisisFlag } from '../src/game/v060/mortality';
@@ -63,5 +64,11 @@ describe('Audio Atmosphere & Event SFX v2', () => {
     });
     expect(normalizeAudioPreferences({ volume: 'broken' })).toEqual(DEFAULT_AUDIO_PREFERENCES);
     expect(createV060InitialState(771003)).not.toHaveProperty('audio');
+  });
+
+  it('maps packaged MP3 registry paths to extensionless mini-tool Web Audio keys', () => {
+    expect(embeddedAudioKeyForAsset('/assets/audio/music/bgm_day_shelter.mp3')).toBe('embedded:music/bgm_day_shelter');
+    expect(embeddedAudioKeyForAsset('./assets/audio/sfx/sfx_door_knock.mp3')).toBe('embedded:sfx/sfx_door_knock');
+    expect(embeddedAudioKeyForAsset('embedded:sfx/sfx_page_turn')).toBe('embedded:sfx/sfx_page_turn');
   });
 });

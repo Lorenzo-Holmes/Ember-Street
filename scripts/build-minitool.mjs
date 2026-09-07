@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { build } from 'vite';
@@ -13,6 +14,12 @@ const parent = path.join(root, 'output', 'releases', `ember-street-xhs-${stamp}`
 const outDir = path.join(parent, 'app');
 if (fs.existsSync(outDir)) throw new Error('Release directory already exists; refusing to overwrite it.');
 fs.mkdirSync(outDir, { recursive: true });
+
+const audioRegistrySource = fs.readFileSync(path.join(root, 'src', 'audio', 'audioRegistry.ts'), 'utf8');
+const registeredAudioRefs = [...new Set([...audioRegistrySource.matchAll(/src:\s*['"](\/assets\/audio\/(?:music|sfx)\/[^'"]+\.mp3)['"]/g)].map((match) => match[1]))];
+if (!registeredAudioRefs.length) throw new Error('No registered runtime MP3 audio found for mini-tool embedding.');
+
+const embeddedAudioKey = (ref) => ref.replace(/^\/assets\/audio\/(music|sfx)\//, 'embedded:$1/').replace(/\.mp3$/, '');
 
 await build({
   configFile: false, root, base: './',
@@ -54,10 +61,70 @@ for (const file of walk(outDir)) {
     contents = contents.replace(/url\((['"]?)\/assets\//g, 'url($1./');
     contents = compileMinitoolCss(contents);
   } else {
-    contents = contents.replace(/(['"`])\/assets\//g, '$1./assets/');
+    contents = contents.replace(/(['"`])\/assets\//g, '$1./assets/')
+      // Mini-tool upload rejects media file extensions. Registry paths become extensionless
+      // in-memory keys consumed by the Web Audio base64 backend instead of file URLs.
+      .replace(/(['"`])\.\/assets\/audio\/(music|sfx)\/([^'"`]+)\.mp3/g, '$1embedded:$2/$3');
   }
   fs.writeFileSync(file, contents);
 }
+
+const audioDataDir = path.join(outDir, 'assets', 'audio-data');
+fs.mkdirSync(audioDataDir, { recursive: true });
+const embeddedAudioEntries = [];
+const audioScriptFiles = [];
+const writeAudioDataScript = (name, refs) => {
+  const lines = ['window.__EMBER_AUDIO_DATA__=window.__EMBER_AUDIO_DATA__||{};'];
+  for (const ref of refs) {
+    const source = path.join(root, 'public', ref.replace(/^\//, '').split('/').join(path.sep));
+    if (!fs.existsSync(source)) throw new Error(`Registered audio source is missing: ${ref}`);
+    const bytes = fs.readFileSync(source);
+    if (bytes.length > 1024 * 1024) throw new Error(`Embedded audio source exceeds 1 MiB hard limit: ${ref}`);
+    const base64 = bytes.toString('base64');
+    const key = embeddedAudioKey(ref);
+    lines.push(`window.__EMBER_AUDIO_DATA__[${JSON.stringify(key)}]=${JSON.stringify(base64)};`);
+    embeddedAudioEntries.push({
+      key,
+      source: ref,
+      decodedBytes: bytes.length,
+      base64Bytes: Buffer.byteLength(base64),
+      sha256: crypto.createHash('sha256').update(bytes).digest('hex'),
+      script: `assets/audio-data/${name}`,
+    });
+  }
+  const output = path.join(audioDataDir, name);
+  fs.writeFileSync(output, `${lines.join('\n')}\n`);
+  audioScriptFiles.push(`./assets/audio-data/${name}`);
+};
+
+const musicRefs = registeredAudioRefs.filter((ref) => ref.includes('/music/'));
+const sfxRefs = registeredAudioRefs.filter((ref) => ref.includes('/sfx/'));
+musicRefs.forEach((ref, index) => writeAudioDataScript(`music-${index + 1}.js`, [ref]));
+writeAudioDataScript('sfx.js', sfxRefs);
+
+// The upload whitelist does not permit MP3. The generated mini-tool contains only
+// extensionless lookup keys and classic JS files carrying base64 bytes.
+const copiedAudioDir = path.join(outDir, 'assets', 'audio');
+if (fs.existsSync(copiedAudioDir)) fs.rmSync(copiedAudioDir, { recursive: true, force: true });
+
+const indexPath = path.join(outDir, 'index.html');
+let indexHtml = fs.readFileSync(indexPath, 'utf8');
+const embeddedScripts = audioScriptFiles.map((src) => `<script src="${src}"></script>`).join('\n  ');
+if (!/<script\s+defer\b/.test(indexHtml)) throw new Error('Unable to locate classic app script while injecting embedded audio data.');
+indexHtml = indexHtml.replace(/(<script\s+defer\b)/, `${embeddedScripts}\n  $1`);
+fs.writeFileSync(indexPath, indexHtml);
+
+const embeddedAudioManifest = {
+  version: 1,
+  mode: 'base64-web-audio',
+  fileCount: embeddedAudioEntries.length,
+  decodedBytes: embeddedAudioEntries.reduce((sum, entry) => sum + entry.decodedBytes, 0),
+  base64Bytes: embeddedAudioEntries.reduce((sum, entry) => sum + entry.base64Bytes, 0),
+  maxDecodedEntryBytes: Math.max(...embeddedAudioEntries.map((entry) => entry.decodedBytes)),
+  scripts: audioScriptFiles,
+  entries: embeddedAudioEntries.map(({ source: _source, ...entry }) => entry),
+};
+fs.writeFileSync(path.join(outDir, 'embedded-audio-manifest.json'), JSON.stringify(embeddedAudioManifest, null, 2));
 
 const python = process.env.MINITOOL_PYTHON || 'python';
 const fontResult = execFileSync(python, [path.join(root, 'scripts', 'prepare-minitool-fonts.py'), outDir], { encoding: 'utf8' });
@@ -68,7 +135,7 @@ for (const name of ['ibm-plex-mono', 'lxgw-wenkai', 'ma-shan-zheng']) {
 fs.writeFileSync(path.join(outDir, 'font-licenses.json'), JSON.stringify({ note: 'Project-specific subsets of OFL fonts; original notices retained.', licenses: fontLicenses }, null, 2));
 const report = { sourceCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim(),
   builtAt: new Date().toISOString(), directory: outDir, target: ['es2017', 'chrome61'], format: 'classic iife',
-  optimizedImages: optimized, fonts: JSON.parse(fontResult),
+  optimizedImages: optimized, fonts: JSON.parse(fontResult), audio: embeddedAudioManifest,
   files: walk(outDir).map((file) => ({ path: path.relative(outDir, file).replaceAll('\\', '/'), bytes: fs.statSync(file).size })) };
 fs.writeFileSync(path.join(parent, 'build-report.json'), JSON.stringify(report, null, 2));
 console.log(`MINITOOL_ARTIFACT=${outDir}`);

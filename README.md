@@ -106,7 +106,7 @@ v0.6 的玩家路径不再使用七格配给台、四货架、三合订单、Com
 
 底部“据点 / 建筑 / 幸存者 / 记录”一级导航使用约 220ms 的轻量纸页掀动并配短翻页声，同一页重复点击不会重复播放；探索路线从一个地点切到另一个地点时，地点名称周围的红笔圈由 SVG stroke 真实画出，并同步短笔划声。交互 cue 使用独立短音通道，不主动压低 BGM，并带限流；`prefers-reduced-motion` 会关闭明显位移 / 旋转动画。音频仍只能在玩家第一次“开始 / 继续”点击后解锁，切后台暂停，文件缺失或解码失败不会阻塞任何选择。
 
-声音设置继续使用独立的 `ember-street-audio-v1` 本地偏好，不进入 `GameState`，因此旧存档不需要迁移。五个阶段 BGM 仍来自本地审核后的妙响母带衍生版本；6 个高辨识度短音效由 `scripts/import-free-sfx-v2.mjs` 从已锁定的 Mixkit Free License 条目可复现导入，来源与处理哈希记录在 `docs/audio/SFX_SOURCE_LEDGER_V2.md`。运行时只读取 `public/assets/audio/` 本地文件，不联网取音频。
+声音设置继续使用独立的 `ember-street-audio-v1` 本地偏好，不进入 `GameState`，因此旧存档不需要迁移。五个阶段 BGM 仍来自本地审核后的妙响母带衍生版本；6 个高辨识度短音效由 `scripts/import-free-sfx-v2.mjs` 从已锁定的 Mixkit Free License 条目可复现导入，来源与处理哈希记录在 `docs/audio/SFX_SOURCE_LEDGER_V2.md`。普通 Web / Cloudflare 构建继续使用 `public/assets/audio/` 中的 MP3；小红书小工具因上传白名单不接受音频扩展名，`build:minitool` 会把同一批 30 个 MP3 在构建期转换为外置 JS 中的 Base64 数据，由 Web Audio `decodeAudioData()` 按需解码播放，并从最终 ZIP 删除全部 MP3。两种构建都不联网取音频。
 
 DAY 10、DAY 20、DAY 29 必定触发尸潮；普通夜尸潮由 Seed、日期、防线、电力、守备与情报共同决定。
 
