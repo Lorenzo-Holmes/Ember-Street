@@ -24,6 +24,9 @@ Core files:
 - `src/game/v060/tutorial.ts`: opt-in tutorial state machine, legacy normalization and skip rules.
 - `src/game/v060/journal.ts`: bounded, deduplicated records of real work, expedition and night results.
 - `src/ui/v1/TutorialGuide.tsx`: one non-modal notebook note with semantic DOM anchors.
+- `src/audio/AudioDirector.tsx`: phase ambience, event cue routing, background suspension and presentation-only audio lifecycle.
+- `src/audio/audioRegistry.ts`: the single local-path mapping for ambience, night SFX and UI SFX.
+- `src/audio/audioPreferences.ts`: independent `ember-street-audio-v1` preference storage.
 
 React components only render state and dispatch pure/core actions; core rules remain outside JSX wherever practical.
 
@@ -88,6 +91,14 @@ When a night event resolves, the scheduler appends `night_visual_seen:<visualKey
 
 No new save-envelope field or schema version is required. Old v2/v3 saves simply have no visual-history flags and start building them after the next resolved event. The current event ID remains stored in `nightState`, while its art is a pure lookup from the event definition, so refresh cannot redraw a different scene. A missing local sprite sheet produces a deliberate dark textual fallback and leaves all three choices playable.
 
+### Audio Atmosphere & Event SFX v1
+
+Night content also owns `audioKey: NightAudioKey`. The 51 static definitions and both dynamic mortality templates map to 18 semantic event-audio categories. React does not branch on individual night IDs for playback; `AudioDirector` reads the currently resolved event and `audioRegistry.ts` translates its key into a local MP3. Five ambience layers cover day shelter, expedition, normal night, horde pressure and dawn/ending. Three UI cues cover dusk lock, dice and journal confirmation.
+
+The audio runtime is deliberately outside `GameState`. Preferences live under `ember-street-audio-v1`; event de-duplication uses `sessionStorage` only so React remounts, menu navigation and same-tab refresh do not replay the same knock or crisis cue. No save migration or RNG draw is added. Audio unlock happens only after an explicit start/continue gesture. `visibilitychange` pauses ambience in the background, SFX temporarily ducks the ambience bus, and failed `HTMLAudioElement.play()` or missing MP3 files are swallowed as presentation failures rather than gameplay failures.
+
+All runtime audio is local under `public/assets/audio/`. `scripts/audit-audio-assets.mjs` resolves every registry path, verifies MP3 signatures and enforces a 3.2 MiB aggregate budget. The current deterministic project-generated payload is about 1.01 MiB. The mini-tool build explicitly permits MP3 but still forbids network-loaded audio.
+
 ## Endings
 
 `resolveEnding()` is a pure priority resolver over survivor state, civilian population, rescued count, hope, buildings, radio/contact flags, evacuation routes, main light and the DAY29 grade. Exactly 13 endings are defined. Unlock history is stored separately in `ember-street-meta-v1`.
@@ -137,6 +148,7 @@ The guide is a single in-flow sticky note, not a pointer-blocking mask. It finds
 - no zombie pathfinding or 3D engine
 - DOM/CSS UI and dice presentation
 - localStorage state only
+- local MP3 ambience/SFX only; no streaming, microphone or runtime audio generation
 - Cloudflare Workers Static Assets compatible
 
 ## CI

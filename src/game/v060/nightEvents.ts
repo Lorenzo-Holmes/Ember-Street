@@ -17,6 +17,25 @@ export type NightVisualKey =
   | 'night_radio_signal'
   | 'night_shelter_damage'
   | 'night_fire_hazard';
+export type NightAudioKey =
+  | 'night_door_knock'
+  | 'night_medical_care'
+  | 'night_injured_return'
+  | 'night_conflict_murmur'
+  | 'night_distant_threat'
+  | 'night_horde_impact'
+  | 'night_empty_space'
+  | 'night_storage_rustle'
+  | 'night_quiet_room'
+  | 'night_package_drop'
+  | 'night_departure_steps'
+  | 'night_power_failure'
+  | 'night_radio_static'
+  | 'night_radio_burst'
+  | 'night_structure_creak'
+  | 'night_fire_hiss'
+  | 'night_dogs'
+  | 'night_alarm';
 
 export interface NightEffect {
   hope?: number;
@@ -43,6 +62,8 @@ export interface V060NightEvent {
   category: NightEventCategory;
   /** Semantic illustration category. UI resolves this centrally; it must not branch on event ids. */
   visualKey: NightVisualKey;
+  /** Semantic sound category. The audio layer resolves it centrally and never branches in JSX. */
+  audioKey: NightAudioKey;
   minDay: number;
   maxDay: number;
   title: string;
@@ -73,7 +94,7 @@ const consequence = (id: string, label: string, detail: string, effect: NightEff
 
 export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
   {
-    id: 'gate-knocking', category: 'threat', visualKey: 'night_door_visitor', minDay: 1, maxDay: 28, title: '围栏外有人敲门',
+    id: 'gate-knocking', category: 'threat', visualKey: 'night_door_visitor', audioKey: 'night_door_knock', minDay: 1, maxDay: 28, title: '围栏外有人敲门',
     body: '声音很轻，三下之后停住了。黑暗里有人压着嗓子说自己没有被咬。',
     choices: [
       checked('verify', '让守夜的人确认', '靠近围栏辨认对方状态，门外的人和黑暗都离得很近。', 'watch', { hope: 1, addFlags: ['night_stranger_checked'] }, { defense: -3, actorCondition: 'minor' }),
@@ -82,7 +103,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'east-footsteps', category: 'threat', visualKey: 'night_external_threat', minDay: 2, maxDay: 28, title: '东街传来连续脚步声',
+    id: 'east-footsteps', category: 'threat', visualKey: 'night_external_threat', audioKey: 'night_distant_threat', minDay: 2, maxDay: 28, title: '东街传来连续脚步声',
     body: '不像一两个游荡者。声音移动得很慢，却一直没有散开。',
     choices: [
       checked('scout', '让守夜的人去看', '摸到东街拐角，看清那些影子正往哪一边挪。', 'watch', { defense: 3, addFlags: ['east_route_known'] }, { actorCondition: 'minor', defense: -2 }),
@@ -91,7 +112,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'stray-dogs', category: 'threat', visualKey: 'night_external_threat', minDay: 3, maxDay: 24, title: '野狗在垃圾堆附近打转',
+    id: 'stray-dogs', category: 'threat', visualKey: 'night_external_threat', audioKey: 'night_dogs', minDay: 3, maxDay: 24, title: '野狗在垃圾堆附近打转',
     body: '它们饿得厉害。叫声正在把更远的东西引过来。',
     choices: [
       checked('drive', '派人赶走它们', '不动口粮，但得有人走出围栏，把狗从街口赶开。', 'watch', { defense: 2 }, { actorCondition: 'minor', defense: -2 }),
@@ -100,7 +121,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'generator-drop', category: 'infrastructure', visualKey: 'night_power_failure', minDay: 1, maxDay: 28, title: '发电机频率突然掉了',
+    id: 'generator-drop', category: 'infrastructure', visualKey: 'night_power_failure', audioKey: 'night_power_failure', minDay: 1, maxDay: 28, title: '发电机频率突然掉了',
     body: '灯光连续闪了三次。老线路发出一股很淡的焦味。',
     choices: [
       checked('repair', '让维修岗位抢修', '有人得摸黑沿着焦味查线，手会一直贴着发热的金属。', 'repair', { power: 6 }, { power: -8, actorCondition: 'minor' }, { power: -2 }),
@@ -109,7 +130,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'clinic-blackout', category: 'infrastructure', visualKey: 'night_medical', minDay: 5, maxDay: 28, title: '诊疗室突然断电',
+    id: 'clinic-blackout', category: 'infrastructure', visualKey: 'night_medical', audioKey: 'night_power_failure', minDay: 5, maxDay: 28, title: '诊疗室突然断电',
     body: '里面还有伤员。备用灯只够照亮一张床。',
     requiredBuildings: { clinic: 1 },
     choices: [
@@ -119,7 +140,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'fence-rattle', category: 'infrastructure', visualKey: 'night_shelter_damage', minDay: 3, maxDay: 28, title: '北侧围栏固定件松了',
+    id: 'fence-rattle', category: 'infrastructure', visualKey: 'night_shelter_damage', audioKey: 'night_structure_creak', minDay: 3, maxDay: 28, title: '北侧围栏固定件松了',
     body: '每一次撞击都会让缝隙大一点。现在修，比尸群来了以后修轻松得多。',
     choices: [
       checked('brace', '让维修岗位去加固', '摸黑把松动的固定件重新压紧，施工声会离围栏很近。', 'repair', { defense: 6 }, { defense: -5, actorCondition: 'minor' }),
@@ -128,7 +149,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'water-on-radio', category: 'infrastructure', visualKey: 'night_radio_signal', minDay: 12, maxDay: 28, title: '广播间开始漏水',
+    id: 'water-on-radio', category: 'infrastructure', visualKey: 'night_radio_signal', audioKey: 'night_radio_static', minDay: 12, maxDay: 28, title: '广播间开始漏水',
     body: '雨沿着电缆滴进桌面。信号还在，但继续工作有短路风险。',
     requiredBuildings: { radio: 1 },
     choices: [
@@ -138,7 +159,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'fever-resident', category: 'survivor', visualKey: 'night_medical', minDay: 4, maxDay: 28, title: '一个居民开始高烧',
+    id: 'fever-resident', category: 'survivor', visualKey: 'night_medical', audioKey: 'night_medical_care', minDay: 4, maxDay: 28, title: '一个居民开始高烧',
     body: '程医生说不一定是感染，但拖到早上可能会更麻烦。',
     requiredSurvivorIds: ['cheng'],
     choices: [
@@ -148,7 +169,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'argument-rations', category: 'survivor', visualKey: 'night_conflict', minDay: 6, maxDay: 28, title: '有人因为配给争吵',
+    id: 'argument-rations', category: 'survivor', visualKey: 'night_conflict', audioKey: 'night_conflict_murmur', minDay: 6, maxDay: 28, title: '有人因为配给争吵',
     body: '声音越来越大。真正的问题不是一顿饭，而是大家都觉得别人分得更多。',
     choices: [
       checked('mediate', '让熟悉大家的人调停', '把争吵的人分开，让熟悉他们的人把配给账一项项说清。', 'cook', { hope: 2 }, { hope: -2 }),
@@ -157,7 +178,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'nightmare-child', category: 'survivor', visualKey: 'night_quiet', minDay: 7, maxDay: 28, title: '孩子被噩梦惊醒',
+    id: 'nightmare-child', category: 'survivor', visualKey: 'night_quiet', audioKey: 'night_quiet_room', minDay: 7, maxDay: 28, title: '孩子被噩梦惊醒',
     body: '哭声很快被捂住了，但屋里所有人都醒了。',
     choices: [
       checked('comfort', '让人留下陪一会儿', '有人坐到床边，等呼吸慢下来再回自己的岗位。', 'cook', { hope: 2 }, { hope: 0 }),
@@ -166,7 +187,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'missing-name', category: 'survivor', visualKey: 'night_empty_bed', minDay: 10, maxDay: 28, title: '有人问起失踪者的名字',
+    id: 'missing-name', category: 'survivor', visualKey: 'night_empty_bed', audioKey: 'night_empty_space', minDay: 10, maxDay: 28, title: '有人问起失踪者的名字',
     body: '没有人知道应该回答“还没回来”，还是“已经回不来了”。',
     choices: [
       checked('talk', '把事情说清楚', '找个愿意坐下来的人，把最后一次见到他时发生的事慢慢说完。', 'radio', { hope: 1 }, { hope: -1 }),
@@ -175,7 +196,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'medicine-count', category: 'resource', visualKey: 'night_theft', minDay: 5, maxDay: 28, title: '药品数量对不上',
+    id: 'medicine-count', category: 'resource', visualKey: 'night_theft', audioKey: 'night_storage_rustle', minDay: 5, maxDay: 28, title: '药品数量对不上',
     body: '少了一份。可能只是记录错了，也可能有人私自拿走。',
     choices: [
       checked('audit', '让医疗岗位重新清点', '把药盒、记录和用过的空瓶重新对一遍，先弄清楚少在哪。', 'medical', { hope: 1 }, { hope: -1 }),
@@ -184,7 +205,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'ration-mice', category: 'resource', visualKey: 'night_theft', minDay: 2, maxDay: 18, title: '储物箱里发现了老鼠',
+    id: 'ration-mice', category: 'resource', visualKey: 'night_theft', audioKey: 'night_storage_rustle', minDay: 2, maxDay: 18, title: '储物箱里发现了老鼠',
     body: '有几包食物已经被咬开。问题不大，但如果不处理会越来越糟。',
     choices: [
       checked('trap', '今晚做简易陷阱', '用铁丝、木片和一点耐心在储物箱边做陷阱。', 'repair', { hope: 1 }, { inventory: { ration: -1 } }),
@@ -193,7 +214,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'battery-shortage', category: 'resource', visualKey: 'night_power_failure', minDay: 8, maxDay: 28, title: '今晚的电力比预计少',
+    id: 'battery-shortage', category: 'resource', visualKey: 'night_power_failure', audioKey: 'night_power_failure', minDay: 8, maxDay: 28, title: '今晚的电力比预计少',
     body: '广播、诊疗、外围照明不可能全部保持满功率。',
     choices: [
       checked('balance', '让维修岗位重新分配负载', '把广播、诊疗和外围灯一条线一条线降功率，尽量不让任何一处彻底断掉。', 'repair', { power: 3 }, { power: -5 }),
@@ -202,7 +223,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'radio-voice', category: 'world', visualKey: 'night_radio_signal', minDay: 9, maxDay: 28, title: '广播里出现清晰人声',
+    id: 'radio-voice', category: 'world', visualKey: 'night_radio_signal', audioKey: 'night_radio_static', minDay: 9, maxDay: 28, title: '广播里出现清晰人声',
     body: '对方只重复一串坐标和一句“仍有人活着”。',
     requiredBuildings: { radio: 1 },
     choices: [
@@ -212,7 +233,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'distant-lights', category: 'world', visualKey: 'night_external_threat', minDay: 12, maxDay: 28, title: '城市另一边亮起三盏灯',
+    id: 'distant-lights', category: 'world', visualKey: 'night_external_threat', audioKey: 'night_distant_threat', minDay: 12, maxDay: 28, title: '城市另一边亮起三盏灯',
     body: '它们按固定间隔闪烁，不像火灾。',
     choices: [
       checked('decode', '让广播岗位判断信号', '按闪烁间隔记下来，看看是不是某种人能读懂的节奏。', 'radio', { hope: 2, addFlags: ['decoded_distant_lights'] }, { hope: 0 }),
@@ -221,7 +242,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'military-burst', category: 'world', visualKey: 'night_radio_signal', minDay: 18, maxDay: 28, title: '频段里闪过军用呼号',
+    id: 'military-burst', category: 'world', visualKey: 'night_radio_signal', audioKey: 'night_radio_burst', minDay: 18, maxDay: 28, title: '频段里闪过军用呼号',
     body: '只有几秒，夹着严重杂音。小满说这不是普通民用设备。',
     requiredSurvivorIds: ['xiaoman'],
     requiredBuildings: { radio: 1 },
@@ -232,7 +253,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'quiet-tea', category: 'quiet', visualKey: 'night_quiet', minDay: 4, maxDay: 28, title: '难得没人敲门',
+    id: 'quiet-tea', category: 'quiet', visualKey: 'night_quiet', audioKey: 'night_quiet_room', minDay: 4, maxDay: 28, title: '难得没人敲门',
     body: '阿禾把剩下的热水倒进几只不一样的杯子里。外面仍然很黑。',
     requiredSurvivorIds: ['ahe'],
     choices: [
@@ -242,7 +263,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'cat-window', category: 'quiet', visualKey: 'night_quiet', minDay: 6, maxDay: 28, title: '小灰一直盯着窗外',
+    id: 'cat-window', category: 'quiet', visualKey: 'night_quiet', audioKey: 'night_quiet_room', minDay: 6, maxDay: 28, title: '小灰一直盯着窗外',
     body: '它没有叫，只是耳朵一直朝着西边。',
     choices: [
       checked('trust-cat', '跟着它看一眼', '顺着它盯的方向去窗边听一会儿。', 'watch', { defense: 2, addFlags: ['trusted_cat_warning'] }, { hope: 0 }),
@@ -254,7 +275,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
 
 export const HORDE_EVENTS: V060NightEvent[] = [
   {
-    id: 'horde-approach', category: 'horde', visualKey: 'night_external_threat', minDay: 1, maxDay: 29, title: '尸潮正在接近',
+    id: 'horde-approach', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_horde_impact', minDay: 1, maxDay: 29, title: '尸潮正在接近',
     body: '远处的黑影已经连成一片。声音还没到，地面先开始轻微震动。',
     choices: [
       checked('read-route', '让街口岗判断来路', '爬上最高的瞭望点，看清尸群最密的那一股正朝哪条街挤。', 'watch', { defense: 7, addFlags: ['horde_route_read'] }, { defense: -4 }),
@@ -263,7 +284,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'horde-north-gate', category: 'horde', visualKey: 'night_shelter_damage', minDay: 8, maxDay: 29, title: '北门开始整体变形',
+    id: 'horde-north-gate', category: 'horde', visualKey: 'night_shelter_damage', audioKey: 'night_horde_impact', minDay: 8, maxDay: 29, title: '北门开始整体变形',
     body: '不是某一块木板，是整段结构都在向内弯。',
     choices: [
       checked('hold-gate', '让维修和守备顶上去', '人直接顶到北门后面，木板另一侧就是不断撞上来的尸群。', 'repair', { defense: 10 }, { defense: -12, actorCondition: 'serious' }, { defense: 2, actorCondition: 'minor' }),
@@ -272,7 +293,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'horde-clinic', category: 'horde', visualKey: 'night_return_injured', minDay: 10, maxDay: 29, title: '伤员一下子多了起来',
+    id: 'horde-clinic', category: 'horde', visualKey: 'night_return_injured', audioKey: 'night_injured_return', minDay: 10, maxDay: 29, title: '伤员一下子多了起来',
     body: '诊疗室门口排起了人。程医生只能先处理最危险的几个。',
     requiredSurvivorIds: ['cheng'],
     requiredBuildings: { clinic: 1 },
@@ -283,7 +304,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'horde-main-light', category: 'horde', visualKey: 'night_power_failure', minDay: 15, maxDay: 29, title: '主灯熄灭了一秒',
+    id: 'horde-main-light', category: 'horde', visualKey: 'night_power_failure', audioKey: 'night_power_failure', minDay: 15, maxDay: 29, title: '主灯熄灭了一秒',
     body: '只有一秒。整条街却像同时停止呼吸。',
     choices: [
       checked('restore', '让维修岗位恢复主灯', '有人钻进线路箱里抢修，让所有人都能亲眼看见灯重新亮起来。', 'repair', { hope: 4, power: 4, addFlags: ['kept_main_light_on'] }, { hope: -3, power: -6 }),
@@ -292,7 +313,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'horde-breakthrough', category: 'horde', visualKey: 'night_external_threat', minDay: 20, maxDay: 29, title: '尸群冲进外围街段',
+    id: 'horde-breakthrough', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_horde_impact', minDay: 20, maxDay: 29, title: '尸群冲进外围街段',
     body: '第一道围栏已经没有意义。现在决定的是堵住缺口，还是把人撤回去。',
     choices: [
       checked('counter', '让守备人员夺回缺口', '守备人员从内街反冲回缺口，离尸群只隔几米。', 'watch', { defense: 12, hope: 2 }, { defense: -15, actorCondition: 'critical' }, { defense: 2, actorCondition: 'serious' }),
@@ -301,7 +322,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'horde-last-minutes', category: 'horde', visualKey: 'night_external_threat', minDay: 10, maxDay: 29, title: '天边开始发白',
+    id: 'horde-last-minutes', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_horde_impact', minDay: 10, maxDay: 29, title: '天边开始发白',
     body: '尸潮还没有退。所有人都知道，只要再撑一会儿。',
     choices: [
       checked('hold', '让所有值守人员坚持最后一轮', '让还站得住的人继续守在最外面，撑到天色真的亮起来。', 'watch', { defense: 8, hope: 3 }, { defense: -8, actorCondition: 'serious' }),
@@ -313,7 +334,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
 
 export const EMERGENCY_EVENTS: V060NightEvent[] = [
   {
-    id: 'emergency-north-breach', category: 'emergency', visualKey: 'night_external_threat', minDay: 5, maxDay: 29, title: '⚠ 北门出现两米缺口',
+    id: 'emergency-north-breach', category: 'emergency', visualKey: 'night_external_threat', audioKey: 'night_horde_impact', minDay: 5, maxDay: 29, title: '⚠ 北门出现两米缺口',
     body: '一辆废车被推开，围栏后面已经能看到伸进来的手。必须现在处理。',
     choices: [
       checked('rush-repair', '让维修人员冲过去补', '维修的人要贴着缺口把板材重新钉住，伸进来的手就在旁边。', 'repair', { defense: 10 }, { defense: -12, actorCondition: 'serious' }),
@@ -322,7 +343,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-clinic-fire', category: 'emergency', visualKey: 'night_fire_hazard', minDay: 7, maxDay: 29, title: '诊疗室起火',
+    id: 'emergency-clinic-fire', category: 'emergency', visualKey: 'night_fire_hazard', audioKey: 'night_fire_hiss', minDay: 7, maxDay: 29, title: '诊疗室起火',
     body: '旧线路短路，墙后已经有明火。伤员还在里面。',
     requiredBuildings: { clinic: 1 },
     choices: [
@@ -332,7 +353,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-generator-fire', category: 'emergency', visualKey: 'night_fire_hazard', minDay: 6, maxDay: 29, title: '⚠ 发电机冒出明火',
+    id: 'emergency-generator-fire', category: 'emergency', visualKey: 'night_fire_hazard', audioKey: 'night_fire_hiss', minDay: 6, maxDay: 29, title: '⚠ 发电机冒出明火',
     body: '火焰已经碰到旁边堆放的杂物。再迟一点，整条街都会断电。',
     choices: [
       checked('repair-fire', '维修岗位冒险处理', '维修的人贴着机器拆掉起火部件，火和发烫的金属都在手边。', 'repair', { power: 8 }, { power: -15, actorCondition: 'serious' }),
@@ -341,7 +362,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-panic', category: 'emergency', visualKey: 'night_conflict', minDay: 8, maxDay: 29, title: '⚠ 居民开始向内街拥挤',
+    id: 'emergency-panic', category: 'emergency', visualKey: 'night_conflict', audioKey: 'night_conflict_murmur', minDay: 8, maxDay: 29, title: '⚠ 居民开始向内街拥挤',
     body: '有人喊围栏要塌了。恐慌比尸群更快地穿过人群。',
     choices: [
       checked('calm', '让可信的人稳住大家', '站到人群前面把真实情况说清楚，让往里挤的人先停下来。', 'radio', { hope: 4 }, { hope: -4 }),
@@ -350,7 +371,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-missing-child', category: 'emergency', visualKey: 'night_empty_bed', minDay: 9, maxDay: 29, title: '⚠ 有个孩子不见了',
+    id: 'emergency-missing-child', category: 'emergency', visualKey: 'night_empty_bed', audioKey: 'night_empty_space', minDay: 9, maxDay: 29, title: '⚠ 有个孩子不见了',
     body: '最后有人看见他在主灯附近。现在外面正是最危险的时候。',
     choices: [
       checked('search-child', '派守夜者立即寻找', '沿主灯到围栏的每一条暗路去找，人可能找到，也可能把自己困在外面。', 'watch', { hope: 4, addFlags: ['child_found_night'] }, { actorCondition: 'serious', hope: -3 }),
@@ -359,7 +380,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-radio-distress', category: 'emergency', visualKey: 'night_radio_signal', minDay: 15, maxDay: 29, title: '⚠ 广播收到近距离求救',
+    id: 'emergency-radio-distress', category: 'emergency', visualKey: 'night_radio_signal', audioKey: 'night_radio_static', minDay: 15, maxDay: 29, title: '⚠ 广播收到近距离求救',
     body: '对方就在两条街之外，说他们被困在屋顶。尸潮正在靠近。',
     requiredBuildings: { radio: 1 },
     choices: [
@@ -369,7 +390,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-building-collapse', category: 'emergency', visualKey: 'night_shelter_damage', minDay: 18, maxDay: 29, title: '⚠ 一面旧墙开始倒塌',
+    id: 'emergency-building-collapse', category: 'emergency', visualKey: 'night_shelter_damage', audioKey: 'night_structure_creak', minDay: 18, maxDay: 29, title: '⚠ 一面旧墙开始倒塌',
     body: '墙后就是居民休息区。现在加固还是撤人，只有几分钟。',
     requiredBuildings: { shelter: 1 },
     choices: [
@@ -379,7 +400,7 @@ export const EMERGENCY_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'emergency-main-light', category: 'emergency', visualKey: 'night_power_failure', minDay: 20, maxDay: 29, title: '⚠ 主灯彻底熄灭',
+    id: 'emergency-main-light', category: 'emergency', visualKey: 'night_power_failure', audioKey: 'night_power_failure', minDay: 20, maxDay: 29, title: '⚠ 主灯彻底熄灭',
     body: '这次没有立刻重新亮起。黑暗里有人开始喊老周的名字。',
     requiredSurvivorIds: ['zhou'],
     choices: [

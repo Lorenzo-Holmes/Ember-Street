@@ -34,6 +34,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Audit local audio package
+        run: npm run audit:audio
+
       - name: Audit canonical visual package
         run: npm run audit:assets:strict
 

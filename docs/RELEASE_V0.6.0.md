@@ -43,6 +43,16 @@ Six facilities support Lv0–3: search station, workshop, clinic, watch post, sh
 - Normal scheduling avoids a generic visual used earlier in the same schedule or in the previous two nights when a legal semantic alternative exists. Fixed/urgent story beats retain narrative priority.
 - Missing art uses a dark textual fallback without disabling the event choices.
 
+## Audio Atmosphere & Event SFX v1
+
+- Five local low-density ambience layers cover day shelter, expedition, normal night, horde pressure and dawn/ending.
+- Every night event definition declares semantic `audioKey` metadata. The 51 static events and both dynamic mortality templates resolve through one centralized local SFX registry rather than JSX event-ID branches.
+- Night 1 uses a three-knock cue; medical care, injured returns, conflict, distant threats, hordes, missing beds, storage movement, departure, power failure, radio, structural damage, fire, dogs and alarms have distinct short cues.
+- Dusk locking, dice and journal confirmation have restrained UI feedback.
+- Audio unlocks only after an explicit start/continue gesture, pauses when the page is hidden, ducks ambience during SFX and fails silently when playback is unavailable.
+- Sound preferences are stored separately as `ember-street-audio-v1`; no v3 save migration is required.
+- Current release audio is fully local, deterministic and sample-free, with 26 MP3 files totaling about 1.01 MiB. `npm run audit:audio` is a release gate.
+
 ## Save integrity
 
 Run schema: v3 (`ember-street-save-v3`).

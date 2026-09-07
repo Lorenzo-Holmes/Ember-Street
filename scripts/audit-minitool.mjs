@@ -8,7 +8,7 @@ export function auditMinitool(directory) {
     entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
   const files = walk(root);
   const errors = [];
-  const allowed = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.woff', '.woff2', '.json']);
+  const allowed = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.woff', '.woff2', '.mp3', '.json']);
   const references = [];
   let largestBase64 = 0;
   const checkReference = (source, url) => {

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import AudioDirector from './audio/AudioDirector';
+import { stopGameAudio } from './audio/audioRuntime';
 import { MissingPanel } from './V060AppHotfix';
 import SocialStatusPanel from './components/v060/SocialStatusPanel';
 import { GAME_SAVE_EVENT, loadGame, saveGame } from './game/storage';
@@ -136,6 +138,7 @@ export default function V1Entry() {
   const [session, setSession] = useState<GameState | null>(null);
   const [titlePanel, setTitlePanel] = useState<'main' | 'restart'>('main');
   const returnToTitle = (panel: 'main' | 'restart' = 'main') => {
+    stopGameAudio();
     setTitlePanel(panel);
     setSession(null);
   };
@@ -154,7 +157,10 @@ function GameSession({ initialState, onReturnToTitle }: {
   const recordedEnding = useRef<string | null>(null);
 
   const page = (content: ReactNode) => <div className={snapshot.tutorial && !snapshot.tutorial.tutorialSkipped ? 'v1-tutorial-session' : undefined}>
-    {!previewScene && <TutorialGuide state={snapshot} onCommit={commit} onNavigate={(target) => { setRouteSurvivorId(null); setNav(target); }}/>}
+    <AudioDirector state={snapshot} disabled={Boolean(previewScene)}/>
+    {!previewScene && (
+      <TutorialGuide state={snapshot} onCommit={commit} onNavigate={(target) => { setRouteSurvivorId(null); setNav(target); }}/>
+    )}
     {content}{previewScene
     ? <DevSceneNav active={previewScene}/>
     : <PlayerMenu state={snapshot} onReturnToTitle={() => onReturnToTitle()}/>}</div>;

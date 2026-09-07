@@ -3,7 +3,7 @@ import { extname, join, relative } from 'node:path';
 
 const root = process.cwd();
 const dist = join(root, 'dist');
-const ALLOWED = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.woff', '.woff2', '.json']);
+const ALLOWED = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.woff', '.woff2', '.mp3', '.json']);
 const TEXT = new Set(['.html', '.css', '.js', '.svg', '.json']);
 
 function walk(dir) {
@@ -28,6 +28,7 @@ const failures = [];
 const htmlFiles = files.filter((file) => extname(file).toLowerCase() === '.html');
 let totalBytes = 0;
 let imageBytes = 0;
+let audioBytes = 0;
 
 console.log(`XHS package audit: ${files.length} files`);
 
@@ -37,6 +38,7 @@ for (const file of files) {
   const size = statSync(file).size;
   totalBytes += size;
   if (['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'].includes(ext)) imageBytes += size;
+  if (ext === '.mp3') audioBytes += size;
   if (!ALLOWED.has(ext)) fail(`unsupported package file type: ${rel}`, failures);
   if (!TEXT.has(ext)) continue;
 
@@ -69,6 +71,7 @@ if (htmlFiles.length === 1 && relative(dist, htmlFiles[0]).replaceAll('\\', '/')
 
 console.log(`Total package size: ${(totalBytes / 1024).toFixed(1)} KiB`);
 console.log(`Image payload: ${(imageBytes / 1024).toFixed(1)} KiB`);
+console.log(`Audio payload: ${(audioBytes / 1024).toFixed(1)} KiB`);
 
 if (failures.length) {
   console.error(`XHS package audit failed with ${failures.length} issue(s).`);

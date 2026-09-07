@@ -176,6 +176,39 @@ body:has(.v1-menu-sheet[open]) { overflow: hidden; }
 .v1-menu-action:hover,
 .v1-menu-action--danger { color: #713526; }
 .v1-menu-confirm-actions { display: grid; gap: 8px; margin-top: 20px; }
+.v1-audio-settings { display: grid; gap: 8px; }
+.v1-audio-settings > p { margin: 0 0 8px; }
+.v1-audio-settings > button,
+.v1-audio-settings__volume {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 9px 4px;
+  border: 0;
+  border-bottom: 1px dashed #5f493766;
+  color: #30281e;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+.v1-audio-settings > button span { color: #713526; font-family: var(--font-notebook-mark); font-size: 20px; }
+.v1-audio-settings > button[aria-pressed="false"] span { color: #665b4c; }
+.v1-audio-settings > button:disabled { opacity: .48; }
+.v1-audio-settings__volume > div { display: flex; gap: 5px; }
+.v1-audio-settings__volume button {
+  min-width: 44px;
+  min-height: 40px;
+  padding: 5px 8px;
+  border: 1px solid #66523d80;
+  color: #4a3b2c;
+  background: transparent;
+  font: 400 18px / 1 var(--font-notebook-mark);
+}
+.v1-audio-settings__volume button[aria-pressed="true"] { color: #713526; border-color: #713526; background: #71352612; }
+.v1-audio-settings__volume button:disabled { opacity: .45; }
+.v1-audio-settings > small { display: block; margin: 7px 0 4px; color: #5d4d3a; font-size: 14px; line-height: 1.6; }
 .v1-player-menu {
   position: fixed;
   z-index: 55;

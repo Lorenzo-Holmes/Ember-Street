@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import AudioSettings from '../../audio/AudioSettings';
+import { unlockGameAudio } from '../../audio/audioRuntime';
 import { GAME_SAVE_EVENT, inspectGameSave } from '../../game/storage';
 import { continueSavedSession, savedDayLabel, startNewSession } from '../../game/sessionEntry';
 import type { GameState } from '../../game/types';
@@ -59,7 +61,7 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
   onEnter: (state: GameState) => void; initialPanel?: 'main' | 'restart';
 }) {
   const [save, setSave] = useState(inspectGameSave);
-  const [panel, setPanel] = useState<'main' | 'help' | 'restart'>(initialPanel);
+  const [panel, setPanel] = useState<'main' | 'help' | 'audio' | 'restart'>(initialPanel);
   const [error, setError] = useState('');
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -82,6 +84,7 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
   };
   const requestNew = () => {
     setError('');
+    unlockGameAudio();
     enter(startNewSession());
   };
   const closePanel = () => { setPanel('main'); setError(''); };
@@ -95,7 +98,7 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
       </header>
       <nav className="v1-title-actions" aria-label="开始菜单">
         {save.kind === 'saved' ? <>
-          <button className="v1-title-primary" onClick={() => { setError(''); enter(continueSavedSession()); }}>继续游戏</button>
+          <button className="v1-title-primary" onClick={() => { setError(''); unlockGameAudio(); enter(continueSavedSession()); }}>继续游戏</button>
           <p className="v1-title-save">{savedDayLabel(save.state)}</p>
           <button onClick={requestNew}>重新开始</button>
         </> : <>
@@ -105,12 +108,16 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
           {save.kind === 'unreadable' && <p className="v1-title-save">旧记录暂时读不出来，尚未清除。</p>}
         </>}
         <button onClick={() => { setError(''); setPanel('help'); }}>玩法说明</button>
+        <button onClick={() => { setError(''); setPanel('audio'); }}>声音设置</button>
       </nav>
       <p className="v1-title-bottom">自动保存 · 本机记录</p>
     </div>
     {panel === 'main' && (error || save.kind === 'unavailable') && <p className="v1-title-error" role="alert">{error || '无法读取浏览器存档。请允许本站保存数据后重试。'}</p>}
     {panel === 'help' && <NotebookDialog title="玩法说明" onClose={closePanel}>
       <HowToPlay/><button className="v1-menu-action" onClick={closePanel} autoFocus>返回封面</button>
+    </NotebookDialog>}
+    {panel === 'audio' && <NotebookDialog title="声音设置" onClose={closePanel}>
+      <AudioSettings/><button className="v1-menu-action" onClick={closePanel} autoFocus>返回封面</button>
     </NotebookDialog>}
     {panel === 'restart' && <NotebookDialog title="从第一天重新开始？" onClose={closePanel}>
       <p>{save.kind === 'saved' ? `当前进度：${savedDayLabel(save.state)}。` : '浏览器里仍有一份旧记录。'}</p>
@@ -125,17 +132,20 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
 }
 
 export function PlayerMenu({ state, onReturnToTitle }: { state: GameState; onReturnToTitle: () => void }) {
-  const [panel, setPanel] = useState<'menu' | 'help' | null>(null);
+  const [panel, setPanel] = useState<'menu' | 'help' | 'audio' | null>(null);
   return <>
     <button className="v1-player-menu" onClick={() => setPanel('menu')} aria-haspopup="dialog">菜单</button>
-    {panel && <NotebookDialog title={panel === 'help' ? '玩法说明' : '合上手记，歇一会儿'} onClose={() => setPanel(null)}>
+    {panel && <NotebookDialog title={panel === 'help' ? '玩法说明' : panel === 'audio' ? '声音设置' : '合上手记，歇一会儿'} onClose={() => setPanel(null)}>
       {panel === 'help' ? <>
         <HowToPlay/><button className="v1-menu-action" onClick={() => setPanel('menu')} autoFocus>返回菜单</button>
+      </> : panel === 'audio' ? <>
+        <AudioSettings/><button className="v1-menu-action" onClick={() => setPanel('menu')} autoFocus>返回菜单</button>
       </> : <>
         <p className="v1-menu-day">{savedDayLabel(state)}</p>
         <nav className="v1-menu-actions" aria-label="游戏菜单">
           <button className="v1-menu-action" onClick={() => setPanel(null)} autoFocus>返回游戏</button>
           <button className="v1-menu-action" onClick={() => setPanel('help')}>玩法说明</button>
+          <button className="v1-menu-action" onClick={() => setPanel('audio')}>声音设置</button>
           <button className="v1-menu-action" onClick={onReturnToTitle}>返回封面</button>
         </nav>
         <p className="v1-menu-footnote">返回封面不会推进时间，也不会清除当前进度。</p>

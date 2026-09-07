@@ -2,6 +2,8 @@
 
 普通网页仍使用 `npm run build`。小工具构建单独生成经典脚本、兼容样式、图片压缩副本和字体子集，不修改源素材，也不覆盖已经交付的发布包。
 
+音频同样必须完全本地化。当前小工具允许 `.mp3`，但不允许远程流媒体、运行时下载或外部音频 URL；发布前先运行 `npm run audit:audio`，确认注册表中的 26 个音频文件全部存在且总音频预算合格。
+
 ## 环境
 
 - Node.js 22 和项目依赖（`npm ci`）。
@@ -20,6 +22,7 @@
 
 ```sh
 npm test
+npm run audit:audio
 npm run build:minitool
 ```
 
