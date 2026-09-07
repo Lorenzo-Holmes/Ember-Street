@@ -38,6 +38,19 @@ async function install(page: Page, state: GameState, audio?: object) {
   await page.reload();
 }
 
+test('a fresh new game unlocks daytime ambience and navigation uses the quiet page-turn cue', async ({ page }) => {
+  const requested: string[] = [];
+  page.on('request', (request) => { if (request.url().endsWith('.mp3')) requested.push(request.url()); });
+  await page.goto('/');
+  await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+  await page.reload();
+  await page.getByRole('button', { name: '开始游戏', exact: true }).click();
+  await expect(page.locator('.v1-buildings-page')).toBeVisible();
+  await expect.poll(() => requested.some((url) => url.endsWith('/assets/audio/music/bgm_day_shelter.mp3'))).toBe(true);
+  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '幸存者', exact: true }).click();
+  await expect.poll(() => requested.some((url) => url.endsWith('/assets/audio/sfx/sfx_page_turn.mp3'))).toBe(true);
+});
+
 test('continuing into a night event requests night ambience and the semantic knock cue', async ({ page }) => {
   const requested: string[] = [];
   page.on('request', (request) => { if (request.url().endsWith('.mp3')) requested.push(request.url()); });
@@ -61,6 +74,19 @@ test('sound settings persist separately from the save and survive reload', async
   await page.reload();
   await page.getByRole('button', { name: '声音设置', exact: true }).click();
   await expect(page.getByRole('button', { name: /声音总开关/ })).toContainText('静音');
+});
+
+test('volume preset persists independently and remains selected after reload', async ({ page }) => {
+  const state = gateNight(994004);
+  await install(page, state, { enabled: true, ambience: true, sfx: true, volume: 'medium' });
+  await page.getByRole('button', { name: '声音设置', exact: true }).click();
+  const settings = page.locator('.v1-audio-settings');
+  await settings.getByRole('button', { name: '高', exact: true }).click();
+  const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), AUDIO_KEY);
+  expect(stored.volume).toBe('high');
+  await page.reload();
+  await page.getByRole('button', { name: '声音设置', exact: true }).click();
+  await expect(page.locator('.v1-audio-settings').getByRole('button', { name: '高', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('missing audio files fail silently and do not block the three night choices', async ({ page }) => {

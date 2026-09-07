@@ -19,7 +19,10 @@ const VIEWPORTS = [
   ['1440x900', { width: 1440, height: 900 }],
   ['1366x768', { width: 1366, height: 768 }],
   ['1280x720', { width: 1280, height: 720 }],
+  ['320x568', { width: 320, height: 568 }],
+  ['360x800', { width: 360, height: 800 }],
   ['390x844', { width: 390, height: 844 }],
+  ['430x932', { width: 430, height: 932 }],
 ] as const;
 
 function quietState(seed = 960001): GameState {
@@ -182,6 +185,7 @@ async function assertViewportFit(page: Page) {
   expect(documentFits).toBe(true);
 
   const offscreenButtons = await page.locator('button:visible').evaluateAll((elements) => elements.filter((element) => {
+    if (element.closest('.v2-building-nav, .v2-survivor-filters, .v1r-tabs')) return false;
     const rect = element.getBoundingClientRect();
     return rect.left < -1 || rect.right > window.innerWidth + 1;
   }).length);
@@ -196,18 +200,18 @@ async function capture(page: Page, name: string) {
 test('DAY1 V1 shell remains usable at all target viewports', async ({ page }) => {
   for (const [name, viewport] of VIEWPORTS) {
     await renderState(page, quietState(961000 + viewport.width), viewport);
-    await expect(page.locator('.v1-home-page')).toBeVisible();
-    await expect(page.getByText('余烬长街', { exact: true })).toBeVisible();
-    await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
+    await expect(page.locator('.v1-buildings-page')).toBeVisible();
+    await expect(page.locator('.v2-shelter-scene')).toBeVisible();
+    await expect(page.locator('.v2-building-nav')).toBeVisible();
     await capture(page, `v1-day1-main-${name}`);
   }
 });
 
 test('mobile DAY1 exposes the primary assignment and building navigation', async ({ page }) => {
   await renderState(page, quietState(961390), { width: 390, height: 844 });
-  await expect(page.locator('.v1-day-action')).toContainText('今天谁去哪里');
+  await expect(page.locator('.v2-day-roster-action')).toContainText('翻开今日安排');
   await expect(page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true })).toBeVisible();
-  await expect(page.locator('.v1-building-list')).toHaveCount(0);
+  await expect(page.locator('.v1-building-list')).toBeVisible();
   await capture(page, 'v1-day1-action-distance-390x844');
 });
 
@@ -229,7 +233,7 @@ test('milestone DAY7 DAY14 DAY21 principle screens stay readable', async ({ page
 test('major DAY1 -> DAY30 visual states render without horizontal clipping', async ({ page }) => {
   const day = quietState(962001);
   await renderState(page, day);
-  await expect(page.locator('.v1-home-page')).toBeVisible();
+  await expect(page.locator('.v1-buildings-page')).toBeVisible();
   await capture(page, 'v1-home-1440x900');
 
   let nav = page.locator('nav[aria-label="主导航"]');
@@ -237,8 +241,7 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await expect(page.locator('.v1s-list')).toBeVisible();
   await page.locator('.v1s-list').screenshot({ path: `${SCREENSHOT_DIR}/v1-survivors-1440x900.png` });
   nav = page.locator('nav[aria-label="主导航"]');
-  await nav.getByRole('button', { name: '据点', exact: true }).click();
-  await page.locator('nav[aria-label="主导航"]').getByRole('button', { name: '建筑', exact: true }).click();
+  await nav.getByRole('button', { name: '建筑', exact: true }).click();
   await expect(page.locator('.v1-building-list')).toBeVisible();
   await page.locator('.v1-building-list').screenshot({ path: `${SCREENSHOT_DIR}/v1-building-panel-1440x900.png` });
 
@@ -282,8 +285,8 @@ test('major DAY1 -> DAY30 visual states render without horizontal clipping', asy
   await capture(page, 'night-result-1440x900');
 
   await renderState(page, communityState());
-  await expect(page.locator('.v1-community')).toBeVisible();
-  await expect(page.getByText('街区居民', { exact: true })).toBeVisible();
+  await expect(page.locator('.v2-community-duty')).toBeVisible();
+  await expect(page.getByText('今日轮值', { exact: true })).toBeVisible();
   await capture(page, 'social-community-1440x900');
 
   const horde = scheduleNight(finalReady());

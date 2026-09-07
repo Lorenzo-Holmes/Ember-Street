@@ -1,57 +1,12 @@
-@font-face {
-  font-family: "ZCOOL XiaoWei";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("../node_modules/@fontsource/zcool-xiaowei/files/zcool-xiaowei-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Noto Sans SC";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("../node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Noto Sans SC";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 700;
-  src: url("../node_modules/@fontsource/noto-sans-sc/files/noto-sans-sc-chinese-simplified-700-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "IBM Plex Mono";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 600;
-  src: url("../node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-600-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "LXGW WenKai";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url("../node_modules/@fontsource/lxgw-wenkai/files/lxgw-wenkai-latin-500-normal.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Ma Shan Zheng";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 400;
-  src: url("../node_modules/@fontsource/ma-shan-zheng/files/ma-shan-zheng-chinese-simplified-400-normal.woff2") format("woff2");
-}
-
 :root {
-  --font-game-body: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  --font-game-display: "ZCOOL XiaoWei", "Noto Sans SC", serif;
-  --font-game-data: "IBM Plex Mono", "Noto Sans SC", monospace;
-  --font-notebook-body: "LXGW WenKai", "Noto Sans SC", serif;
-  --font-notebook-mark: "Ma Shan Zheng", "ZCOOL XiaoWei", serif;
+  /* UIUX V2 deliberately uses platform fonts in production. The previous full
+     Chinese webfont set added ~13 MiB to the ordinary Web build before the
+     mini-tool release-specific subsetting pass. */
+  --font-game-body: "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  --font-game-display: "Songti SC", "STSong", "SimSun", var(--font-game-body);
+  --font-game-data: ui-monospace, "SFMono-Regular", "Cascadia Mono", "Roboto Mono", monospace;
+  --font-notebook-body: "Kaiti SC", "STKaiti", "KaiTi", var(--font-game-body);
+  --font-notebook-mark: "Kaiti SC", "STKaiti", "KaiTi", var(--font-game-display);
 }
 
 body,
@@ -67,10 +22,14 @@ h2,
 h3,
 .v1-status-strip__weather b,
 .v1-day-action strong,
-.v6-topbar > div:last-child > b {
+.v6-topbar > div:last-child > b,
+.v2-board-title h1,
+.v2-building-detail h1,
+.v2-location-intel h2,
+.v2-shelter-scene header strong {
   font-family: var(--font-game-display);
-  font-weight: 400;
-  letter-spacing: 0.025em;
+  font-weight: 500;
+  letter-spacing: 0.02em;
   text-wrap: balance;
 }
 
@@ -93,11 +52,23 @@ h3,
 .v1-resource-strip b,
 .v1n-resource-strip b,
 .v1n-dice__faces b,
-.v1n-dice__total strong {
+.v1n-dice__total strong,
+.v2-top-status__day strong,
+.v2-resource-drawer__sheet b,
+.v2-building-upgrade dd {
   font-family: var(--font-game-data);
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  font-weight: 650;
+  letter-spacing: 0.015em;
+}
+
+.v1r-head h1,
+.v1r-log header > span,
+.v1r-journal-title,
+.v2-pinned-note,
+.v2-journal-sheet h1,
+.v2-journal-sheet h2 {
+  font-family: var(--font-notebook-body);
 }
 
 .v1-today-summary header button {
@@ -107,15 +78,10 @@ h3,
 .v1-bottom-nav button {
   font-size: 0.875rem;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.035em;
 }
 
 @media (max-width: 390px) {
-  .v1-today-summary header button {
-    font-size: 0.8rem;
-  }
-
-  .v1-bottom-nav button {
-    font-size: 0.84rem;
-  }
+  .v1-today-summary header button { font-size: 0.8rem; }
+  .v1-bottom-nav button { font-size: 0.82rem; }
 }

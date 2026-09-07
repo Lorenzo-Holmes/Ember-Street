@@ -5,6 +5,7 @@ import { CAMPAIGN_FIXED_EVENTS, isLocationUnlocked } from '../../game/v060/campa
 import { energyLabel, trustLabel } from '../../game/v060/trust';
 import { dawnBriefEntries } from '../../game/v060/morningBrief';
 import { characterVisual, locationVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
+import { BookShell } from '../v2/UiV2';
 import { resourceListLabel } from './labels';
 import './survivors-records.css';
 
@@ -58,7 +59,7 @@ export default function RecordsV1({ state, onLogOpened }: RecordsV1Props) {
   const seenCharacterStories = useMemo(() => CAMPAIGN_FIXED_EVENTS.filter((event) => event.kind === 'character' && event.survivorId && state.storyFlags.includes(`fixed_event_seen:${event.id}`)), [state.storyFlags]);
 
   return (
-    <main className="v1r-page notebook-page notebook-page--records">
+    <BookShell className="v1r-page notebook-page notebook-page--records" label="避难所日志">
       <header className="v1r-head"><span>写在纸上的</span><h1>不能忘的事</h1></header>
       <nav className="v1r-tabs" aria-label="记录分类">
         {([['log','这几天'],['places','走过的路'],['profiles','还在的人'],['memorial','没回来的人']] as const).map(([id,label]) => <button className={tab===id?'active':''} key={id} onClick={()=>setTab(id)}>{label}</button>)}
@@ -84,6 +85,6 @@ export default function RecordsV1({ state, onLogOpened }: RecordsV1Props) {
       {tab === 'profiles' && <section className="v1r-profiles"><header><span>还在这里的人</span><small>伤势和脾气都不能记错</small></header>{profiles.map((survivor)=>{const art=characterVisual(survivor.id);const stories=seenCharacterStories.filter((event)=>event.survivorId===survivor.id);return <article key={survivor.id}><div className="v1r-profile-head"><MiniArt asset={art} label={survivor.name}/><div><h2>{survivor.name}</h2><span>{survivor.trait ?? survivor.perk}</span><small>{profileNote(survivor.condition, survivor.energy, survivor.trust)}</small></div></div>{stories.length ? <div className="v1r-profile-stories">{stories.map((story)=><section key={story.id}><strong>{story.title}</strong><p>{story.body}</p></section>)}</div> : <p className="v1r-empty">关于这个人，眼下只知道这些。</p>}</article>})}</section>}
 
       {tab === 'memorial' && <section className="v1r-memorial"><header><span>没回来的人</span><small>纸上留下了 {state.memorials.length} 个名字</small></header>{state.memorials.length ? state.memorials.map((entry)=><article key={`${entry.survivorId}-${entry.day}`}><h2>{entry.name}</h2><span>第 {entry.day} 天。{entry.cause}</span><p>{entry.epitaph}</p></article>) : <p className="v1r-empty">这一页还是空的。别急着在上面写名字。</p>}<div className="v1r-civilian-note"><strong>街里少掉的人</strong><p>有些人没留下姓名。谁离开了，谁没能熬过夜，只能记在前面的日子里。</p><small>走了 {state.campaignStats.civilianDepartures} 人 · 死了 {state.campaignStats.deaths} 人</small></div></section>}
-    </main>
+    </BookShell>
   );
 }

@@ -235,9 +235,8 @@ test('old DAY12 save stays DAY12 with no onboarding, and shelter Lv1 uses the lo
   await drainNotices(page);
   const snapshot = await save(page);
   expect(snapshot.tutorial).toBeUndefined();
-  await expect(page.locator('.v1-home-hero__art')).toHaveCSS('background-image', /buildings-b.webp/);
-  await expect(page.locator('.v1-home-hero__art')).toHaveCSS('background-position', '100% 100%');
-  await page.locator('[data-tutorial-nav="buildings"]').click();
+  await expect(page.locator('.v2-shelter-scene__art')).toHaveCSS('background-image', /buildings-b.webp/);
+  await expect(page.locator('.v2-shelter-scene__art')).toHaveCSS('background-position', '100% 100%');
   const shelter = page.locator('.v1-building').filter({ has: page.getByText('宿营屋', { exact: true }) });
   await shelter.locator('.v1-building__summary').click();
   await expect(shelter.locator('.v1-building__art')).toHaveCSS('background-image', /buildings-b.webp/);

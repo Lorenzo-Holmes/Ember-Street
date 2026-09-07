@@ -8,6 +8,7 @@ import './typography.css';
 import './dusk-notebook.css';
 import './notebook-theme.css';
 import './ui/v1/social-notebook.css';
+import './ui/v2/uiux-v2.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

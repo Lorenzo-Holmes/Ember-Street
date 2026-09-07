@@ -11,12 +11,14 @@ function stateWithStock(materials: number, parts: number): GameState {
   return { ...state, inventory: { ...state.inventory, materials, parts } };
 }
 
-function ledger(state: GameState): string {
-  return renderToStaticMarkup(createElement(BuildingsV1, { state, onCommit: () => {} }));
-}
-
-function buildingEntry(markup: string, id: BuildingId): string {
-  return markup.match(/<article\b[\s\S]*?<\/article>/g)?.find((entry) => entry.includes(`id="building-cost-${id}"`)) ?? '';
+function ledger(state: GameState, selectedBuilding: BuildingId = 'searchStation'): string {
+  return renderToStaticMarkup(createElement(BuildingsV1, {
+    state,
+    onCommit: () => {},
+    selectedBuilding,
+    onSelectBuilding: () => {},
+    onOpenSurvivors: () => {},
+  }));
 }
 
 describe('building repair costs', () => {
@@ -59,46 +61,42 @@ describe('building repair costs', () => {
 });
 
 describe('building repair ledger', () => {
-  it('keeps both cost lines in every summary and out of the expanded action', () => {
+  it('keeps exact selected-building requirements readable in the V2 detail', () => {
     const state = stateWithStock(1, 0);
     const markup = ledger(state);
-    for (const id of Object.keys(V060_BUILDINGS) as BuildingId[]) {
-      const entry = buildingEntry(markup, id);
-      const next = V060_BUILDINGS[id].levels[state.buildings[id]];
-      const summary = entry.match(/<button\b[\s\S]*?<\/button>/)?.[0] ?? '';
-      expect(summary).toContain(`需用：材料 ${next.materials} · 零件 ${next.parts}`);
-      expect(summary).toContain(canUpgradeBuilding(state, id).reason);
-      expect(entry.match(/需用：/g)).toHaveLength(1);
-      expect(entry.match(/尚缺：/g)).toHaveLength(1);
-    }
-    const open = buildingEntry(markup, 'searchStation');
-    expect(open).toContain('aria-expanded="true"');
-    expect(open).toMatch(/class="v1-primary-action"[^>]*disabled=""[^>]*>接着修<\/button>/);
-    expect(open).toContain('aria-describedby="building-cost-searchStation"');
-    expect(buildingEntry(markup, 'workshop')).toContain('aria-expanded="false"');
-    expect(markup).not.toMatch(/还缺：|材料不够|零件不够|要用：/);
+    expect(markup).toContain('路线屋');
+    expect(markup).toMatch(/<dt>材料<\/dt><dd>1 \/ 7<\/dd>/);
+    expect(markup).toMatch(/<dt>零件<\/dt><dd>0 \/ 3<\/dd>/);
+    expect(markup).toMatch(/class="v2-primary-action"[^>]*disabled=""[^>]*>尚缺：材料 6 · 零件 3<\/button>/);
   });
 
   it('shows ready stock without inventing a zero or negative shortage', () => {
-    const entry = buildingEntry(ledger(stateWithStock(20, 10)), 'searchStation');
-    expect(entry).toContain('用料已齐');
-    expect(entry).not.toContain('尚缺：');
-    expect(entry).not.toContain('disabled=""');
+    const markup = ledger(stateWithStock(20, 10));
+    expect(markup).toMatch(/<dt>材料<\/dt><dd>20 \/ 7<\/dd>/);
+    expect(markup).toMatch(/<dt>零件<\/dt><dd>10 \/ 3<\/dd>/);
+    expect(markup).not.toContain('尚缺：');
+    expect(markup).toMatch(/class="v2-primary-action"[^>]*>继续修整<\/button>/);
   });
 
   it('keeps dispatched repairs disabled even when the stock is ready', () => {
     const state = stateWithStock(20, 10);
     state.dayState.assignmentsLocked = true;
-    const entry = buildingEntry(ledger(state), 'searchStation');
-    expect(entry).toContain('用料已齐');
-    expect(entry).toMatch(/class="v1-primary-action"[^>]*disabled=""[^>]*>人已经派出去了<\/button>/);
+    const markup = ledger(state);
+    expect(markup).toMatch(/class="v2-primary-action"[^>]*disabled=""[^>]*>今天的人已经派出去了<\/button>/);
   });
 
   it('does not show costs or an upgrade action for fully repaired buildings', () => {
     const state = stateWithStock(1, 0);
     for (const id of Object.keys(V060_BUILDINGS) as BuildingId[]) state.buildings[id] = 3;
     const markup = ledger(state);
-    expect(markup.match(/这处已经修稳/g)).toHaveLength(6);
-    expect(markup).not.toMatch(/需用：|尚缺：|v1-primary-action/);
+    expect(markup.match(/Lv\.3 · 修稳/g)).toHaveLength(6);
+    expect(markup).toContain('这里已经修稳，不需要继续投入材料。');
+    expect(markup).not.toMatch(/尚缺：|class="v2-primary-action"/);
+  });
+
+  it('renders the same controlled selection in the scene hotspot and building navigation', () => {
+    const markup = ledger(stateWithStock(20, 10), 'workshop');
+    expect(markup).toContain('修车铺 <small>Lv.0</small>');
+    expect(markup.match(/aria-pressed="true"/g)).toHaveLength(2);
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { GameState } from '../../game/types';
 import type { NightVisualKey } from '../../game/v060/nightEvents';
 import { canTrustReroll, OUTCOME_LABEL, rerollLowestDie, rollPendingCheck } from '../../game/dice';
@@ -7,6 +7,7 @@ import { nightChoicePreview } from '../../game/v060/decisionReadability';
 import { defenseNumber } from '../../game/v060/defenseFeedback';
 import { acceptNightCheckResult, canAffordNightChoice, chooseNightOption, currentNightEvent, scheduleNight } from '../../game/v060/nightScheduler';
 import { nightVisual, nightVisualLabel, visualAssetSource, visualAssetStyle, type VisualAsset } from '../visualAssets';
+import { StoryShell } from '../v2/UiV2';
 import './explore-night.css';
 import './night-visuals.css';
 
@@ -50,7 +51,7 @@ function DiceDecision({ state, onCommit }: NightEventV1Props) {
   const odds = check.mode === 'advantage' ? '这次更有把握' : check.mode === 'disadvantage' ? '这次很难办' : '只能试一次';
   const diceNote = check.mode === 'advantage' ? '掷三枚，留下最高两枚' : check.mode === 'disadvantage' ? '掷三枚，留下最低两枚' : '掷两枚';
   return (
-      <main className="v1n-page notebook-page notebook-page--night">
+      <StoryShell className="v1n-page notebook-page notebook-page--night" label="夜间判定">
       <NightHeader day={state.day} title="办法已经选了" detail="接下来只能看结果"/>
       <section className="v1n-dice">
         <span>{check.label}</span>
@@ -62,22 +63,36 @@ function DiceDecision({ state, onCommit }: NightEventV1Props) {
           <button className="v1n-primary" onClick={() => onCommit(acceptNightCheckResult(state))}>把结果记下</button>
         </>}
       </section>
-    </main>
+    </StoryShell>
   );
 }
 
 export default function NightEventV1({ state, onCommit }: NightEventV1Props) {
+  const choiceLock = useRef(false);
+  const [pendingChoice, setPendingChoice] = useState<string | null>(null);
+
+  useEffect(() => {
+    choiceLock.current = false;
+    setPendingChoice(null);
+  }, [state.nightState.eventIndex, state.nightState.scheduledEventIds]);
+
   if (state.pendingCheck) return <DiceDecision state={state} onCommit={onCommit}/>;
 
   if (!state.nightState.scheduledEventIds.length && state.phase === 'night') {
-    return <main className="v1n-page notebook-page notebook-page--night"><NightHeader day={state.day} title="最后一扇门已经上闩"/><section className="v1n-opening"><span>天黑前</span><h1>最后一扇门已经关好。</h1><p>谁守街口、谁留在诊疗室、饭和电还剩多少，现在都不能再改。</p><button className="v1n-primary" onClick={() => onCommit(scheduleNight(state))}>关掉外面的灯</button></section></main>;
+    return <StoryShell className="v1n-page notebook-page notebook-page--night" label="夜间开始"><NightHeader day={state.day} title="最后一扇门已经上闩"/><section className="v1n-opening"><span>天黑前</span><h1>最后一扇门已经关好。</h1><p>谁守街口、谁留在诊疗室、饭和电还剩多少，现在都不能再改。</p><button className="v1n-primary" onClick={() => onCommit(scheduleNight(state))}>关掉外面的灯</button></section></StoryShell>;
   }
 
   const event = currentNightEvent(state);
-  if (!event) return <main className="v1n-page notebook-page notebook-page--night"><NightHeader day={state.day}/><section className="v1n-opening"><h1>今晚暂时没有新的声音。</h1></section></main>;
+  if (!event) return <StoryShell className="v1n-page notebook-page notebook-page--night" label="夜间"><NightHeader day={state.day}/><section className="v1n-opening"><h1>今晚暂时没有新的声音。</h1></section></StoryShell>;
   const art = nightVisual(event.visualKey);
+  const choose = (choiceId: string) => {
+    if (choiceLock.current) return;
+    choiceLock.current = true;
+    setPendingChoice(choiceId);
+    onCommit(chooseNightOption(state, choiceId));
+  };
   return (
-    <main className="v1n-page notebook-page notebook-page--night">
+    <StoryShell className="v1n-page notebook-page notebook-page--night" label="夜间事件">
       <NightHeader day={state.day} title={state.nightState.hordeActive ? '尸潮正在靠近' : '余烬长街 · 入夜'} detail={nightProgressLabel(state.nightState.eventIndex, state.nightState.eventTotal, state.nightState.hordeActive)}/>
       <section className="v1n-resource-strip"><span>口粮 <b>{state.inventory.ration}</b></span><span>电力 <b>{state.inventory.power}</b></span><span>防线 <b>{defenseNumber(state.defense)}</b></span><span>希望 <b>{state.hope}</b></span></section>
       <NightArt asset={art} visualKey={event.visualKey} label={`${event.title} · ${nightVisualLabel(event.visualKey)}`}/>
@@ -90,9 +105,9 @@ export default function NightEventV1({ state, onCommit }: NightEventV1Props) {
           const costNote = [cost || (!choice.check ? '不用再拿东西' : ''), !affordable ? '手里不够' : ''].filter(Boolean).join(' · ');
           const costParts = new Set(costNote.split(' · '));
           const tags = preview.tags.filter((tag) => !costParts.has(tag));
-          return <button key={choice.id} disabled={!affordable} onClick={() => onCommit(chooseNightOption(state, choice.id))}><strong>{choice.label}</strong><span>{choice.detail}</span><div>{tags.map((tag) => <em key={tag}>{tag}</em>)}</div>{costNote ? <i>{costNote}</i> : null}</button>;
+          return <button key={choice.id} className={pendingChoice === choice.id ? 'is-committing' : ''} disabled={!affordable || pendingChoice !== null} onClick={() => choose(choice.id)}><strong>{choice.label}</strong><span>{choice.detail}</span><div>{tags.map((tag) => <em key={tag}>{tag}</em>)}</div>{costNote ? <i>{costNote}</i> : null}</button>;
         })}
       </div>
-    </main>
+    </StoryShell>
   );
 }

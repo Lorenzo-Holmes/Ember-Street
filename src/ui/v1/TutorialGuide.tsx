@@ -3,7 +3,7 @@ import type { BuildingId, GameState, TutorialHint } from '../../game/types';
 import { canUpgradeBuilding } from '../../game/v060/buildings';
 import {
   acknowledgeTutorialPage, dismissTutorialNotice, hasTutorialRoute, skipTutorial,
-  TUTORIAL_STAGES, tutorialIsActive,
+  tutorialIsActive,
 } from '../../game/v060/tutorial';
 import type { V1NavTarget } from './V1BottomNav';
 import './tutorial.css';
@@ -165,7 +165,7 @@ export default function TutorialGuide({ state, onCommit, onNavigate }: Props) {
     if (freeNotice || hint) return onCommit(dismissTutorialNotice(state, hint));
     if (context !== 'interrupt' && (step === 'INTRO' || step === 'RESOURCE_OVERVIEW')) {
       onCommit(acknowledgeTutorialPage(state));
-      onNavigate(step === 'RESOURCE_OVERVIEW' ? 'survivors' : 'home');
+      onNavigate(step === 'RESOURCE_OVERVIEW' ? 'survivors' : 'buildings');
       window.scrollTo(0, 0);
       return;
     }
@@ -180,7 +180,7 @@ export default function TutorialGuide({ state, onCommit, onNavigate }: Props) {
   };
 
   return <aside ref={note} className="v1-tutorial-note" aria-label={active ? '新手引导' : '长街便签'} data-stage={step}>
-    <div className="v1-tutorial-note__copy" aria-live="polite"><span>{active ? `开局便签 · ${Math.min(7, TUTORIAL_STAGES.indexOf(step!) + 1)}/7` : '长街便签'}</span><h2>{title}</h2><p>{body}</p></div>
+    <div className="v1-tutorial-note__copy" aria-live="polite"><span>{active ? '开局便签' : '长街便签'}</span><h2>{title}</h2><p>{body}</p></div>
     <div className="v1-tutorial-note__actions"><button onClick={follow}>{action}</button>{active && <button className="v1-tutorial-skip" onClick={() => onCommit(skipTutorial(state))}>跳过引导</button>}</div>
   </aside>;
 }

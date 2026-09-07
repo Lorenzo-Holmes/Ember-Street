@@ -120,8 +120,8 @@ for (const [width, height] of [[320, 568], [360, 800], [390, 844], [430, 932]] a
     expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth + 1);
     expect(geometry.artLeft).toBeGreaterThanOrEqual(0);
     expect(geometry.artRight).toBeLessThanOrEqual(geometry.viewportWidth);
-    expect(geometry.artRatio).toBeGreaterThan(1.32);
-    expect(geometry.artRatio).toBeLessThan(1.35);
+    expect(geometry.artRatio).toBeGreaterThan(1.55);
+    expect(geometry.artRatio).toBeLessThan(1.65);
     expect(geometry.buttonHeights.every((value) => value >= 48)).toBe(true);
     await page.locator('.v1n-choices button').last().scrollIntoViewIfNeeded();
     await expect(page.locator('.v1n-choices button').last()).toBeVisible();

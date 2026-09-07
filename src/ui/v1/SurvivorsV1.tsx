@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { DayAssignment, GameState, Survivor, SurvivorCondition } from '../../game/types';
 import { assignDayJob, canTakeDayAssignment, expeditionRouteFor } from '../../game/v060/dayManagement';
 import { locationForId } from '../../game/v060/expedition';
+import { CAMPAIGN_FIXED_EVENTS } from '../../game/v060/campaignEvents';
 import { energyLabel } from '../../game/v060/trust';
 import { characterVisual, visualAssetStyle } from '../visualAssets';
 import './survivors-records.css';
@@ -64,11 +65,21 @@ function assignmentNote(state: GameState, survivorId: string): string {
 
 function SurvivorDetail({ state, survivor, onCommit, onClose, onChooseRoute }: { state: GameState; survivor: Survivor; onCommit: (next: GameState) => void; onClose: () => void; onChooseRoute?: (survivorId: string) => void }) {
   const current = state.dayAssignments[survivor.id];
+  const stories = CAMPAIGN_FIXED_EVENTS.filter((event) => event.kind === 'character'
+    && event.survivorId === survivor.id
+    && state.storyFlags.includes(`fixed_event_seen:${event.id}`));
   return (
     <main className="v1s-page notebook-page notebook-page--survivors notebook-page--survivor-detail">
       <header className="v1s-head"><button onClick={onClose}>← 幸存者</button><span>今天去哪里</span></header>
       <section className="v1s-detail-hero"><Portrait survivor={survivor}/><div><span>{CONDITION[survivor.condition ?? 'healthy']}</span><h1>{survivor.name}</h1><p>{survivor.trait ?? survivor.perk}</p></div></section>
-        <section className="v1s-detail-stats"><div><span>身体</span><strong>{CONDITION[survivor.condition ?? 'healthy']}</strong></div><div><span>力气</span><strong>{energyLabel(survivor.energy)}</strong></div><div><span>今天</span><strong>{current ? JOBS.find((job) => job.id === current)?.label : '未安排'}</strong></div></section>
+      <section className="v2-survivor-section v2-survivor-section--status" aria-label="当前状态">
+        <header><span>当前状态</span><small>今天能不能出门，看这里</small></header>
+        <div className="v1s-detail-stats"><div><span>身体</span><strong>{CONDITION[survivor.condition ?? 'healthy']}</strong></div><div><span>力气</span><strong>{energyLabel(survivor.energy)}</strong></div><div><span>今天</span><strong>{current ? JOBS.find((job) => job.id === current)?.label : '未安排'}</strong></div></div>
+      </section>
+      <section className="v2-survivor-section v2-survivor-section--story" aria-label="背景故事">
+        <header><span>背景故事</span><small>只记录已经发生或已经知道的事</small></header>
+        {stories.length ? stories.map((story) => <article key={story.id}><strong>{story.title}</strong><p>{story.body}</p></article>) : <p>关于这个人，眼下只知道档案上的这些。</p>}
+      </section>
       <section className="v1s-jobs"><span>今天让{survivor.name}去哪儿？</span>{JOBS.map((job) => {
         const check = canTakeDayAssignment(state, survivor.id, job.id);
         const active = current === job.id;
@@ -86,6 +97,7 @@ function SurvivorDetail({ state, survivor, onCommit, onClose, onChooseRoute }: {
 
 export default function SurvivorsV1({ state, onCommit, onDone, onChooseRoute, doneDisabled, doneHint }: SurvivorsV1Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'idle' | 'work' | 'outside' | 'alert'>('all');
   const selected = state.survivors.find((survivor) => survivor.id === selectedId);
   if (selected) return <SurvivorDetail state={state} survivor={selected} onCommit={onCommit} onClose={() => setSelectedId(null)} onChooseRoute={onChooseRoute}/>;
 
@@ -93,14 +105,25 @@ export default function SurvivorsV1({ state, onCommit, onDone, onChooseRoute, do
   const injured = living.filter((survivor) => ['minor', 'serious', 'critical'].includes(survivor.condition ?? '')).length;
   const fatigued = living.filter((survivor) => survivor.condition === 'fatigued' || survivor.energy < 35).length;
   const activeResidents = state.communityState?.activeResidents ?? state.civilianResidents;
+  const visible = state.survivors.filter((survivor) => {
+    if (filter === 'all') return true;
+    const assignment = state.dayAssignments[survivor.id];
+    if (filter === 'idle') return !assignment && !['dead', 'missing', 'critical'].includes(survivor.condition ?? '');
+    if (filter === 'work') return Boolean(assignment && assignment !== 'expedition');
+    if (filter === 'outside') return assignment === 'expedition' || survivor.condition === 'missing';
+    return survivor.condition !== 'healthy' || survivor.energy < 35;
+  });
 
   return (
     <main className="v1s-page notebook-page notebook-page--survivors">
       <header className="v1s-head v1s-head--top"><span>今天的人手</span><h1>谁还能出门</h1></header>
       <section className="v1s-summary"><div><span>能点名的人</span><strong>{living.length}</strong><small>{injured} 人伤口未稳 · {fatigued} 人已经很累</small></div><div><span>街里其他人</span><strong>{state.civilianResidents}</strong><small>{activeResidents} 人今天还能搭手</small></div></section>
       <p className="v1s-resident-note">能出门的、必须留下的，先在这里写清。其余人照旧去取水、搬东西、守街口。</p>
+      <nav className="v2-survivor-filters" aria-label="幸存者筛选">
+        {([['all','全部'],['idle','待命'],['work','工作'],['outside','外出'],['alert','异常']] as const).map(([id, label]) => <button key={id} className={filter === id ? 'is-selected' : ''} onClick={() => setFilter(id)}>{label}</button>)}
+      </nav>
       <section className="v1s-list">
-        {state.survivors.map((survivor) => {
+        {visible.map((survivor) => {
           const unavailable = survivor.condition === 'dead' || survivor.condition === 'missing';
           const condition = survivor.condition ?? 'healthy';
           return <article className={unavailable ? 'muted' : ''} key={survivor.id}><Portrait survivor={survivor}/><div className="v1s-card-copy"><span>{survivor.trait ?? survivor.perk}</span><h2>{survivor.name}</h2><p>{CONDITION_NOTE[condition]}。{strengthNote(survivor.energy)}。</p><small>{unavailable ? CONDITION_NOTE[condition] : assignmentNote(state, survivor.id)}</small></div><button data-tutorial-person={survivor.id} data-assigned={Boolean(state.dayAssignments[survivor.id])} disabled={unavailable} onClick={() => setSelectedId(survivor.id)}>{unavailable ? '不在这里' : '翻开 ›'}</button></article>;

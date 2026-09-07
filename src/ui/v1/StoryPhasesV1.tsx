@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import type { EndingId, GameState } from '../../game/types';
 import { advanceCampaignDay, finalizeDay } from '../../game/v060/campaign';
 import type { CampaignFixedEvent } from '../../game/v060/campaignEvents';
@@ -111,8 +112,18 @@ export function NightSummaryV1({ state, onCommit }: CommitProps) {
 
 export function DawnV1({ state, onCommit }: CommitProps) {
   const brief = dawnBriefEntries(state);
+  const todayJournal = (state.journal ?? []).filter((entry) => entry.day === state.day).slice(-8);
+  const [revealAll, setRevealAll] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
+  const advanceLock = useRef(false);
+  const advance = () => {
+    if (advanceLock.current) return;
+    advanceLock.current = true;
+    setAdvancing(true);
+    onCommit(advanceCampaignDay(state));
+  };
   return (
-    <main className="v1-mobile-page v1-story-page notebook-page notebook-page--dawn-v1">
+    <main className={`v1-mobile-page v1-story-page notebook-page notebook-page--dawn-v1 ${revealAll ? 'is-revealed' : ''}`}>
       <header className="v1-page-title"><span>第 {state.day} 天 · 清晨</span><h1>{state.day === 29 ? '最后一夜过去了。' : '天亮了。'}</h1><p>{state.nightState.hordeActive ? '街道重新有了颜色，昨夜留下的损失也都看清了。' : '先数人，再看门墙和仓房。今天仍然有事要做。'}</p></header>
       <section className="v1-phase-tally" aria-label="昨夜清点">
         <p><span>没能活下来</span><b>{state.campaignStats.deaths}</b></p>
@@ -121,8 +132,17 @@ export function DawnV1({ state, onCommit }: CommitProps) {
         <p><span>街里还在</span><b>{population(state)}</b></p>
       </section>
       <DefensePanel state={state} context="dawn"/>
-      <section className="v1-phase-checklist"><header><span>昨夜留下的</span><h2>天亮以后才看清</h2></header>{brief.length ? <ul>{brief.map((entry, index) => <li key={`${entry}-${index}`}>{entry}</li>)}</ul> : <p>没有新的名字，也没有新的空床。</p>}</section>
-      <button className="v1-primary-action v1-phase-primary" onClick={() => onCommit(advanceCampaignDay(state))}>{state.day === 29 ? '翻到最后一页' : `翻到第 ${state.day + 1} 天`}</button>
+      {todayJournal.length ? <section className="v2-dawn-journal" aria-label="今日记录">
+        <header><span>这一页真正留下的</span><h2>今天做过的事</h2></header>
+        {todayJournal.map((entry, index) => <article className="v2-dawn-reveal" style={{ animationDelay: `${index * 110}ms` }} key={entry.id}>
+          <small>{entry.kind === 'night' ? '夜里' : entry.kind === 'expedition' ? '街外' : '白天'}</small>
+          <strong>{entry.title}</strong>
+          <p>{entry.body}</p>
+        </article>)}
+      </section> : null}
+      <section className="v1-phase-checklist"><header><span>昨夜留下的</span><h2>天亮以后才看清</h2></header>{brief.length ? <ul>{brief.map((entry, index) => <li className="v2-dawn-reveal" style={{ animationDelay: `${(todayJournal.length + index) * 110}ms` }} key={`${entry}-${index}`}>{entry}</li>)}</ul> : <p className="v2-dawn-reveal">没有新的名字，也没有新的空床。</p>}</section>
+      {!revealAll && todayJournal.length + brief.length > 2 ? <button className="v2-dawn-skip" onClick={() => setRevealAll(true)}>直接看完这一页</button> : null}
+      <button className="v1-primary-action v1-phase-primary" disabled={advancing} onClick={advance}>{advancing ? '正在翻页…' : state.day === 29 ? '翻到最后一页' : `翻到第 ${state.day + 1} 天`}</button>
     </main>
   );
 }

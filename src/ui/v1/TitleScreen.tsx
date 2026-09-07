@@ -4,6 +4,7 @@ import { unlockGameAudio } from '../../audio/audioRuntime';
 import { GAME_SAVE_EVENT, inspectGameSave } from '../../game/storage';
 import { continueSavedSession, savedDayLabel, startNewSession } from '../../game/sessionEntry';
 import type { GameState } from '../../game/types';
+import { buildingVisual, visualAssetStyle } from '../visualAssets';
 import './title-screen.css';
 
 export function NotebookDialog({ title, children, onClose }: {
@@ -90,6 +91,8 @@ export default function TitleScreen({ onEnter, initialPanel = 'main' }: {
   const closePanel = () => { setPanel('main'); setError(''); };
 
   return <main className="v1-title-screen" aria-label="游戏开始界面">
+    <div className="v1-title-scene" style={visualAssetStyle(buildingVisual('shelter', 1))} aria-hidden="true"/>
+    <span className="v1-title-version">v0.6.2 · UIUX V2</span>
     <div className="v1-title-book">
       <header className="v1-title-heading">
         <span className="v1-title-kicker">长街生存手记</span>
