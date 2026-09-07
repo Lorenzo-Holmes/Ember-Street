@@ -151,7 +151,7 @@ def main() -> int:
         'sfx_door_knock': 3.5, 'sfx_medical_care': 3.1, 'sfx_injured_return': 4.2,
         'sfx_conflict_murmur': 3.8, 'sfx_distant_threat': 4.5, 'sfx_horde_impact': 4.6,
         'sfx_empty_space': 3.8, 'sfx_storage_rustle': 3.2, 'sfx_quiet_room': 4.0,
-        'sfx_package_drop': 4.0, 'sfx_departure_steps': 4.8, 'sfx_power_failure': 4.2,
+        'sfx_package_drop': 4.0, 'sfx_departure_steps': 4.8,
         'sfx_radio_static': 3.7,
         'sfx_radio_burst': 3.8, 'sfx_structure_creak': 4.2, 'sfx_fire_hiss': 4.0,
         'sfx_dogs': 4.6, 'sfx_alarm': 3.9, 'sfx_dusk_lock': 2.4,
@@ -165,7 +165,7 @@ def main() -> int:
             write_wav(wav_path, make(name, duration))
             subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-y', '-i', str(wav_path),
                             '-ac', '1', '-ar', str(RATE), '-b:a', '48k', '-map_metadata', '-1', str(mp3_path)], check=True)
-    print(f'Generated {len(specs)} deterministic SFX in {OUT}')
+    print(f'Generated {len(specs)} deterministic SFX in {OUT} (reviewed sfx_power_failure.mp3 is preserved)')
     return 0
 
 

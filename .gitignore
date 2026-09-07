@@ -11,6 +11,7 @@ coverage
 # Local QA, generated releases and downloaded validation tools
 /.playwright-cli/
 /output/
+/music/
 /test-results/
 /playwright-report/
 /playwright-production-report/

@@ -97,7 +97,7 @@ Night content also owns `audioKey: NightAudioKey`. The 51 static definitions and
 
 The audio runtime is deliberately outside `GameState`. Preferences live under `ember-street-audio-v1`; event de-duplication uses `sessionStorage` only so React remounts, menu navigation and same-tab refresh do not replay the same knock or crisis cue. No save migration or RNG draw is added. Audio unlock happens only after an explicit start/continue gesture. `visibilitychange` pauses ambience in the background, SFX temporarily ducks the ambience bus, and failed `HTMLAudioElement.play()` or missing MP3 files are swallowed as presentation failures rather than gameplay failures.
 
-All runtime audio is local under `public/assets/audio/`. `scripts/audit-audio-assets.mjs` resolves every registry path, verifies MP3 signatures and enforces a 3.2 MiB aggregate budget. The current deterministic project-generated payload is about 1.01 MiB. The mini-tool build explicitly permits MP3 but still forbids network-loaded audio.
+All runtime audio is local under `public/assets/audio/`. `scripts/audit-audio-assets.mjs` resolves every registry path, verifies MP3 signatures and enforces a 3.2 MiB aggregate budget. The five release BGM files are derived from the reviewed local 妙响 masters under ignored `music/`, imported with `scripts/import-reviewed-music.py`; `电流断续时` also supplies the dedicated power-failure excerpt. The remaining short event/UI cues are deterministic sample-free project SFX. The mini-tool build explicitly permits MP3 but still forbids network-loaded audio.
 
 ## Endings
 

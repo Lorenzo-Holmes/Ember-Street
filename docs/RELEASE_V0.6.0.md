@@ -51,7 +51,7 @@ Six facilities support Lv0–3: search station, workshop, clinic, watch post, sh
 - Dusk locking, dice and journal confirmation have restrained UI feedback.
 - Audio unlocks only after an explicit start/continue gesture, pauses when the page is hidden, ducks ambience during SFX and fails silently when playback is unavailable.
 - Sound preferences are stored separately as `ember-street-audio-v1`; no v3 save migration is required.
-- Current release audio is fully local, deterministic and sample-free, with 26 MP3 files totaling about 1.01 MiB. `npm run audit:audio` is a release gate.
+- The five ambience tracks are trimmed/compressed derivatives of the locally reviewed 妙响 masters (`避难所白昼`, `星子悄悄隐去`, `潮声步步近`, `破街区的长循环调`, `余悸里微光`); `电流断续时` supplies the dedicated power-failure excerpt. The remaining twenty short event/UI cues are deterministic sample-free project SFX. The 26-file runtime payload is about 2.70 MiB and `npm run audit:audio` is a release gate.
 
 ## Save integrity
 

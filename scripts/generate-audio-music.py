@@ -120,6 +120,15 @@ def write_wav(path: Path, samples: list[int]) -> None:
 
 
 def main() -> int:
+    existing = [OUT / name for name in (
+        'bgm_day_shelter.mp3', 'bgm_night_ambient.mp3', 'bgm_horde_pressure.mp3',
+        'bgm_expedition_pressure.mp3', 'bgm_dawn_release.mp3',
+    )]
+    if any(path.exists() for path in existing):
+        raise SystemExit(
+            'Runtime music already exists. This fallback generator refuses to overwrite reviewed masters; '
+            'delete the runtime BGM files explicitly before regenerating fallback ambience.'
+        )
     ffmpeg = shutil.which("ffmpeg")
     if not ffmpeg:
         raise SystemExit("ffmpeg is required to encode MP3 ambience")

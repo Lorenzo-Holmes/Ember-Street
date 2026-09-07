@@ -13,23 +13,23 @@
 - 玩家第一次点击“开始游戏 / 继续游戏”后才解锁音频，避免浏览器自动播放限制。
 - `sessionStorage` 记录同一事件实例是否已响过，避免 React 重渲染、菜单往返或同标签刷新后连续重复敲门。
 - 菜单与封面均增加声音设置：总开关、背景氛围、事件音效、低/中/高三档音量。偏好保存在 `ember-street-audio-v1`，不进入 `ember-street-save-v3`。
-- 26 个本地 MP3 总计 **1.01 MiB**。21 个短音效和 5 个当前发布氛围均由仓库内确定性、无采样生成器生成，可离线复现。
-- 用户在聊天中提供的妙响候选曲用于确认“白天 / 普通夜 / 尸潮 / 天亮 / 探索 / 电力危机”的音乐方向；由于聊天上传二进制不会直接挂载到本机 DevSpace，当前 Git 发布包没有冒充嵌入这些母带。五个 BGM 文件保持稳定文件名，后续将审核通过的本地母带放入相同路径即可无代码替换。
+- 26 个本地 MP3 中，5 个阶段 BGM 和 `sfx_power_failure.mp3` 已由本地 `music/` 中六首审核妙响母带导入；其余 20 个短事件/UI 音效由仓库内确定性、无采样生成器生成。
+- 原始六首母带约 **34.5 MiB**，保留在 Git 忽略的 `music/`；`scripts/import-reviewed-music.py` 按已确认时长匹配母带，裁切、响度统一并压缩到稳定运行时文件名，避免中文文件名在不同终端编码下造成导入失败。
 
 ### 自动验证结果
 
 | 检查 | 结果 |
 | --- | --- |
 | `npm run typecheck` | 通过 |
-| `npm run audit:audio` | 26/26 注册 MP3 存在且有有效 MP3 头；总载荷 1.01 MiB，低于 3.2 MiB 音频预算 |
+| `npm run audit:audio` | 26/26 注册 MP3 存在且有有效 MP3 头；审核母带导入后总载荷约 2.70 MiB，仍低于 3.2 MiB 音频预算 |
 | `npm test` | 45 个文件、333 项通过；6 个报告生成用例按设计跳过 |
 | `WRITE_PLAYTEST_AUDIT=1 npm test`（Windows 使用 `set`） | **51 个文件、339/339 全部通过**，含 30 天策略、压力曲线、600+ 局重复评估、DAY29 矩阵与夜间视觉审计 |
 | `npm run test:ui-smoke` | **46/46** 通过；新增 3 项音频专项浏览器验证 |
-| `npm run build` + `npm run audit:xhs` | 通过；普通 Web 构建音频载荷约 1033.6 KiB |
+| `npm run build` + `npm run audit:xhs` | 通过；正式母带版普通 Web 构建音频载荷约 2767.3 KiB |
 | `npm run build:minitool` | 通过；MP3 被复制到独立小工具目录 |
-| `audit:minitool` | 47 个文件、60 个本地资源引用、0 base64；解包约 **3.70 MiB** |
-| `package:minitool` | 通过；ZIP **3,273,851 bytes（约 3.12 MiB）**，远低于 10 MiB 硬上限 |
-| 小工具 ZIP SHA-256（预提交候选） | `fcc75a1067427f523c58710833a5569052217157f3bea2829dba5aac1221df7e` |
+| `audit:minitool` | 47 个文件、60 个本地资源引用、0 base64；正式母带版解包约 **5.39 MiB** |
+| `package:minitool` | 通过；ZIP **5,028,488 bytes（约 4.80 MiB）**，仍明显低于 10 MiB 硬上限 |
+| 小工具 ZIP SHA-256（正式母带预提交候选） | `0be72defb51aa502540ded2ebcdaed213a5e14d3599cde7607c8ff4fc7c5b1eb` |
 | `npm run cf:dry-run` | 通过；55 个 Web 静态文件被 Wrangler 读取，仅 dry-run，未在本轮手动执行线上部署 |
 
 浏览器专项明确验证：继续一个 `gate-knocking` 夜间存档会请求 `bgm_night_ambient.mp3` 与 `sfx_door_knock.mp3`；关闭声音后偏好跨刷新保留且游戏存档 JSON 完全不变；拦截全部 `*.mp3` 请求时，Night 1 三个选择仍存在并可正常完成。
@@ -37,7 +37,7 @@
 ### 已知边界
 
 - **P1 / 实机：** 当前通过桌面 Edge/Chromium 和 Chrome 61 静态兼容审计，尚未在小红书模拟器、Android 8.1 真机和 iOS 真机实际听感验收。
-- **P1 / 母带：** 当前 BGM 是安全、可复现的项目生成版，不是用户上传的妙响母带。正式母带一旦以本地文件进入工作区，只替换 `public/assets/audio/music/bgm_*.mp3` 即可。
+- **P1 / 听感：** 正式妙响母带已进入运行时版本，但当前仍是自动裁切与响度归一后的第一版；建议投稿前在手机外放与耳机各人工听一遍循环接缝、尸潮压迫感和文字阅读干扰。
 - **P2 / 混音：** 当前采用低/中/高三档整体音量，没有独立 BGM/SFX 连续滑杆；比赛版本优先避免增加设置复杂度。
 
 ## Night Event Visual Upgrade v1 验收（2026-09-07）
