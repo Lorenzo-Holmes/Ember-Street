@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { DayAssignment, GameState, Survivor, SurvivorCondition } from '../../game/types';
 import { assignDayJob, canTakeDayAssignment, expeditionRouteFor } from '../../game/v060/dayManagement';
 import { locationForId } from '../../game/v060/expedition';
@@ -98,6 +98,25 @@ function SurvivorDetail({ state, survivor, onCommit, onClose, onChooseRoute }: {
 export default function SurvivorsV1({ state, onCommit, onDone, onChooseRoute, doneDisabled, doneHint }: SurvivorsV1Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'idle' | 'work' | 'outside' | 'alert'>('all');
+  const overviewScrollY = useRef(0);
+  const detailWasOpen = useRef(false);
+
+  useLayoutEffect(() => {
+    if (selectedId) {
+      detailWasOpen.current = true;
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
+    if (detailWasOpen.current) {
+      window.scrollTo({ top: overviewScrollY.current, behavior: 'auto' });
+      detailWasOpen.current = false;
+    }
+  }, [selectedId]);
+
+  const openDetail = (id: string) => {
+    overviewScrollY.current = window.scrollY;
+    setSelectedId(id);
+  };
   const selected = state.survivors.find((survivor) => survivor.id === selectedId);
   if (selected) return <SurvivorDetail state={state} survivor={selected} onCommit={onCommit} onClose={() => setSelectedId(null)} onChooseRoute={onChooseRoute}/>;
 
@@ -126,7 +145,7 @@ export default function SurvivorsV1({ state, onCommit, onDone, onChooseRoute, do
         {visible.map((survivor) => {
           const unavailable = survivor.condition === 'dead' || survivor.condition === 'missing';
           const condition = survivor.condition ?? 'healthy';
-          return <article className={unavailable ? 'muted' : ''} key={survivor.id}><Portrait survivor={survivor}/><div className="v1s-card-copy"><span>{survivor.trait ?? survivor.perk}</span><h2>{survivor.name}</h2><p>{CONDITION_NOTE[condition]}。{strengthNote(survivor.energy)}。</p><small>{unavailable ? CONDITION_NOTE[condition] : assignmentNote(state, survivor.id)}</small></div><button data-tutorial-person={survivor.id} data-assigned={Boolean(state.dayAssignments[survivor.id])} disabled={unavailable} onClick={() => setSelectedId(survivor.id)}>{unavailable ? '不在这里' : '翻开 ›'}</button></article>;
+          return <article className={unavailable ? 'muted' : ''} key={survivor.id}><Portrait survivor={survivor}/><div className="v1s-card-copy"><span>{survivor.trait ?? survivor.perk}</span><h2>{survivor.name}</h2><p>{CONDITION_NOTE[condition]}。{strengthNote(survivor.energy)}。</p><small>{unavailable ? CONDITION_NOTE[condition] : assignmentNote(state, survivor.id)}</small></div><button data-tutorial-person={survivor.id} data-assigned={Boolean(state.dayAssignments[survivor.id])} disabled={unavailable} onClick={() => openDetail(survivor.id)}>{unavailable ? '不在这里' : '翻开 ›'}</button></article>;
         })}
       </section>
       {onDone ? <button className="v1s-done" data-tutorial="dispatch" disabled={doneDisabled} onClick={onDone}>{doneDisabled ? doneHint ?? '还有人的路没定' : '这张名单就这么定'}</button> : null}

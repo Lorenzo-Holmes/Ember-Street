@@ -7,9 +7,10 @@ import { previewNightPreparation, reopenDayAssignments } from '../../game/v060/d
 import { ENDINGS, endingHint, type MetaProgress } from '../../game/v060/endings';
 import { mealLabel, previewMeal } from '../../game/v060/food';
 import { dawnBriefEntries } from '../../game/v060/morningBrief';
-import { guardCoverageLabel } from '../../game/v060/defenseFeedback';
+import { defenseNumber, guardCoverageLabel } from '../../game/v060/defenseFeedback';
 import DefensePanel from './DefensePanel';
 import { buildingVisual, characterVisual, locationVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
+import { BookShell, StoryShell } from '../v2/UiV2';
 import './story-phases.css';
 import { tutorialIsActive } from '../../game/v060/tutorial';
 
@@ -79,34 +80,48 @@ export function DuskV1({ state, onCommit }: CommitProps) {
   ] as const;
   const lowCount = entries.filter((entry) => entry[2]).length;
   const committed = state.dayState.returnedExpeditions > 0 || state.dayState.committedSurvivorIds.length > 0;
+  const riskLines = signals.length ? signals : ['今晚暂时没有新的坏消息。'];
+  const leadRisks = riskLines.slice(0, 3);
   return (
-    <main className="v1-mobile-page v1-story-page notebook-page notebook-page--dusk-v1">
+    <StoryShell className="v1-mobile-page v1-story-page notebook-page notebook-page--dusk-v1" label="黄昏清点">
       <header className="v1-page-title"><span>第 {state.day} 天 · 黄昏</span><h1>太阳快下去了。</h1><p>门已经开始上闩。饭、药、人手和门墙，最后再看一遍。</p></header>
-      <section className="v1-phase-ledger">
-        <header><div><span>仓房清点</span><h2>手里还剩这些</h2></div><small>{lowCount ? `${lowCount} 样东西快见底` : '今天都记清了'}</small></header>
-        <div>{entries.map(([label, value, low, note]) => <p className={low ? 'is-low' : ''} key={label}><span>{label}</span><b>{value}</b>{low ? <em>{note}</em> : null}</p>)}</div>
-        {!!state.storyItems.length && <small>箱底另外收着：{state.storyItems.join('、')}</small>}
+      <section className="v2-dusk-risk-summary" aria-label="今晚最要紧的风险">
+        <header><span>入夜前先看</span><h2>今晚最要紧的事</h2></header>
+        <ul>{leadRisks.map((signal) => <li key={signal}>{signal}</li>)}</ul>
+        {riskLines.length > leadRisks.length ? <small>还有 {riskLines.length - leadRisks.length} 条风险记在下面的完整明细里。</small> : null}
       </section>
-      <DefensePanel state={state} context="dusk"/>
-      <section className="v1-phase-columns">
-        <article><span>饭锅</span><h2>{mealLabel(meal.quality)}</h2><p>{mealCoverageLine(meal.coverage)}</p><small>锅里大约够 {meal.cookingCapacity.toFixed(1)} 人吃，街里有 {meal.residentCount} 人。</small><strong>{mealMorningLine(meal.energyRecovery, meal.hopeDelta)}</strong></article>
-        <article><span>夜间值守</span><h2>{guardCoverageLabel(prep)}</h2><p>{staffed(prep.medical, '诊疗室')}；{staffed(prep.repair, '修补处')}；广播间{prep.radio === '有人值守' ? '有人听着' : '今晚没人'}。</p><small>值守反映人手安排，不代表门板和围栏已经修好。</small></article>
-      </section>
-      <section className="v1-phase-checklist"><header><span>入夜前</span><h2>白天露出的麻烦</h2></header><ul>{(signals.length ? signals : ['今晚暂时没有新的坏消息。']).map((signal) => <li key={signal}>{signal}</li>)}</ul></section>
       <button className="v1-primary-action v1-phase-primary" data-tutorial="end-day" onClick={() => onCommit(finalizeDay(state))}>{tutorialIsActive(state) ? '结束白天，等天黑' : '合上本子，等天黑'}</button>
       {!committed ? <button className="v1-phase-link" onClick={() => onCommit(reopenDayAssignments(state))}>← 还有时间，重新安排</button> : <p className="v1-phase-margin">今天已经有人出过街，这一页不能重写。</p>}
-    </main>
+      <section className="v2-dusk-quick" aria-label="晚饭与防线摘要">
+        <article><span>今晚的饭</span><strong>{mealLabel(meal.quality)}</strong><p>{mealCoverageLine(meal.coverage)}</p></article>
+        <article><span>街口防线</span><strong>{defenseNumber(state.defense)} / 100</strong><p>{guardCoverageLabel(prep)}</p></article>
+      </section>
+      <details className="v2-dusk-details">
+        <summary><span>查看仓房、值守与完整风险</span><small>{lowCount ? `${lowCount} 样东西快见底` : '仓房已清点'}</small></summary>
+        <section className="v1-phase-ledger">
+          <header><div><span>仓房清点</span><h2>手里还剩这些</h2></div><small>{lowCount ? `${lowCount} 样东西快见底` : '今天都记清了'}</small></header>
+          <div>{entries.map(([label, value, low, note]) => <p className={low ? 'is-low' : ''} key={label}><span>{label}</span><b>{value}</b>{low ? <em>{note}</em> : null}</p>)}</div>
+          {!!state.storyItems.length && <small>箱底另外收着：{state.storyItems.join('、')}</small>}
+        </section>
+        <DefensePanel state={state} context="dusk"/>
+        <section className="v1-phase-columns">
+          <article><span>饭锅</span><h2>{mealLabel(meal.quality)}</h2><p>{mealCoverageLine(meal.coverage)}</p><small>锅里大约够 {meal.cookingCapacity.toFixed(1)} 人吃，街里有 {meal.residentCount} 人。</small><strong>{mealMorningLine(meal.energyRecovery, meal.hopeDelta)}</strong></article>
+          <article><span>夜间值守</span><h2>{guardCoverageLabel(prep)}</h2><p>{staffed(prep.medical, '诊疗室')}；{staffed(prep.repair, '修补处')}；广播间{prep.radio === '有人值守' ? '有人听着' : '今晚没人'}。</p><small>值守反映人手安排，不代表门板和围栏已经修好。</small></article>
+        </section>
+        <section className="v1-phase-checklist"><header><span>入夜前</span><h2>白天露出的麻烦</h2></header><ul>{riskLines.map((signal) => <li key={signal}>{signal}</li>)}</ul></section>
+      </details>
+    </StoryShell>
   );
 }
 
 export function NightSummaryV1({ state, onCommit }: CommitProps) {
   const horde = state.nightState.hordeActive;
   return (
-    <main className="v1-mobile-page v1-story-page notebook-page notebook-page--night-summary-v1">
+    <StoryShell className="v1-mobile-page v1-story-page notebook-page notebook-page--night-summary-v1" label="夜间总结">
       <header className="v1-page-title"><span>第 {state.day} 天 · 天快亮了</span><h1>{horde ? '撞门声终于远了。' : '外面重新安静下来。'}</h1><p>{horde ? '尸潮退了，门后留下什么，要等天亮才能看清。' : '这一夜留下的事都已经记下。'}</p></header>
       <section className="v1-phase-note"><span>门外</span><p>{horde ? '街面上还散着拖动和撞击的声音，但已经不再往门口压。' : '发电机的声音重新盖住了远处的脚步。'}</p></section>
       <button className="v1-primary-action v1-phase-primary" onClick={() => onCommit({ ...state, phase: 'summary', lastMessage: `第 ${state.day} 天 · 天亮了` })}>等天亮再清点</button>
-    </main>
+    </StoryShell>
   );
 }
 
@@ -123,7 +138,7 @@ export function DawnV1({ state, onCommit }: CommitProps) {
     onCommit(advanceCampaignDay(state));
   };
   return (
-    <main className={`v1-mobile-page v1-story-page notebook-page notebook-page--dawn-v1 ${revealAll ? 'is-revealed' : ''}`}>
+    <BookShell className={`v1-mobile-page v1-story-page notebook-page notebook-page--dawn-v1 ${revealAll ? 'is-revealed' : ''}`} label="清晨结算">
       <header className="v1-page-title"><span>第 {state.day} 天 · 清晨</span><h1>{state.day === 29 ? '最后一夜过去了。' : '天亮了。'}</h1><p>{state.nightState.hordeActive ? '街道重新有了颜色，昨夜留下的损失也都看清了。' : '先数人，再看门墙和仓房。今天仍然有事要做。'}</p></header>
       <section className="v1-phase-tally" aria-label="昨夜清点">
         <p><span>没能活下来</span><b>{state.campaignStats.deaths}</b></p>
@@ -143,7 +158,7 @@ export function DawnV1({ state, onCommit }: CommitProps) {
       <section className="v1-phase-checklist"><header><span>昨夜留下的</span><h2>天亮以后才看清</h2></header>{brief.length ? <ul>{brief.map((entry, index) => <li className="v2-dawn-reveal" style={{ animationDelay: `${(todayJournal.length + index) * 110}ms` }} key={`${entry}-${index}`}>{entry}</li>)}</ul> : <p className="v2-dawn-reveal">没有新的名字，也没有新的空床。</p>}</section>
       {!revealAll && todayJournal.length + brief.length > 2 ? <button className="v2-dawn-skip" onClick={() => setRevealAll(true)}>直接看完这一页</button> : null}
       <button className="v1-primary-action v1-phase-primary" disabled={advancing} onClick={advance}>{advancing ? '正在翻页…' : state.day === 29 ? '翻到最后一页' : `翻到第 ${state.day + 1} 天`}</button>
-    </main>
+    </BookShell>
   );
 }
 
@@ -151,7 +166,7 @@ export function EndingV1({ state, meta, onRestart }: { state: GameState; meta: M
   const ending = state.ending;
   if (!ending) return null;
   return (
-    <main className="v1-mobile-page v1-story-page notebook-page notebook-page--ending-v1">
+    <BookShell className="v1-mobile-page v1-story-page notebook-page notebook-page--ending-v1" label="终章">
       <header className="v1-page-title"><span>第 30 天 · 最后一页</span><h1>《{ending.title}》</h1><p>{TIER_LABEL[ending.tier]}</p></header>
       <section className="v1-ending-story"><p>{ending.summary}</p></section>
       <section className="v1-phase-tally v1-ending-tally" aria-label="三十天清点">
@@ -162,6 +177,6 @@ export function EndingV1({ state, meta, onRestart }: { state: GameState; meta: M
       </section>
       <section className="v1-ending-pages"><header><span>留下的结局</span><small>{meta.endingsUnlocked.length}/13</small></header><div>{(Object.keys(ENDINGS) as EndingId[]).map((id) => <p className={meta.endingsUnlocked.includes(id) ? 'seen' : ''} key={id}><strong>{meta.endingsUnlocked.includes(id) ? ENDINGS[id].title : '这一页还空着'}</strong><small>{meta.endingsUnlocked.includes(id) ? ENDINGS[id].hint : endingHint(id)}</small></p>)}</div></section>
       <button className="v1-primary-action v1-phase-primary" onClick={onRestart}>从第一天再守一次</button>
-    </main>
+    </BookShell>
   );
 }

@@ -151,10 +151,12 @@ export default function TutorialGuide({ state, onCommit, onNavigate }: Props) {
     title = '现在由你结束白天';
     body = '探索已经结束。再看一眼饭锅和仓房，点「结束白天」会结算今天的工作与晚饭，然后进入夜晚。';
   } else if (step === 'FIRST_NIGHT') {
-    title = context === 'dawn' ? '把这一夜带到明天' : '门外的事，没有标准答案';
+    title = context === 'dawn' ? '把这一夜带到明天' : context === 'night' ? '门外没有标准答案' : '门外的事，没有标准答案';
     body = context === 'dawn'
       ? '这一夜结束了。清点之后翻到第 2 天，再去日志看看人手、物资和昨夜的选择。'
-      : '看清代价，再自己决定。眼前的得失会记下，有些决定会留下后话，不会马上有答案。';
+      : context === 'night'
+        ? '看清代价，再自己决定。选择会被记下，也可能留下后果。'
+        : '看清代价，再自己决定。眼前的得失会记下，有些决定会留下后话，不会马上有答案。';
   } else if (step === 'OPEN_LOG') {
     title = '翻开日志，看昨天留下了什么';
     body = '谁干了活、谁去了街外、口粮花在哪里、昨夜选了什么，都记在同一本日志里。';
@@ -179,7 +181,7 @@ export default function TutorialGuide({ state, onCommit, onNavigate }: Props) {
     }
   };
 
-  return <aside ref={note} className="v1-tutorial-note" aria-label={active ? '新手引导' : '长街便签'} data-stage={step}>
+  return <aside ref={note} className="v1-tutorial-note" aria-label={active ? '新手引导' : '长街便签'} data-stage={step} data-context={context}>
     <div className="v1-tutorial-note__copy" aria-live="polite"><span>{active ? '开局便签' : '长街便签'}</span><h2>{title}</h2><p>{body}</p></div>
     <div className="v1-tutorial-note__actions"><button onClick={follow}>{action}</button>{active && <button className="v1-tutorial-skip" onClick={() => onCommit(skipTutorial(state))}>跳过引导</button>}</div>
   </aside>;

@@ -95,8 +95,8 @@ body:has(.notebook-page) .v1-bottom-nav button {
   font-family: var(--font-notebook-body);
 }
 
-.notebook-page :is(h1, h2, h3),
-.notebook-page :is(.v1-status-strip strong, .v1-resource-strip b, .v1-day-action strong, .v1s-summary strong, .v1s-detail-stats strong, .v1n-resource-strip b, .v1n-dice__faces b, .v1n-dice__total strong, .v6-stats b, .v6-ending__day, .v6-ending__ledger b),
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(h1, h2, h3),
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-status-strip strong, .v1-resource-strip b, .v1-day-action strong, .v1s-summary strong, .v1s-detail-stats strong, .v1n-resource-strip b, .v1n-dice__faces b, .v1n-dice__total strong, .v6-stats b, .v6-ending__day, .v6-ending__ledger b),
 body:has(.notebook-page) .v1-bottom-nav button {
   color: var(--page-ink, var(--notebook-ink));
   font-family: var(--font-notebook-mark);
@@ -105,12 +105,12 @@ body:has(.notebook-page) .v1-bottom-nav button {
   text-shadow: .4px .4px 0 rgba(31, 25, 18, .14);
 }
 
-.notebook-page :where(p, small, span),
-.notebook-page :is(.v1-muted, .v1s-resident-note, .v1s-card-copy p, .v1s-card-copy small, .v1r-empty) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :where(p, small, span),
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-muted, .v1s-resident-note, .v1s-card-copy p, .v1s-card-copy small, .v1r-empty) {
   color: var(--page-faded) !important;
 }
 
-.notebook-page :is(.v1-status-strip span, .v1-status-strip__weather small, .v1-page-title > span, .v1-today-summary header > span, .v1-community header span, .v1-building__headline span, .v1s-head span, .v1s-card-copy > span, .v1s-detail-hero span, .v1s-jobs > span, .v1r-head > span, .v1r-log header span, .v1r-grid header span, .v1r-profiles header span, .v1r-memorial header span, .v1e-head span, .v1e-route-title span, .v1e-event-copy span, .v1n-night-head span, .v1n-event-copy > span, .v1n-opening > span, .v6-page-head > span, .v6-section__head span) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-status-strip span, .v1-status-strip__weather small, .v1-page-title > span, .v1-today-summary header > span, .v1-community header span, .v1-building__headline span, .v1s-head span, .v1s-card-copy > span, .v1s-detail-hero span, .v1s-jobs > span, .v1r-head > span, .v1r-log header span, .v1r-grid header span, .v1r-profiles header span, .v1r-memorial header span, .v1e-head span, .v1e-route-title span, .v1e-event-copy span, .v1n-night-head span, .v1n-event-copy > span, .v1n-opening > span, .v6-page-head > span, .v6-section__head span) {
   color: var(--page-rust) !important;
   font-family: var(--font-notebook-mark);
   letter-spacing: .055em;
@@ -124,7 +124,7 @@ body:has(.notebook-page) .v1-bottom-nav button {
   text-underline-offset: 5px;
 }
 
-.notebook-page :is(.v1-status-strip, .v1-page-title, .v1s-head, .v1r-head, .v1e-head, .v1n-night-head, .v6-page-head, .v6-topbar) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-status-strip, .v1-page-title, .v1s-head, .v1r-head, .v1e-head, .v1n-night-head, .v6-page-head, .v6-topbar) {
   color: var(--page-ink);
   background: transparent;
   border: 0;
@@ -133,7 +133,7 @@ body:has(.notebook-page) .v1-bottom-nav button {
 }
 
 /* Paper sections replace the previous dashboard cards. */
-.notebook-page :is(.v1-today-summary, .v1-community, .v1-building, .v1s-summary > div, .v1s-list article, .v1s-detail-stats > div, .v1r-place, .v1r-profiles > article, .v1r-memorial > article, .v1r-civilian-note, .v1e-party-summary, .v1e-location, .v1e-party-list button, .v1n-opening, .v1n-dice, .v6-section, .v6-preview, .v6-stats, .v6-ending__ledger, .v6-ending__story, .v6-ending-gallery) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-today-summary, .v1-community, .v1-building, .v1s-summary > div, .v1s-list article, .v1s-detail-stats > div, .v1r-place, .v1r-profiles > article, .v1r-memorial > article, .v1r-civilian-note, .v1e-party-summary, .v1e-location, .v1e-party-list button, .v1n-opening, .v1n-dice, .v6-section, .v6-preview, .v6-stats, .v6-ending__ledger, .v6-ending__story, .v6-ending-gallery) {
   color: var(--page-ink);
   background: rgba(216, 199, 157, .12);
   border: 0;
@@ -142,7 +142,7 @@ body:has(.notebook-page) .v1-bottom-nav button {
   box-shadow: none;
 }
 
-.notebook-page :is(.v1-community__choices button, .v1s-jobs button, .v1r-tabs button, .v1e-decisions button, .v1n-choices button, .v6-expedition-choices button, .v6-job-grid button, .v6-mode-btn, .v6-locations button, .v6-party button) {
+.notebook-page:not(.v2-shell--story) :is(.v1-community__choices button, .v1s-jobs button, .v1r-tabs button, .v1e-decisions button, .v1n-choices button, .v6-expedition-choices button, .v6-job-grid button, .v6-mode-btn, .v6-locations button, .v6-party button) {
   color: var(--page-ink);
   background: rgba(225, 210, 173, .1);
   border: 0;
@@ -179,7 +179,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
 }
 
 /* Inventory reads as a handwritten ledger. */
-.notebook-page :is(.v1-resource-strip, .v1n-resource-strip) {
+.notebook-page:not(.v2-shell--story) :is(.v1-resource-strip, .v1n-resource-strip) {
   gap: 0;
   margin: 10px 0;
   padding: 8px 0 12px;
@@ -187,7 +187,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   border-bottom: 1px solid rgba(52, 46, 35, .45);
 }
 
-.notebook-page :is(.v1-resource-strip, .v1n-resource-strip) > span {
+.notebook-page:not(.v2-shell--story) :is(.v1-resource-strip, .v1n-resource-strip) > span {
   min-width: 0;
   color: #554c3d;
   background: transparent;
@@ -195,7 +195,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   border-right: 1px dashed rgba(55, 48, 37, .34);
 }
 
-.notebook-page :is(.v1-resource-strip, .v1n-resource-strip) > span:last-child {
+.notebook-page:not(.v2-shell--story) :is(.v1-resource-strip, .v1n-resource-strip) > span:last-child {
   border-right: 0;
 }
 
@@ -228,7 +228,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
 }
 
 /* Images are old prints taped into the notebook. */
-.notebook-page :is(.v1-art-frame, .v1e-art, .v1n-art, .v1s-portrait, .v1r-mini-art) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-art-frame, .v1e-art, .v1n-art, .v1s-portrait, .v1r-mini-art) {
   overflow: hidden;
   background-color: #82745b;
   border: 5px solid #cdbc93;
@@ -280,7 +280,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   padding: 7px 7px 13px;
 }
 
-.notebook-page .v1-building__body,
+.notebook-page:not(.v2-shell--scene) .v1-building__body,
 .notebook-page .v1e-location__copy {
   color: var(--page-ink);
   background: transparent;
@@ -294,14 +294,14 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
 .notebook-page .v1-finished,
 .notebook-page .v1s-jobs button small,
 .notebook-page .v1e-decisions em,
-.notebook-page .v1n-choices em,
-.notebook-page .v1n-choices i {
+.notebook-page:not(.v2-shell--story) .v1n-choices em,
+.notebook-page:not(.v2-shell--story) .v1n-choices i {
   color: var(--page-rust);
   background: transparent;
 }
 
 /* Main calls to action become pieces of black cloth tape. */
-.notebook-page :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta) {
   color: #d9c9a4;
   background: var(--notebook-tape);
   border: 1px solid #191711;
@@ -311,14 +311,14 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   transform: rotate(-.18deg);
 }
 
-.notebook-page :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta) :is(strong, span, small),
-.notebook-page :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta) :is(strong, span, small),
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta) {
   color: #d9c9a4 !important;
   font-family: var(--font-notebook-mark);
   letter-spacing: .055em;
 }
 
-.notebook-page :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta):hover:not(:disabled) {
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(.v1-day-action, .v1-primary-action, .v1s-done, .v1e-primary, .v1n-primary, .v6-cta):hover:not(:disabled) {
   color: #f0e2c3;
   background: #39352c;
 }
@@ -329,7 +329,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
 .notebook-page--survivors .v1s-summary::after,
 .notebook-page--records .v1r-head::after,
 .notebook-page--route .v1e-route-title::after,
-.notebook-page--night .v1n-event-copy::before,
+.notebook-page--night:not(.v2-shell--story) .v1n-event-copy::before,
 .notebook-page--dawn .v6-page-head::after {
   position: absolute;
   right: 4px;
@@ -345,7 +345,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
 .notebook-page--survivors .v1s-summary::after { content: '伤的、累的，都记清'; bottom: -13px; }
 .notebook-page--records .v1r-head::after { content: '别忘了'; bottom: -16px; }
 .notebook-page--route .v1e-route-title::after { content: '回来的路先画清'; top: 5px; }
-.notebook-page--night .v1n-event-copy::before { content: '记下时间'; top: 7px; }
+.notebook-page--night:not(.v2-shell--story) .v1n-event-copy::before { content: '记下时间'; top: 7px; }
 .notebook-page--dawn .v6-page-head::after { content: '天亮，清点损失'; bottom: -18px; }
 
 .notebook-page .v1-today-summary,
@@ -404,7 +404,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
 }
 
 /* Night pages use the same notebook, darkened at the edges like a smoke-stained sheet. */
-.notebook-page--night {
+.notebook-page--night:not(.v2-shell--story) {
   --page-ink: #211d17;
   --page-faded: #514737;
   --page-rust: #683729;
@@ -417,24 +417,24 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   background-size: 100% 100%, 100% 100%, 100% 35px, 620px 620px;
 }
 
-.notebook-page--night::before {
+.notebook-page--night:not(.v2-shell--story)::before {
   opacity: .6;
   filter: brightness(.72) sepia(.45);
 }
 
-.notebook-page--night .v1n-dice__faces b {
+.notebook-page--night:not(.v2-shell--story) .v1n-dice__faces b {
   color: #d2c29f;
   background: var(--notebook-tape);
   border: 0;
   clip-path: polygon(5% 2%, 95% 0, 100% 91%, 91% 100%, 3% 96%, 0 8%);
 }
 
-.notebook-page--night .v1n-secondary {
+.notebook-page--night:not(.v2-shell--story) .v1n-secondary {
   color: #4e4233;
   border: 1px dashed rgba(60, 49, 36, .55);
 }
 
-.notebook-page--night :is(.v060-night__header, .v060-night__opening, .v060-event, .v060-check, .v060-night__progress) {
+.notebook-page--night:not(.v2-shell--story) :is(.v060-night__header, .v060-night__opening, .v060-event, .v060-check, .v060-night__progress) {
   color: var(--page-ink);
   background: transparent;
   border: 0;
@@ -443,22 +443,22 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   box-shadow: none;
 }
 
-.notebook-page--night .v060-night__header {
+.notebook-page--night:not(.v2-shell--story) .v060-night__header {
   border-bottom: 2px solid rgba(48, 40, 29, .58);
 }
 
-.notebook-page--night :is(.v060-night__header-day strong, .v060-night__header-count strong, .v060-night__opening h1, .v060-event h1, .v060-check h2, .v060-total strong) {
+.notebook-page--night:not(.v2-shell--story) :is(.v060-night__header-day strong, .v060-night__header-count strong, .v060-night__opening h1, .v060-event h1, .v060-check h2, .v060-total strong) {
   color: var(--page-ink);
   font-family: var(--font-notebook-mark);
   font-weight: 400;
 }
 
-.notebook-page--night :is(.v060-night__header-day span, .v060-night__opening > span, .v060-event__kicker) {
+.notebook-page--night:not(.v2-shell--story) :is(.v060-night__header-day span, .v060-night__opening > span, .v060-event__kicker) {
   color: var(--page-rust) !important;
   font-family: var(--font-notebook-mark);
 }
 
-.notebook-page--night .v060-night__resources {
+.notebook-page--night:not(.v2-shell--story) .v060-night__resources {
   gap: 0;
   padding: 10px 0;
   background: transparent;
@@ -466,23 +466,23 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   border-bottom: 1px solid rgba(52, 44, 32, .48);
 }
 
-.notebook-page--night .v060-night__resources span {
+.notebook-page--night:not(.v2-shell--story) .v060-night__resources span {
   color: var(--page-faded) !important;
   background: transparent;
   border: 0;
   border-right: 1px dashed rgba(55, 45, 33, .34);
 }
 
-.notebook-page--night .v060-night__resources span:last-child {
+.notebook-page--night:not(.v2-shell--story) .v060-night__resources span:last-child {
   border-right: 0;
 }
 
-.notebook-page--night .v060-night__resources b {
+.notebook-page--night:not(.v2-shell--story) .v060-night__resources b {
   color: var(--page-ink);
   font-family: var(--font-notebook-mark);
 }
 
-.notebook-page--night .v060-choice {
+.notebook-page--night:not(.v2-shell--story) .v060-choice {
   color: var(--page-ink);
   background: rgba(220, 201, 157, .08);
   border: 0;
@@ -492,7 +492,7 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   box-shadow: none;
 }
 
-.notebook-page--night .v060-choice__letter {
+.notebook-page--night:not(.v2-shell--story) .v060-choice__letter {
   color: var(--page-rust) !important;
   font-family: var(--font-notebook-mark);
   background: transparent;
@@ -500,23 +500,23 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   border-radius: 48% 43% 54% 46%;
 }
 
-.notebook-page--night :is(.v060-choice__content strong, .v060-choice__content span, .v060-preview-summary, .v060-choice-cost, .v060-event p, .v060-check p, .v060-night__opening p) {
+.notebook-page--night:not(.v2-shell--story) :is(.v060-choice__content strong, .v060-choice__content span, .v060-preview-summary, .v060-choice-cost, .v060-event p, .v060-check p, .v060-night__opening p) {
   color: var(--page-faded) !important;
 }
 
-.notebook-page--night .v060-choice__content strong {
+.notebook-page--night:not(.v2-shell--story) .v060-choice__content strong {
   color: var(--page-ink) !important;
   font-family: var(--font-notebook-mark);
 }
 
-.notebook-page--night .v6-badge--tag {
+.notebook-page--night:not(.v2-shell--story) .v6-badge--tag {
   color: #514434 !important;
   background: transparent;
   border: 1px solid rgba(77, 61, 43, .46);
   border-radius: 48% 52% 46% 55%;
 }
 
-.notebook-page--night :is(.v060-primary, .v060-btn-roll) {
+.notebook-page--night:not(.v2-shell--story) :is(.v060-primary, .v060-btn-roll) {
   color: #d9c9a4;
   font-family: var(--font-notebook-mark);
   background: var(--notebook-tape);
@@ -526,21 +526,21 @@ body:has(.notebook-page) .v1-bottom-nav button:focus-visible {
   clip-path: polygon(1% 7%, 99% 0, 100% 88%, 96% 100%, 2% 94%, 0 18%);
 }
 
-.notebook-page--night .v060-secondary {
+.notebook-page--night:not(.v2-shell--story) .v060-secondary {
   color: #4e4233;
   background: transparent;
   border: 1px dashed rgba(60, 49, 36, .55);
 }
 
-.notebook-page--night .v060-dice b {
+.notebook-page--night:not(.v2-shell--story) .v060-dice b {
   color: #d2c29f;
   background: var(--notebook-tape);
   border: 0;
 }
 
-.notebook-page--night .v060-dots i,
-.notebook-page--night .v060-dots i.done,
-.notebook-page--night .v060-dots i.current {
+.notebook-page--night:not(.v2-shell--story) .v060-dots i,
+.notebook-page--night:not(.v2-shell--story) .v060-dots i.done,
+.notebook-page--night:not(.v2-shell--story) .v060-dots i.current {
   background: #514535;
   box-shadow: none;
 }
@@ -721,7 +721,7 @@ body:has(.notebook-page) .v1-bottom-nav button.active {
     padding-left: 22px;
   }
 
-  .notebook-page--night {
+  .notebook-page--night:not(.v2-shell--story) {
     background-image:
       radial-gradient(ellipse at 50% 12%, transparent 32%, rgba(37, 25, 15, .25) 100%),
       linear-gradient(90deg, transparent 0, transparent 25px, rgba(91, 44, 34, .2) 26px, rgba(91, 44, 34, .2) 27px, transparent 28px),
@@ -730,7 +730,7 @@ body:has(.notebook-page) .v1-bottom-nav button.active {
     background-size: 100% 100%, 100% 100%, 100% 35px, 560px 560px;
   }
 
-  .notebook-page :is(.v1-home-hero__art, .v1-building__art, .v1e-art, .v1n-art) {
+  .notebook-page:not(.v2-shell--story) :is(.v1-home-hero__art, .v1-building__art, .v1e-art, .v1n-art) {
     border-width: 4px;
   }
 }
@@ -746,7 +746,7 @@ body:has(.notebook-page) .v1-bottom-nav button.active {
     display: none;
   }
 
-  .notebook-page :is(.v1-resource-strip, .v1n-resource-strip) > span {
+  .notebook-page:not(.v2-shell--story) :is(.v1-resource-strip, .v1n-resource-strip) > span {
     padding-right: 3px;
     padding-left: 3px;
   }
@@ -873,7 +873,7 @@ body:has(.v6-shell--dusk) {
   mask-image: none;
 }
 
-.notebook-page--night {
+.notebook-page--night:not(.v2-shell--story) {
   background-color: #9d865d;
   background-image:
     radial-gradient(ellipse at 50% 12%, transparent 30%, rgba(35, 24, 14, .28) 100%),
@@ -885,12 +885,12 @@ body:has(.v6-shell--dusk) {
   background-repeat: no-repeat, no-repeat, no-repeat, repeat, no-repeat;
 }
 
-.notebook-page--night::before {
+.notebook-page--night:not(.v2-shell--story)::before {
   opacity: .82;
   filter: sepia(.32) saturate(.64) brightness(.72) drop-shadow(0 4px 3px rgba(25, 16, 9, .58));
 }
 
-.notebook-page--night::after {
+.notebook-page--night:not(.v2-shell--story)::after {
   opacity: .4;
   filter: sepia(.45) saturate(.6) brightness(.78) contrast(1.04);
 }
@@ -958,7 +958,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   --notebook-red-ink-soft: rgba(108, 47, 43, .26);
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -986,7 +986,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   transform: none;
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -1012,7 +1012,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   transform: translateY(-52%) rotate(-5deg);
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -1028,7 +1028,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   transform: none;
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -1042,7 +1042,7 @@ body:has(.notebook-page) .v1-bottom-nav {
 }
 
 /* Assignments are rewritten in red pencil; the whole ledger row stays plain. */
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -1054,7 +1054,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   content: none;
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -1160,7 +1160,7 @@ body:has(.notebook-page) .v1-bottom-nav {
 }
 
 /* Primary actions are signed decisions with two rough pencil strokes. */
-.notebook-page :is(
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(
   .v1-day-action,
   .v1-primary-action,
   .v1s-done,
@@ -1185,7 +1185,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   transform: rotate(-.12deg);
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(
   .v1-day-action,
   .v1-primary-action,
   .v1s-done,
@@ -1195,7 +1195,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   .v060-primary,
   .v060-btn-roll
 ) :is(strong, span, small),
-.notebook-page :is(
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(
   .v1-day-action,
   .v1-primary-action,
   .v1s-done,
@@ -1208,7 +1208,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   color: var(--notebook-choice-ink) !important;
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--scene):not(.v2-shell--story) :is(
   .v1-day-action,
   .v1-primary-action,
   .v1s-done,
@@ -1250,7 +1250,7 @@ body:has(.notebook-page) .v1-bottom-nav {
   filter: grayscale(.35);
 }
 
-.notebook-page :is(
+.notebook-page:not(.v2-shell--story) :is(
   .v1-community__choices button,
   .v1s-jobs button,
   .v1e-party-list button,
@@ -1390,7 +1390,7 @@ body:has(.notebook-page) .v1-bottom-nav button.active::before {
 }
 
 /* Margin-note actions must override the night-page component defaults. */
-.notebook-page :is(.v1n-secondary, .v060-secondary, .v1-phase-link, .v6-link),
+.notebook-page:not(.v2-shell--story) :is(.v1n-secondary, .v060-secondary, .v1-phase-link, .v6-link),
 body:has(.v6-shell--dusk) .dusk-rewrite {
   min-height: 44px;
   padding: 8px 10px;
@@ -1765,19 +1765,19 @@ body:has(.notebook-page) .v1-bottom-nav button.active::after {
   line-height: 1.58;
 }
 
-.notebook-page .v1-page-title > span,
+.notebook-page:not(.v2-shell--story) .v1-page-title > span,
 .notebook-page :is(.v1s-head > span, .v1r-head > span, .v1e-head > span) {
   font-size: .86rem;
 }
 
-.notebook-page .v1-page-title h1,
+.notebook-page:not(.v2-shell--story) .v1-page-title h1,
 .notebook-page .v1s-head--top h1 {
   margin: 6px 0;
   font-size: 1.72rem;
   line-height: 1.35;
 }
 
-.notebook-page .v1-page-title p {
+.notebook-page:not(.v2-shell--story) .v1-page-title p {
   color: #3d362b !important;
   font-size: .94rem;
   line-height: 1.65;
@@ -1920,14 +1920,14 @@ body:has(.notebook-page) .v1-bottom-nav button.active::after {
 }
 
 /* Night entries share the same readable ledger typography as the daylight pages. */
-.notebook-page .v1n-night-head {
+.notebook-page:not(.v2-shell--story) .v1n-night-head {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr);
   align-items: start;
   gap: 14px;
 }
 
-.notebook-page .v1n-night-head > .v1n-night-head__day {
+.notebook-page:not(.v2-shell--story) .v1n-night-head > .v1n-night-head__day {
   display: flex;
   align-items: baseline;
   gap: 6px;
@@ -1935,61 +1935,61 @@ body:has(.notebook-page) .v1-bottom-nav button.active::after {
   text-align: left;
 }
 
-.notebook-page .v1n-night-head strong {
+.notebook-page:not(.v2-shell--story) .v1n-night-head strong {
   font-size: 1.55rem;
   line-height: 1.3;
   white-space: nowrap;
 }
 
-.notebook-page .v1n-night-head > .v1n-night-head__status {
+.notebook-page:not(.v2-shell--story) .v1n-night-head > .v1n-night-head__status {
   display: block;
   min-width: 0;
   margin-left: 0;
   text-align: right;
 }
 
-.notebook-page .v1n-night-head__status b {
+.notebook-page:not(.v2-shell--story) .v1n-night-head__status b {
   font-size: 1rem;
   line-height: 1.4;
   overflow-wrap: anywhere;
 }
 
-.notebook-page .v1n-night-head__status small {
+.notebook-page:not(.v2-shell--story) .v1n-night-head__status small {
   margin-top: 4px;
   font-size: .82rem;
   line-height: 1.5;
 }
 
-.notebook-page :is(.v1n-event-copy p, .v1n-opening p, .v1n-dice p, .v1e-event-copy p) {
+.notebook-page:not(.v2-shell--story) :is(.v1n-event-copy p, .v1n-opening p, .v1n-dice p, .v1e-event-copy p) {
   color: #3b342a !important;
   font-size: .94rem;
   line-height: 1.75;
 }
 
-.notebook-page .v1n-event-copy blockquote {
+.notebook-page:not(.v2-shell--story) .v1n-event-copy blockquote {
   color: #44392d;
   font-size: .9rem;
   line-height: 1.65;
 }
 
-.notebook-page :is(.v1n-choices, .v1e-decisions) button {
+.notebook-page:not(.v2-shell--story) :is(.v1n-choices, .v1e-decisions) button {
   min-width: 0;
   padding-top: 15px;
   padding-bottom: 15px;
 }
 
-.notebook-page :is(.v1n-choices, .v1e-decisions) strong {
+.notebook-page:not(.v2-shell--story) :is(.v1n-choices, .v1e-decisions) strong {
   font-size: 1.06rem;
   line-height: 1.5;
 }
 
-.notebook-page :is(.v1n-choices, .v1e-decisions) span {
+.notebook-page:not(.v2-shell--story) :is(.v1n-choices, .v1e-decisions) span {
   color: #3d352b !important;
   font-size: .88rem;
   line-height: 1.7;
 }
 
-.notebook-page :is(.v1n-choices, .v1e-decisions) em {
+.notebook-page:not(.v2-shell--story) :is(.v1n-choices, .v1e-decisions) em {
   padding: 0;
   color: #69372e;
   font-size: .78rem;
@@ -1998,33 +1998,33 @@ body:has(.notebook-page) .v1-bottom-nav button.active::after {
   border: 0;
 }
 
-.notebook-page :is(.v1n-choices, .v1e-decisions) em + em::before {
+.notebook-page:not(.v2-shell--story) :is(.v1n-choices, .v1e-decisions) em + em::before {
   content: '· ';
   color: #4b4032;
 }
 
-.notebook-page .v1n-choices i {
+.notebook-page:not(.v2-shell--story) .v1n-choices i {
   color: #65352d;
   font-size: .82rem;
   line-height: 1.55;
 }
 
-.notebook-page .v1n-resource-strip > span {
+.notebook-page:not(.v2-shell--story) .v1n-resource-strip > span {
   font-size: .8rem;
 }
 
-.notebook-page .v1n-resource-strip b {
+.notebook-page:not(.v2-shell--story) .v1n-resource-strip b {
   font-size: 1.08rem;
 }
 
-.notebook-page .v1n-dice__total {
+.notebook-page:not(.v2-shell--story) .v1n-dice__total {
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 4px 10px;
   align-items: baseline;
 }
 
-.notebook-page .v1n-dice__total em {
+.notebook-page:not(.v2-shell--story) .v1n-dice__total em {
   grid-column: 1 / -1;
   color: #6b332d;
   font-size: .94rem;
@@ -2032,11 +2032,11 @@ body:has(.notebook-page) .v1-bottom-nav button.active::after {
 }
 
 @media (max-width: 390px) {
-  .notebook-page .v1n-night-head {
+  .notebook-page:not(.v2-shell--story) .v1n-night-head {
     gap: 10px;
   }
 
-  .notebook-page .v1n-night-head strong {
+  .notebook-page:not(.v2-shell--story) .v1n-night-head strong {
     font-size: 1.42rem;
   }
 }

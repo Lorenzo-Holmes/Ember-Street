@@ -103,6 +103,10 @@ export default function BuildingsV1({ state, onCommit, selectedBuilding: control
       })}
     </nav>
 
+    <button className="v1-day-action v2-day-roster-action" data-tutorial="day-action" onClick={onOpenSurvivors ?? (() => undefined)}>
+      <strong>今天谁去哪里</strong><span>翻开今日安排，给幸存者写下工作、休息或探索路线。</span>
+    </button>
+
     <section className="v2-building-detail" aria-live="polite">
       <div className="v2-building-detail__art" style={visualAssetStyle(detailAsset)} aria-label={`${definition.name} ${levelLabel(level)}`}/>
       <div className="v2-building-detail__copy">
@@ -122,9 +126,6 @@ export default function BuildingsV1({ state, onCommit, selectedBuilding: control
     </section>
 
     {readyCount > 0 && !state.dayState.assignmentsLocked ? <PinnedNote tone="new">有 {readyCount} 处建筑的材料已经凑齐。便签只提醒，不替你决定先修哪里。</PinnedNote> : null}
-    <button className="v1-day-action v2-day-roster-action" data-tutorial="day-action" onClick={onOpenSurvivors ?? (() => undefined)}>
-      <strong>今天谁去哪里</strong><span>翻开今日安排，给幸存者写下工作、休息或探索路线。</span>
-    </button>
     <CommunityDuty state={state} onCommit={onCommit}/>
     <div className="v1-bottom-nav-spacer"/>
   </SceneShell>;

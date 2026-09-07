@@ -29,7 +29,26 @@
   scroll-margin-top: var(--tutorial-note-height);
 }
 .v1-tutorial-session button, .v1-tutorial-session [data-tutorial] { scroll-margin-top: var(--tutorial-note-height); }
-.v1-tutorial-session .v1-player-menu { z-index: 46; }
+.v1-tutorial-session .v1-player-menu {
+  z-index: 46;
+  top: calc(var(--tutorial-note-height, 0px) + max(8px, env(safe-area-inset-top)));
+}
+.v1-tutorial-note[data-stage="FIRST_NIGHT"][data-context="night"] {
+  padding-top: 7px;
+  padding-bottom: 3px;
+}
+.v1-tutorial-note[data-stage="FIRST_NIGHT"][data-context="night"] h2 {
+  margin-top: 1px;
+  margin-bottom: 2px;
+  font-size: 15px;
+}
+.v1-tutorial-note[data-stage="FIRST_NIGHT"][data-context="night"] p {
+  font-size: 12px;
+  line-height: 1.35;
+}
+.v1-tutorial-note[data-stage="FIRST_NIGHT"][data-context="night"] .v1-tutorial-note__actions {
+  margin-top: 0;
+}
 .v1-tutorial-route-note { display: block; font-size: 12px; font-style: normal; margin-top: 5px; color: #6a4b29; }
 .v1r-log .v1r-journal-title { margin: 0 0 5px; font-size: 14px; font-weight: 600; }
 .v1r-log .v1r-journal-entry { display: block; padding: 12px 4px; border-bottom: 1px dashed #796b564d; }
