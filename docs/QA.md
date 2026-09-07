@@ -27,8 +27,8 @@
 | `npm run test:ui-smoke` | **46/46** 通过；新增 3 项音频专项浏览器验证 |
 | `npm run build` + `npm run audit:xhs` | 通过；正式母带版普通 Web 构建音频载荷约 2767.3 KiB |
 | `npm run build:minitool` | 通过；MP3 被复制到独立小工具目录 |
-| `audit:minitool` | 47 个文件、60 个本地资源引用、0 base64；正式母带版解包约 **5.39 MiB** |
-| `package:minitool` | 通过；ZIP **5,028,488 bytes（约 4.80 MiB）**，仍明显低于 10 MiB 硬上限 |
+| `audit:minitool` | 47 个文件、60 个本地资源引用、0 base64；循环接缝优化后的正式母带版解包约 **5.33 MiB** |
+| `package:minitool` | 通过；ZIP **4,966,076 bytes（约 4.74 MiB）**，仍明显低于 10 MiB 硬上限 |
 | 小工具 ZIP SHA-256（正式母带预提交候选） | `0be72defb51aa502540ded2ebcdaed213a5e14d3599cde7607c8ff4fc7c5b1eb` |
 | `npm run cf:dry-run` | 通过；55 个 Web 静态文件被 Wrangler 读取，仅 dry-run，未在本轮手动执行线上部署 |
 
@@ -38,6 +38,7 @@
 
 - **P1 / 实机：** 当前通过桌面 Edge/Chromium 和 Chrome 61 静态兼容审计，尚未在小红书模拟器、Android 8.1 真机和 iOS 真机实际听感验收。
 - **P1 / 听感：** 正式妙响母带已进入运行时版本，但当前仍是自动裁切与响度归一后的第一版；建议投稿前在手机外放与耳机各人工听一遍循环接缝、尸潮压迫感和文字阅读干扰。
+- **循环接缝：** 白天 / 普通夜 / 尸潮 / 探索四条循环轨已改为文件内 2 秒首尾交叉融合，不再依赖 1 秒级淡出后硬循环；抽样首尾平均电平差已收敛到约 0.5–3.2 dB。天亮与断电仍保留自然淡出，因为它们是一次性 cue。
 - **P2 / 混音：** 当前采用低/中/高三档整体音量，没有独立 BGM/SFX 连续滑杆；比赛版本优先避免增加设置复杂度。
 
 ## Night Event Visual Upgrade v1 验收（2026-09-07）
