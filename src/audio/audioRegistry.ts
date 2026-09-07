@@ -16,6 +16,7 @@ export const NIGHT_AUDIO: Readonly<Record<NightAudioKey, AudioAssetDefinition>> 
   night_conflict_murmur: { src: '/assets/audio/sfx/sfx_conflict_murmur.mp3', volume: 0.44 },
   night_distant_threat: { src: '/assets/audio/sfx/sfx_distant_threat.mp3', volume: 0.50 },
   night_horde_impact: { src: '/assets/audio/sfx/sfx_horde_impact.mp3', volume: 0.58 },
+  night_infected_vocal: { src: '/assets/audio/sfx/sfx_infected_vocal.mp3', volume: 0.50 },
   night_empty_space: { src: '/assets/audio/sfx/sfx_empty_space.mp3', volume: 0.38 },
   night_storage_rustle: { src: '/assets/audio/sfx/sfx_storage_rustle.mp3', volume: 0.46 },
   night_quiet_room: { src: '/assets/audio/sfx/sfx_quiet_room.mp3', volume: 0.36 },
@@ -34,4 +35,7 @@ export const UI_AUDIO: Readonly<Record<UiAudioCueKey, AudioAssetDefinition>> = {
   dusk_lock: { src: '/assets/audio/sfx/sfx_dusk_lock.mp3', volume: 0.55 },
   dice_roll: { src: '/assets/audio/sfx/sfx_dice_roll.mp3', volume: 0.52 },
   journal_mark: { src: '/assets/audio/sfx/sfx_journal_mark.mp3', volume: 0.40 },
+  page_turn: { src: '/assets/audio/sfx/sfx_page_turn.mp3', volume: 0.26 },
+  pen_circle: { src: '/assets/audio/sfx/sfx_pen_circle.mp3', volume: 0.24 },
+  expedition_loot: { src: '/assets/audio/sfx/sfx_expedition_loot.mp3', volume: 0.34 },
 };

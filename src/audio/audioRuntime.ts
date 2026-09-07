@@ -5,6 +5,12 @@ import type { AmbienceKey, AudioAssetDefinition, AudioPreferences, UiAudioCueKey
 
 const PLAYED_SESSION_KEY = 'ember-street-audio-played-v1';
 const VOLUME_MULTIPLIER: Record<AudioPreferences['volume'], number> = { low: 0.55, medium: 0.78, high: 1 };
+const INTERACTION_UI_CUES = new Set<UiAudioCueKey>(['page_turn', 'pen_circle', 'expedition_loot']);
+const INTERACTION_COOLDOWN_MS: Partial<Record<UiAudioCueKey, number>> = {
+  page_turn: 120,
+  pen_circle: 120,
+  expedition_loot: 180,
+};
 
 function safePlay(audio: HTMLAudioElement): void {
   const result = audio.play();
@@ -34,6 +40,8 @@ class EmberAudioRuntime {
   private ambienceKey: AmbienceKey | null = null;
   private ambience: HTMLAudioElement | null = null;
   private activeSfx: HTMLAudioElement | null = null;
+  private interactionSfx = new Set<HTMLAudioElement>();
+  private interactionLastPlayed = new Map<UiAudioCueKey, number>();
   private fadeTimer: number | null = null;
   private duckTimer: number | null = null;
 
@@ -51,7 +59,7 @@ class EmberAudioRuntime {
     this.preferences = next;
     if (!next.enabled || !next.ambience) this.pauseAmbience();
     else this.refreshAmbience();
-    if (!next.enabled || !next.sfx) this.stopSfx();
+    if (!next.enabled || !next.sfx) { this.stopSfx(); this.stopInteractionSfx(); }
   }
 
   setSuspended(suspended: boolean): void {
@@ -75,12 +83,16 @@ class EmberAudioRuntime {
   }
 
   playUiCue(key: UiAudioCueKey, delayMs = 0): void {
-    window.setTimeout(() => this.playSfx(UI_AUDIO[key]), delayMs);
+    window.setTimeout(() => {
+      if (INTERACTION_UI_CUES.has(key)) this.playInteractionSfx(UI_AUDIO[key], key);
+      else this.playSfx(UI_AUDIO[key]);
+    }, delayMs);
   }
 
   stopAll(): void {
     this.ambienceKey = null;
     this.stopSfx();
+    this.stopInteractionSfx();
     if (this.ambience) { this.ambience.pause(); this.ambience = null; }
     if (this.fadeTimer !== null) window.clearInterval(this.fadeTimer);
     if (this.duckTimer !== null) window.clearTimeout(this.duckTimer);
@@ -145,12 +157,37 @@ class EmberAudioRuntime {
     safePlay(sfx);
   }
 
+  private playInteractionSfx(asset: AudioAssetDefinition, key: UiAudioCueKey): void {
+    if (!this.unlocked || this.suspended || !this.preferences.enabled || !this.preferences.sfx || typeof Audio === 'undefined') return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const cooldown = INTERACTION_COOLDOWN_MS[key] ?? 80;
+    const last = this.interactionLastPlayed.get(key) ?? -Infinity;
+    if (now - last < cooldown) return;
+    this.interactionLastPlayed.set(key, now);
+    const sfx = new Audio(asset.src);
+    sfx.preload = 'auto';
+    sfx.volume = this.targetVolume(asset);
+    this.interactionSfx.add(sfx);
+    const release = () => this.interactionSfx.delete(sfx);
+    sfx.addEventListener('ended', release, { once: true });
+    sfx.addEventListener('error', release, { once: true });
+    safePlay(sfx);
+  }
+
   private stopSfx(): void {
     if (!this.activeSfx) return;
     this.activeSfx.pause();
     this.activeSfx.currentTime = 0;
     this.activeSfx = null;
     this.restoreAmbience();
+  }
+
+  private stopInteractionSfx(): void {
+    for (const sfx of this.interactionSfx) {
+      sfx.pause();
+      sfx.currentTime = 0;
+    }
+    this.interactionSfx.clear();
   }
 
   private duckAmbience(): void {

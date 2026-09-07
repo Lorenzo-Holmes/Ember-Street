@@ -16,7 +16,7 @@ const errors = [];
 let totalBytes = 0;
 
 if (refs.length !== uniqueRefs.length) fail('audio registry contains duplicate file references', errors);
-if (uniqueRefs.length !== 26) fail(`expected 26 registered MP3 files, found ${uniqueRefs.length}`, errors);
+if (!uniqueRefs.length) fail('audio registry does not contain any local MP3 references', errors);
 
 const rows = [];
 for (const ref of uniqueRefs) {

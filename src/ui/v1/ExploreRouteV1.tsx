@@ -9,6 +9,7 @@ import { resourceListLabel } from './labels';
 import './explore-night.css';
 import './explore-safe-area.css';
 import { tutorialIsActive } from '../../game/v060/tutorial';
+import { gameAudio } from '../../audio/audioRuntime';
 
 interface ExploreRouteV1Props {
   state: GameState;
@@ -52,6 +53,7 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
   const guided = tutorialIsActive(state);
   const suggested = guided ? [...locations].sort((a, b) => expeditionRiskScore(state, [survivorId], a.id) - expeditionRiskScore(state, [survivorId], b.id))[0]?.id : undefined;
   const [locationId, setLocationId] = useState(currentRoute ?? suggested ?? locations[0]?.id ?? '');
+  const [circleRevision, setCircleRevision] = useState(0);
   const assignedRoutes = state.dayState.expeditionRoutes ?? {};
   const existingDistinct = new Set(Object.entries(assignedRoutes)
     .filter(([id]) => id !== survivorId && state.dayAssignments[id] === 'expedition')
@@ -87,10 +89,21 @@ export default function ExploreRouteV1({ state, survivorId, onBack, onConfirm }:
           const lootNote = scavengingNote(state, location.id);
           const blocked = !existingDistinct.has(location.id) && existingDistinct.size >= routeLimit;
           return (
-            <button data-tutorial={location.id === suggested ? 'suggested-route' : undefined} className={`v1e-location ${active ? 'active' : ''}`} disabled={blocked} key={location.id} onClick={() => setLocationId(location.id)}>
+            <button data-tutorial={location.id === suggested ? 'suggested-route' : undefined} className={`v1e-location ${active ? 'active' : ''}`} disabled={blocked} key={location.id} onClick={() => {
+              if (location.id === locationId) return;
+              gameAudio.playUiCue('pen_circle');
+              setLocationId(location.id);
+              setCircleRevision((value) => value + 1);
+            }}>
               <div className="v1e-art" aria-label={location.name} style={visualAssetStyle(locationVisual(location.id))}/>
               <div className="v1e-location__copy">
-                <div><strong>{location.name}</strong><em>{blocked ? '今天记不了更多路' : riskLabel(risk)}</em></div>
+                <div>
+                  <strong>{location.name}</strong><em>{blocked ? '今天记不了更多路' : riskLabel(risk)}</em>
+                  {active && <svg key={`${location.id}:${circleRevision}`} className={`v1e-route-circle ${circleRevision > 0 ? 'is-drawing' : 'is-static'}`} viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+                    <ellipse pathLength="1" cx="50" cy="20" rx="48" ry="16.5" />
+                    <ellipse pathLength="1" cx="49.5" cy="20.5" rx="47" ry="15.5" />
+                  </svg>}
+                </div>
                 <p>{location.description}</p>
                 <small>能翻到：{resourceListLabel(location.primary, location.secondary, location.tertiary)} · {companyNote(prospectiveParty.length)}</small>
                 {location.id === suggested && <small className="v1-tutorial-route-note">先看这条路：眼下风险较低，仍可能受伤或空手回来。</small>}

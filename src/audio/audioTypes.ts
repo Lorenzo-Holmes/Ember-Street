@@ -14,7 +14,13 @@ export type AmbienceKey =
   | 'expedition_pressure'
   | 'dawn_release';
 
-export type UiAudioCueKey = 'dusk_lock' | 'dice_roll' | 'journal_mark';
+export type UiAudioCueKey =
+  | 'dusk_lock'
+  | 'dice_roll'
+  | 'journal_mark'
+  | 'page_turn'
+  | 'pen_circle'
+  | 'expedition_loot';
 
 export interface AudioAssetDefinition {
   src: string;

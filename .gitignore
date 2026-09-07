@@ -12,6 +12,7 @@ coverage
 /.playwright-cli/
 /output/
 /music/
+/.audio-source-cache/
 /test-results/
 /playwright-report/
 /playwright-production-report/

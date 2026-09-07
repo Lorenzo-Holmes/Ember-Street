@@ -9,11 +9,11 @@ import { lowHopeDepartureFlag, medicalCrisisFlag } from '../src/game/v060/mortal
 import { mortalityEventById } from '../src/game/v060/mortalityEvents';
 import { ALL_V060_NIGHT_EVENTS } from '../src/game/v060/nightEvents';
 
-describe('Audio Atmosphere & Event SFX v1', () => {
+describe('Audio Atmosphere & Event SFX v2', () => {
   it('covers all 51 static night definitions with registered local event audio', () => {
     const events = [...ALL_V060_NIGHT_EVENTS, ...FINAL_HORDE_EVENTS];
     expect(events).toHaveLength(51);
-    expect(Object.keys(NIGHT_AUDIO)).toHaveLength(18);
+    expect(Object.keys(NIGHT_AUDIO)).toHaveLength(19);
     for (const event of events) {
       const asset = NIGHT_AUDIO[event.audioKey];
       expect(asset).toBeDefined();
@@ -43,7 +43,17 @@ describe('Audio Atmosphere & Event SFX v1', () => {
     expect(ambienceForState({ ...base, phase: 'night', nightState: { ...base.nightState, hordeActive: true } })).toBe('horde_pressure');
     expect(ambienceForState({ ...base, phase: 'dawn' })).toBe('dawn_release');
     expect(Object.values(AMBIENCE_AUDIO).every((asset) => asset.src.startsWith('/assets/audio/music/'))).toBe(true);
-    expect(Object.keys(UI_AUDIO)).toEqual(['dusk_lock', 'dice_roll', 'journal_mark']);
+    expect(Object.keys(UI_AUDIO)).toEqual(['dusk_lock', 'dice_roll', 'journal_mark', 'page_turn', 'pen_circle', 'expedition_loot']);
+    expect(UI_AUDIO.page_turn.volume).toBeLessThan(UI_AUDIO.journal_mark.volume);
+    expect(UI_AUDIO.pen_circle.volume).toBeLessThan(UI_AUDIO.journal_mark.volume);
+  });
+
+  it('separates infected vocals from structural horde impacts', () => {
+    const events = [...ALL_V060_NIGHT_EVENTS, ...FINAL_HORDE_EVENTS];
+    expect(events.find((event) => event.id === 'horde-approach')?.audioKey).toBe('night_infected_vocal');
+    expect(events.find((event) => event.id === 'horde-breakthrough')?.audioKey).toBe('night_infected_vocal');
+    expect(events.find((event) => event.id === 'horde-north-gate')?.audioKey).toBe('night_horde_impact');
+    expect(events.find((event) => event.id === 'final-horde-reroute')?.audioKey).toBe('night_infected_vocal');
   });
 
   it('normalizes independent audio preferences without touching game state', () => {

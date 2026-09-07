@@ -24,6 +24,7 @@ export type NightAudioKey =
   | 'night_conflict_murmur'
   | 'night_distant_threat'
   | 'night_horde_impact'
+  | 'night_infected_vocal'
   | 'night_empty_space'
   | 'night_storage_rustle'
   | 'night_quiet_room'
@@ -275,7 +276,7 @@ export const NORMAL_NIGHT_EVENTS: V060NightEvent[] = [
 
 export const HORDE_EVENTS: V060NightEvent[] = [
   {
-    id: 'horde-approach', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_horde_impact', minDay: 1, maxDay: 29, title: '尸潮正在接近',
+    id: 'horde-approach', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_infected_vocal', minDay: 1, maxDay: 29, title: '尸潮正在接近',
     body: '远处的黑影已经连成一片。声音还没到，地面先开始轻微震动。',
     choices: [
       checked('read-route', '让街口岗判断来路', '爬上最高的瞭望点，看清尸群最密的那一股正朝哪条街挤。', 'watch', { defense: 7, addFlags: ['horde_route_read'] }, { defense: -4 }),
@@ -313,7 +314,7 @@ export const HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'horde-breakthrough', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_horde_impact', minDay: 20, maxDay: 29, title: '尸群冲进外围街段',
+    id: 'horde-breakthrough', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_infected_vocal', minDay: 20, maxDay: 29, title: '尸群冲进外围街段',
     body: '第一道围栏已经没有意义。现在决定的是堵住缺口，还是把人撤回去。',
     choices: [
       checked('counter', '让守备人员夺回缺口', '守备人员从内街反冲回缺口，离尸群只隔几米。', 'watch', { defense: 12, hope: 2 }, { defense: -15, actorCondition: 'critical' }, { defense: 2, actorCondition: 'serious' }),

@@ -1089,7 +1089,6 @@ body:has(.notebook-page) .v1-bottom-nav {
   transform: none;
 }
 
-.notebook-page .v1e-location.active .v1e-location__copy > div:first-child::after,
 .notebook-page .v6-locations button.active > strong:first-child::after {
   content: '';
   position: absolute;
@@ -1105,6 +1104,59 @@ body:has(.notebook-page) .v1-bottom-nav {
   transform: rotate(-2deg);
   -webkit-mask-image: conic-gradient(from -9deg, transparent 0 24deg, #000 30deg 351deg, transparent 358deg);
   mask-image: conic-gradient(from -9deg, transparent 0 24deg, #000 30deg 351deg, transparent 358deg);
+}
+
+.notebook-page .v1e-route-circle {
+  position: absolute;
+  z-index: 3;
+  top: -10px;
+  right: -14px;
+  bottom: -9px;
+  left: -13px;
+  width: calc(100% + 27px);
+  height: calc(100% + 19px);
+  overflow: visible;
+  pointer-events: none;
+  transform: rotate(-1.5deg);
+}
+
+.notebook-page .v1e-route-circle ellipse {
+  fill: none;
+  stroke: var(--notebook-red-ink);
+  stroke-width: 1.8;
+  vector-effect: non-scaling-stroke;
+  opacity: .78;
+}
+
+.notebook-page .v1e-route-circle ellipse:nth-child(2) {
+  stroke-width: 1.1;
+  opacity: .26;
+  transform: rotate(1.8deg);
+  transform-origin: center;
+}
+
+.notebook-page .v1e-route-circle.is-drawing ellipse {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: notebook-route-circle-draw 280ms cubic-bezier(.18,.68,.3,1) forwards;
+}
+
+.notebook-page .v1e-route-circle.is-drawing ellipse:nth-child(2) {
+  animation-delay: 28ms;
+  animation-duration: 310ms;
+}
+
+@keyframes notebook-route-circle-draw {
+  from { stroke-dashoffset: 1; opacity: .35; }
+  78% { opacity: .86; }
+  to { stroke-dashoffset: 0; opacity: .78; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notebook-page .v1e-route-circle.is-drawing ellipse {
+    animation: none !important;
+    stroke-dashoffset: 0;
+  }
 }
 
 /* Primary actions are signed decisions with two rough pencil strokes. */

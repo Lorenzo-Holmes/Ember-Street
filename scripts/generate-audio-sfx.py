@@ -64,10 +64,7 @@ def click(buf: list[float], at: float, amp: float = 0.42, seed: int = 1) -> None
 
 def make(name: str, duration: float) -> list[float]:
     buf = blank(duration)
-    if name == "sfx_door_knock":
-        add_noise(buf, 0, duration, .028, 11, .03, .1)
-        for i, t in enumerate((.55, 1.35, 2.18)): impact(buf, t, .58, 115, 20 + i)
-    elif name == "sfx_medical_care":
+    if name == "sfx_medical_care":
         add_noise(buf, .2, 2.7, .12, 31, .08, .5); click(buf, .95, .2, 32); click(buf, 2.05, .16, 33)
     elif name == "sfx_injured_return":
         for i, t in enumerate((.32, .82, 1.38, 2.02)): impact(buf, t, .22 - i * .018, 78, 40 + i)
@@ -113,10 +110,6 @@ def make(name: str, duration: float) -> list[float]:
     elif name == "sfx_fire_hiss":
         add_noise(buf, 0, 4.0, .18, 161, .5, .03)
         for t in (.9, 1.85, 3.0): click(buf, t, .08, 162 + int(t * 10))
-    elif name == "sfx_dogs":
-        add_noise(buf, 0, 4.5, .025, 171, .02, .02)
-        for i, t in enumerate((.65, 1.8, 3.2)):
-            add_tone(buf, t, .34, 240 + i * 18, 104 + i * 8, .17 - i * .02, 3.5); add_noise(buf, t, .22, .08, 172 + i, .25, 4)
     elif name == "sfx_alarm":
         for i in range(8):
             t = .25 + i * .44; add_tone(buf, t, .20, 1010 if i % 2 == 0 else 880, amp=.14, decay=.4)
@@ -148,13 +141,13 @@ def main() -> int:
         raise SystemExit('ffmpeg is required to encode MP3 SFX')
     OUT.mkdir(parents=True, exist_ok=True)
     specs = {
-        'sfx_door_knock': 3.5, 'sfx_medical_care': 3.1, 'sfx_injured_return': 4.2,
+        'sfx_medical_care': 3.1, 'sfx_injured_return': 4.2,
         'sfx_conflict_murmur': 3.8, 'sfx_distant_threat': 4.5, 'sfx_horde_impact': 4.6,
         'sfx_empty_space': 3.8, 'sfx_storage_rustle': 3.2, 'sfx_quiet_room': 4.0,
         'sfx_package_drop': 4.0, 'sfx_departure_steps': 4.8,
         'sfx_radio_static': 3.7,
         'sfx_radio_burst': 3.8, 'sfx_structure_creak': 4.2, 'sfx_fire_hiss': 4.0,
-        'sfx_dogs': 4.6, 'sfx_alarm': 3.9, 'sfx_dusk_lock': 2.4,
+        'sfx_alarm': 3.9, 'sfx_dusk_lock': 2.4,
         'sfx_dice_roll': 1.8, 'sfx_journal_mark': 1.9,
     }
     with tempfile.TemporaryDirectory(dir=ROOT) as temp:
@@ -165,7 +158,7 @@ def main() -> int:
             write_wav(wav_path, make(name, duration))
             subprocess.run([ffmpeg, '-hide_banner', '-loglevel', 'error', '-y', '-i', str(wav_path),
                             '-ac', '1', '-ar', str(RATE), '-b:a', '48k', '-map_metadata', '-1', str(mp3_path)], check=True)
-    print(f'Generated {len(specs)} deterministic SFX in {OUT} (reviewed sfx_power_failure.mp3 is preserved)')
+    print(f'Generated {len(specs)} deterministic SFX in {OUT} (reviewed power-failure and imported Mixkit V2 SFX are preserved)')
     return 0
 
 

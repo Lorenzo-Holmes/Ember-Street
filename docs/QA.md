@@ -1,4 +1,68 @@
-# Ember Street v0.6.0 — QA Matrix
+# Ember Street v0.6.1 — QA Matrix
+
+## Audio Interaction & Notebook Motion V2 验收（2026-09-07）
+
+本轮从已完成 `Audio Atmosphere & Event SFX v1` 与夜间视觉升级的 `main` 继续，只修改表现层、音频来源链和交互反馈。资源收益、事件概率、Seeded RNG、人物生死规则、教程判定、存档 schema 与结局条件均未调整。
+
+### 实现结果
+
+- 夜间音频语义从 18 类扩展到 **19 类**，新增 `night_infected_vocal`；“尸群在街外接近 / 绕行”与“北门 / 围栏已经承受撞击”不再共用一种声音。
+- Night 1 木门敲击与野狗改为真实环境素材；另新增感染者、翻页、纸笔画圈、探索收获 4 个 cue。6 个外部高辨识度素材均来自明确锁定的 Mixkit Free License 条目，条目 ID、来源页、处理与 SHA-256 记录在 `docs/audio/SFX_SOURCE_LEDGER_V2.md`。
+- 运行时注册 **30 个本地 MP3**。`scripts/audit-audio-assets.mjs` 不再硬编码文件总数，但继续逐项验证路径、MP3 头、单文件 700 KiB 与总音频 3.2 MiB 门禁。
+- 世界 / 夜间 cue 继续使用原有 ambience ducking；`page_turn`、`pen_circle`、`expedition_loot` 使用独立 interaction channel，不主动压低 BGM，并有按 cue cooldown。
+- 一级导航使用约 220ms 的前 / 后向纸页动作；固定底部导航在动画容器之外。同一 tab 重复点击是 no-op，不重播翻页音。
+- 探索地点红圈改为两层 SVG ellipse 的 stroke 绘制；真正切换地点时播放短纸笔 scribble，同一地点重复点击不重画、不重播。
+- 探索收获 cue 依据结算前后 `ration / medicine / materials / parts` 的真实库存 delta；撤退、空手或只有负面状态时不播放成功声。
+- `prefers-reduced-motion` 会去掉翻页位移 / 旋转和红圈描边过程，仍保留最终状态。
+
+### 浏览器专项验证
+
+在真实 Chromium 会话中解锁音频后逐项观察运行时资源请求：
+
+| 场景 | 实际请求 / 结果 |
+| --- | --- |
+| Night 1 `gate-knocking` | `sfx_door_knock.mp3` |
+| `stray-dogs` | `sfx_dogs.mp3` + 普通夜 BGM |
+| `horde-approach` | `sfx_infected_vocal.mp3` + 尸潮 BGM |
+| `horde-north-gate` | `sfx_horde_impact.mp3`，确认仍为结构撞击 |
+| 据点 → 记录 | `sfx_page_turn.mp3`；重复点击当前“记录”后新增请求为 0 |
+| 探索便利店 → 西街药店 | `.v1e-route-circle.is-drawing` 挂载，并请求 `sfx_pen_circle.mp3`；重复点击当前药店后新增请求为 0 |
+| 谨慎搜索成功 | 口粮 `12→17`、材料 `12→13`，请求 `sfx_expedition_loot.mp3` |
+| 同一探索选择“马上回去” | 库存不变，新增音频请求为 0 |
+
+浏览器控制台未发现本轮代码错误；开发环境仍只有既有 `favicon.ico` 404。
+
+### 自动验证与发布门禁
+
+| 检查 | 最终结果 |
+| --- | --- |
+| `npm run typecheck` | 通过 |
+| `npm test` | **45 个测试文件通过、6 个报告生成文件按设计跳过；334/334 执行项通过** |
+| `npm run audit:audio` | **30/30 注册 MP3 有效；运行时音频约 2.64 MiB**，低于 3.2 MiB |
+| `npm run test:release-blocker` | **2/2** 通过 |
+| `npm run test:ui-smoke` | 修复后全量重跑 **46/46** 通过 |
+| `npm run audit:assets:strict` | A01–A47 **47/47**，9/9 sprite sheets；图片载荷 699.5 KiB |
+| `npm run build` | 通过，生产 CSS / JS 正常生成 |
+| `npm run audit:xhs` | 通过；普通 Web `dist` 53 文件，离线 / 容器表面限制通过 |
+| `npm run cf:dry-run` | 通过；Wrangler 读取 59 个 Web 静态文件，仅 dry-run |
+| 最终 `build:minitool` | `output/releases/ember-street-xhs-20260907T091154Z/app`；解包 **5,593,391 bytes（约 5.33 MiB）** |
+| 最终 `audit-minitool` | **51 文件、64 本地资源引用、0 base64**；Chrome 61 静态兼容 / fallback 检查通过 |
+| 最终 `package-minitool` | ZIP **4,967,149 bytes（约 4.74 MiB）**，低于 10 MiB 硬上限；仅保留“高于 2 MiB 推荐目标”的非阻断 warning |
+| 最终 ZIP SHA-256 | `9038967b20defac3a59a75c2f47468b3275a4e88566cc5fb33d853adf7b1928c` |
+| `git diff --check` | 通过；仅输出 Windows 工作树 LF→CRLF 提示，无 whitespace error |
+
+### 回归中发现并修复的问题
+
+第一次全量 `test:ui-smoke` 在 4 个教学视口和建筑 / 幸存者 / 记录移动端页面发现水平宽度瞬时多出约 11–13px。原因是最初直接对整个 `NotebookPageTransition` 外层执行 `translateX + rotate`，Playwright 在 220ms 动画期间测量页面宽度时，变换后的纸页会进入文档 overflow 区域。
+
+没有放宽测试。最终结构改为：外层保持固定宽度并裁切，内部 `.notebook-page-turn__sheet` 执行纸页动作；底部导航继续在外层之外。修复后先定向重跑 tutorial + V1 mobile **19/19**，随后完整 `test:ui-smoke` 再跑 **46/46** 全绿。
+
+### 已知边界
+
+- Mixkit 原始 WAV 只存在于 Git 忽略的 `.audio-source-cache/`，发布包中只有处理后的短 MP3，运行时没有外部音频 URL。
+- 自动化验证覆盖桌面 Chromium 与 320 / 360 / 390 / 430 等移动视口；**小红书模拟器、Android 8.1 / Chrome 61 真机、iOS 真机的实际听感仍未实机验证**。
+- 小工具 ZIP 约 4.74 MiB，明显低于 10 MiB 硬上限，但高于工具给出的 2 MiB 推荐目标；当前主要体积仍来自字体 / 既有素材而不是新增 V2 音效。
+- 最终听感仍建议投稿前在手机外放与耳机各人工试听一次，重点检查真实敲门 / 犬吠 / 感染者声的主观响度与 BGM 平衡；这不影响当前代码和包体门禁通过。
 
 ## Audio Atmosphere & Event SFX v1 验收（2026-09-07）
 

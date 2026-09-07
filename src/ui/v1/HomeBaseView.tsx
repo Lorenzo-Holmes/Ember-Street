@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { GameState } from '../../game/types';
 import { communitySupportSummary, selectCommunitySupportMode } from '../../game/v060/community';
 import { buildingVisual, visualAssetStyle, type VisualAsset } from '../visualAssets';
-import V1BottomNav, { type V1NavTarget } from './V1BottomNav';
+import type { V1NavTarget } from './V1BottomNav';
 import ResourceIcon from './ResourceIcon';
 import DefensePanel from './DefensePanel';
 import './home-base.css';
@@ -117,7 +117,6 @@ export default function HomeBaseView({ state, onCommit, onNavigate }: HomeBaseVi
       <CommunityRotation state={state} onCommit={onCommit} />
 
       <div className="v1-bottom-nav-spacer" />
-      <V1BottomNav active="home" onNavigate={onNavigate} />
     </main>
   );
 }

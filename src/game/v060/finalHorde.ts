@@ -100,7 +100,7 @@ export const FINAL_HORDE_EVENTS: V060NightEvent[] = [
     ],
   },
   {
-    id: 'final-horde-reroute', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_distant_threat', minDay: 29, maxDay: 29,
+    id: 'final-horde-reroute', category: 'horde', visualKey: 'night_external_threat', audioKey: 'night_infected_vocal', minDay: 29, maxDay: 29,
     title: '第五阵 · 尸群从侧街绕后',
     body: '正面的撞击刚缓下来，侧街又传来新的声音。过去画下的路线还能帮人判断来路；也可以封死巷口，或者主动开一条口子把人和尸群分开。',
     choices: [

@@ -1,7 +1,7 @@
 {
   "name": "ember-street",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "build:audio": "python scripts/generate-audio-sfx.py",
     "build:audio-fallback": "python scripts/generate-audio-music.py",
     "import:reviewed-music": "python scripts/import-reviewed-music.py",
+    "import:free-sfx-v2": "node scripts/import-free-sfx-v2.mjs",
     "build:audio-sfx": "python scripts/generate-audio-sfx.py",
     "build:minitool": "tsc -b && node scripts/build-minitool.mjs",
     "build:building-assets": "node scripts/build-building-visual-sprites.mjs",
